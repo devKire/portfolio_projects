@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     title: "Erik Santos - Desenvolvimento Web",
     description:
       "Portfólio de Erik Santos, desenvolvedor web especializado em soluções modernas e responsivas, com atenção ao design e experiência do usuário.",
-    url: "https://eriksantos.dev",
+    url: "https://portfolioeriksantos.vercel.app",
     siteName: "Erik Santos Portfolio",
     images: [
       {
