@@ -63,7 +63,7 @@ const projects: Project[] = [
     image:
       "https://1hcgs7spbatxhpzg.public.blob.vercel-storage.com/featured/featured_eriksantos.png",
     technologies: ["Next.js", "TypeScript", "Framer Motion", "Tailwind CSS"],
-    liveUrl: "https://erikdossantos.vercel.app",
+    liveUrl: "https://eriksantos.vercel.app",
     featured: true,
     status: "completed",
     accentColor: "from-purple-500/20 to-pink-600/20",

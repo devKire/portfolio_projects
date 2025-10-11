@@ -7,11 +7,13 @@ import {
   Calendar,
   Clock,
   Facebook,
+  Instagram,
   Linkedin,
   Mail,
   MessageCircle,
   Phone,
   Sparkles,
+  UserRound,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -87,7 +89,7 @@ const SectionContacts = ({ contact }: SectionContactsProps) => {
     ...(contact.instagramLink
       ? [
           {
-            icon: Sparkles,
+            icon: Instagram,
             title: "Instagram",
             description: "Meu dia a dia e trabalhos",
             action: "Seguir",
@@ -170,10 +172,8 @@ const SectionContacts = ({ contact }: SectionContactsProps) => {
             transition={{ delay: 0.2, type: "spring" }}
             className="mb-6 inline-flex items-center gap-2 rounded-full border border-gray-700 bg-gray-800/50 px-6 py-3 backdrop-blur-sm"
           >
-            <Sparkles size={20} className="text-electric-500" />
-            <span className="font-inter text-gray-300">
-              Vamos Trabalhar Juntos
-            </span>
+            <UserRound size={20} className="text-electric-500" />
+            <span className="font-inter text-gray-300">Contato</span>
           </motion.div>
 
           <h2 className="font-space mb-6 text-4xl font-bold md:text-6xl lg:text-7xl">

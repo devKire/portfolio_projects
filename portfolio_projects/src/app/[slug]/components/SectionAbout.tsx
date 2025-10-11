@@ -30,7 +30,6 @@ const services = [
     description:
       "Criação de sites modernos e otimizados com React, Next.js e TypeScript.",
     features: ["Responsivo", "Otimizado para SEO", "Alta Performance"],
-    price: "A partir de R$ 2.500",
   },
   {
     name: "UI/UX Design",
@@ -38,7 +37,6 @@ const services = [
     description:
       "Designs intuitivos e atraentes que aumentam a conversão e melhoram a experiência do usuário.",
     features: ["Prototipagem", "Design System", "User Testing"],
-    price: "A partir de R$ 1.800",
   },
   {
     name: "E-commerce",
@@ -46,7 +44,6 @@ const services = [
     description:
       "Lojas virtuais completas e seguras com integração de pagamentos e gestão fácil.",
     features: ["Pagamentos Online", "Gestão de Estoque", "Dashboard"],
-    price: "A partir de R$ 4.000",
   },
   {
     name: "Landing Pages",
@@ -54,7 +51,6 @@ const services = [
     description:
       "Páginas de alta conversão para divulgar produtos, serviços ou campanhas.",
     features: ["Copy Otimizado", "A/B Testing", "Analytics"],
-    price: "A partir de R$ 1.200",
   },
   {
     name: "Consultoria Tech",
@@ -62,7 +58,6 @@ const services = [
     description:
       "Análise e estratégia para otimizar a presença digital do seu negócio.",
     features: ["Análise Técnica", "Roadmap", "Mentoria"],
-    price: "Sob consulta",
   },
 ];
 
@@ -303,9 +298,6 @@ const SectionAbout = ({ contact, landingpage }: SectionAboutProps) => {
 
                     {/* Price */}
                     <div className="flex items-center justify-between">
-                      <span className="font-inter text-electric-500 text-sm font-semibold">
-                        {service.price}
-                      </span>
                       <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
@@ -314,9 +306,10 @@ const SectionAbout = ({ contact, landingpage }: SectionAboutProps) => {
                             .getElementById("contato")
                             ?.scrollIntoView({ behavior: "smooth" })
                         }
-                        className="font-inter hover:bg-electric-500 rounded-lg bg-gray-700/50 px-3 py-1 text-xs font-semibold text-gray-300 transition-colors hover:text-white"
+                        className="font-inter text-electric-500 flex gap-2 text-sm font-semibold"
                       >
-                        Solicitar
+                        Solicitar Orçamento
+                        <ArrowUpRight size={16} />
                       </motion.button>
                     </div>
                   </motion.div>
