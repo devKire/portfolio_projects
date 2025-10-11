@@ -1,8 +1,8 @@
 "use client";
 
 import { ContactInfo, LandingPage } from "@prisma/client";
-import { AnimatePresence,motion } from "framer-motion";
-import { Mail, Menu, MessageCircle, Phone,X } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Mail, Menu, MessageCircle, Phone, X } from "lucide-react";
 import React, { useEffect, useState } from "react";
 
 interface HeaderProps {
@@ -45,10 +45,10 @@ const Header = ({ contact, landingpage }: HeaderProps) => {
   };
 
   const navItems = [
-    { name: "Início", id: "inicio" },
-    { name: "Projetos", id: "projetos" },
-    { name: "Sobre", id: "sobre" },
-    { name: "Contato", id: "contato" },
+    { name: "Início", id: "hero" },
+    { name: "Projetos", id: "projects" },
+    { name: "Sobre", id: "about" },
+    { name: "Contato", id: "contact" },
   ];
 
   return (
