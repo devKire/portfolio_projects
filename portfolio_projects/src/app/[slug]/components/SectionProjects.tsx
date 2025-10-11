@@ -7,6 +7,7 @@ import {
   Code,
   ExternalLink,
   Eye,
+  Filter,
   Sparkles,
   X,
   Zap,
@@ -203,6 +204,7 @@ const SectionProjects = ({ contact, landingpage }: SectionProjectsProps) => {
   console.log(contact, landingpage);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [filter, setFilter] = useState("Todos");
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
 
   // Categorias atualizadas baseadas nos projetos reais
   const categories = [
@@ -309,45 +311,77 @@ const SectionProjects = ({ contact, landingpage }: SectionProjectsProps) => {
           </motion.div>
 
           <h2 className="font-space mb-6 text-4xl font-bold md:text-6xl lg:text-7xl">
+            Veja os{" "}
+            <span className="text-electric-500">{projects.length}+</span>{" "}
             Projetos <span className="text-electric-500">Impactantes</span>
           </h2>
           <p className="font-inter mx-auto max-w-3xl text-xl text-gray-400 md:text-2xl">
             Cada imagem conta uma história de inovação, design e excelência
-            técnica
+            técnica entre {projects.length} projetos entregues
           </p>
         </motion.div>
 
-        {/* Filter Buttons - Atualizados */}
+        {/* Filter Dropdown Button */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="mb-16"
+          className="mb-16 flex justify-center"
         >
-          <div className="flex flex-wrap justify-center gap-3">
-            {categories.map((category) => (
-              <motion.button
-                key={category}
-                whileHover={{ scale: 1.05, y: -2 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setFilter(category)}
-                className={`font-inter group relative rounded-full border px-6 py-3 font-medium backdrop-blur-sm transition-all duration-300 ${
-                  filter === category
-                    ? "bg-electric-500 border-electric-500 shadow-electric-500/25 text-white shadow-lg"
-                    : "border-gray-700 bg-gray-800/50 text-gray-400 hover:border-gray-600 hover:text-white"
-                }`}
-              >
-                <span>{category}</span>
-                <span
-                  className={`ml-2 text-xs ${
-                    filter === category ? "text-white/80" : "text-gray-500"
-                  }`}
+          <div className="relative">
+            <motion.button
+              whileHover={{ scale: 1.05, y: -2 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+              className="font-inter group relative flex items-center gap-3 rounded-full border border-gray-700 bg-gray-800/50 px-6 py-3 font-medium backdrop-blur-sm transition-all duration-300 hover:border-gray-600 hover:text-white"
+            >
+              <Filter size={20} className="text-electric-500" />
+              <span>Filtrar por Categoria</span>
+              <span className="text-electric-500">
+                ({getProjectCountByCategory(filter)})
+              </span>
+            </motion.button>
+
+            {/* Dropdown Menu */}
+            <AnimatePresence>
+              {showFilterDropdown && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  className="absolute top-full right-0 left-0 z-50 mt-2 rounded-2xl border border-gray-700/50 bg-gray-800/95 p-2 shadow-2xl shadow-black/50 backdrop-blur-xl"
                 >
-                  ({getProjectCountByCategory(category)})
-                </span>
-              </motion.button>
-            ))}
+                  {categories.map((category) => (
+                    <motion.button
+                      key={category}
+                      whileHover={{ scale: 1.02, x: 4 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => {
+                        setFilter(category);
+                        setShowFilterDropdown(false);
+                      }}
+                      className={`font-inter group flex w-full items-center justify-between rounded-xl px-4 py-3 text-left transition-all duration-300 ${
+                        filter === category
+                          ? "bg-electric-500 shadow-electric-500/25 text-white shadow-lg"
+                          : "text-gray-400 hover:bg-gray-700/50 hover:text-white"
+                      }`}
+                    >
+                      <span>{category}</span>
+                      <span
+                        className={`text-sm ${
+                          filter === category
+                            ? "text-white/80"
+                            : "text-gray-500"
+                        }`}
+                      >
+                        {getProjectCountByCategory(category)}
+                      </span>
+                    </motion.button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </motion.div>
 
