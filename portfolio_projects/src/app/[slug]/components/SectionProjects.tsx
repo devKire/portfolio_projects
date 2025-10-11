@@ -502,35 +502,35 @@ const SectionProjects = ({ contact, landingpage }: SectionProjectsProps) => {
         )}
       </div>
 
-      {/* Project Modal com Foco na Imagem */}
+      {/* Project Modal com Foco na Imagem - RESPONSIVO */}
       <AnimatePresence>
         {selectedProject && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-lg"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-2 backdrop-blur-lg sm:p-4"
             onClick={() => setSelectedProject(null)}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="max-h-[95vh] w-full max-w-6xl overflow-y-auto rounded-3xl border border-gray-700/50 bg-gray-900/95 shadow-2xl shadow-black/50 backdrop-blur-xl"
+              className="mx-2 max-h-[95dvh] w-full max-w-6xl overflow-y-auto rounded-2xl border border-gray-700/50 bg-gray-900/95 shadow-2xl shadow-black/50 backdrop-blur-xl sm:rounded-3xl"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
-              <div className="sticky top-0 flex items-center justify-between border-b border-gray-700/50 bg-gray-900/95 p-8 backdrop-blur-xl">
-                <div>
-                  <h3 className="font-space bg-gradient-to-r from-white to-gray-300 bg-clip-text text-3xl font-bold text-transparent">
+              <div className="sticky top-0 z-10 flex flex-col justify-between gap-4 border-b border-gray-700/50 bg-gray-900/95 p-4 backdrop-blur-xl sm:flex-row sm:items-center sm:gap-0 sm:p-6 lg:p-8">
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-space bg-gradient-to-r from-white to-gray-300 bg-clip-text text-xl font-bold break-words text-transparent sm:text-2xl lg:text-3xl">
                     {selectedProject.title}
                   </h3>
-                  <div className="mt-2 flex items-center gap-3">
-                    <span className="text-electric-500 font-inter text-lg font-semibold">
+                  <div className="mt-2 flex flex-wrap items-center gap-2 sm:gap-3">
+                    <span className="text-electric-500 font-inter text-sm font-semibold sm:text-base lg:text-lg">
                       {selectedProject.category}
                     </span>
                     <div
-                      className={`font-inter rounded-full px-3 py-1 text-sm font-medium backdrop-blur-sm ${getStatusColor(selectedProject.status)} border border-white/10`}
+                      className={`font-inter rounded-full px-2 py-1 text-xs font-medium backdrop-blur-sm sm:px-3 sm:py-1 sm:text-sm ${getStatusColor(selectedProject.status)} border border-white/10 whitespace-nowrap`}
                     >
                       {getStatusText(selectedProject.status)}
                     </div>
@@ -539,27 +539,29 @@ const SectionProjects = ({ contact, landingpage }: SectionProjectsProps) => {
                 <motion.button
                   onClick={() => setSelectedProject(null)}
                   whileHover={{ scale: 1.1, rotate: 90 }}
-                  className="rounded-xl p-3 text-gray-400 backdrop-blur-sm transition-colors hover:bg-gray-800/50 hover:text-white"
+                  whileTap={{ scale: 0.9 }}
+                  className="flex-shrink-0 self-start rounded-xl p-2 text-gray-400 backdrop-blur-sm transition-colors hover:bg-gray-800/50 hover:text-white sm:self-auto sm:p-3"
                 >
-                  <X size={28} />
+                  <X size={20} className="sm:h-6 sm:w-6 lg:h-7 lg:w-7" />
                 </motion.button>
               </div>
 
               {/* Modal Content */}
-              <div className="p-8">
+              <div className="p-4 sm:p-6 lg:p-8">
                 {/* Hero Image */}
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2 }}
-                  className="relative mb-8 h-96 overflow-hidden rounded-2xl bg-gradient-to-br from-gray-800 to-gray-900"
+                  className="relative mb-6 h-48 overflow-hidden rounded-xl bg-gradient-to-br from-gray-800 to-gray-900 sm:mb-8 sm:h-64 sm:rounded-2xl md:h-80 lg:h-96"
                 >
                   <Image
                     src={selectedProject.image}
                     alt={selectedProject.title}
-                    width={1000}
-                    height={1000}
+                    width={1200}
+                    height={600}
                     className="h-full w-full object-cover"
+                    priority
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-gray-900/60 to-transparent" />
 
@@ -572,13 +574,18 @@ const SectionProjects = ({ contact, landingpage }: SectionProjectsProps) => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 }}
-                  className="mb-8"
+                  className="mb-6 sm:mb-8"
                 >
-                  <h4 className="font-space mb-4 flex items-center gap-3 text-2xl font-semibold">
-                    <Sparkles size={24} className="text-electric-500" />
-                    Sobre o Projeto
+                  <h4 className="font-space mb-3 flex items-center gap-2 text-lg font-semibold sm:mb-4 sm:gap-3 sm:text-xl lg:text-2xl">
+                    <Sparkles
+                      size={20}
+                      className="text-electric-500 sm:h-6 sm:w-6"
+                    />
+                    <span className="text-base sm:text-lg lg:text-xl">
+                      Sobre o Projeto
+                    </span>
                   </h4>
-                  <p className="font-inter text-lg leading-relaxed text-gray-300">
+                  <p className="font-inter text-sm leading-relaxed text-gray-300 sm:text-base sm:leading-loose lg:text-lg">
                     {selectedProject.fullDescription}
                   </p>
                 </motion.div>
@@ -588,18 +595,24 @@ const SectionProjects = ({ contact, landingpage }: SectionProjectsProps) => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 }}
-                  className="mb-8"
+                  className="mb-6 sm:mb-8"
                 >
-                  <h4 className="font-space mb-4 flex items-center gap-3 text-2xl font-semibold">
-                    <Code size={24} className="text-electric-500" />
-                    Tecnologias Utilizadas
+                  <h4 className="font-space mb-3 flex items-center gap-2 text-lg font-semibold sm:mb-4 sm:gap-3 sm:text-xl lg:text-2xl">
+                    <Code
+                      size={20}
+                      className="text-electric-500 sm:h-6 sm:w-6"
+                    />
+                    <span className="text-base sm:text-lg lg:text-xl">
+                      Tecnologias Utilizadas
+                    </span>
                   </h4>
-                  <div className="flex flex-wrap gap-4">
+                  <div className="flex flex-wrap gap-2 sm:gap-3 lg:gap-4">
                     {selectedProject.technologies.map((tech) => (
                       <motion.span
                         key={tech}
                         whileHover={{ scale: 1.05, y: -2 }}
-                        className="font-inter rounded-xl border border-gray-700/50 bg-gray-800/50 px-5 py-3 text-lg font-medium text-gray-200 backdrop-blur-sm"
+                        whileTap={{ scale: 0.95 }}
+                        className="font-inter rounded-lg border border-gray-700/50 bg-gray-800/50 px-3 py-2 text-xs font-medium whitespace-nowrap text-gray-200 backdrop-blur-sm sm:rounded-xl sm:px-4 sm:py-2 sm:text-sm lg:px-5 lg:py-3 lg:text-base"
                       >
                         {tech}
                       </motion.span>
@@ -612,20 +625,20 @@ const SectionProjects = ({ contact, landingpage }: SectionProjectsProps) => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.5 }}
-                  className="flex flex-col gap-4 sm:flex-row"
+                  className="flex flex-col gap-3 sm:gap-4"
                 >
                   {selectedProject.liveUrl && (
                     <motion.a
                       href={selectedProject.liveUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      whileHover={{ scale: 1.05, y: -2 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="bg-electric-500 hover:bg-electric-600 font-inter shadow-electric-500/25 flex items-center justify-center gap-3 rounded-xl px-8 py-4 text-lg font-bold shadow-2xl transition-all duration-300"
+                      whileHover={{ scale: 1.02, y: -1 }}
+                      whileTap={{ scale: 0.98 }}
+                      className="bg-electric-500 hover:bg-electric-600 font-inter shadow-electric-500/25 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-center text-sm font-bold shadow-xl transition-all duration-300 sm:w-auto sm:gap-3 sm:rounded-xl sm:px-6 sm:py-4 sm:text-base sm:shadow-2xl lg:px-8 lg:text-lg"
                     >
-                      <ExternalLink size={20} />
-                      Ver Projeto Online
-                      <ArrowUpRight size={18} />
+                      <ExternalLink size={18} className="sm:h-5 sm:w-5" />
+                      <span>Ver Projeto Online</span>
+                      <ArrowUpRight size={16} className="sm:h-4 sm:w-4" />
                     </motion.a>
                   )}
                 </motion.div>
