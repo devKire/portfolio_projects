@@ -174,7 +174,7 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
               className="font-space text-4xl leading-tight font-bold md:text-6xl lg:text-7xl"
             >
               Olá, sou{" "}
-              <span className="from-electric-500 bg-gradient-to-r via-blue-500 to-purple-500 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-sky-400 via-purple-400 to-purple-500 bg-clip-text text-transparent">
                 {landingpage.name}
               </span>
             </motion.h1>

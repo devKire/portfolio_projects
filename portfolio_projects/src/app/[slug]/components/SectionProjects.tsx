@@ -38,22 +38,6 @@ interface Project {
 const projects: Project[] = [
   {
     id: 1,
-    title: "Rafa Manicure & Pedicure",
-    category: "Beleza e Estética",
-    description:
-      "Landing page para profissional de beleza com agendamento via WhatsApp.",
-    fullDescription:
-      "Desenvolvido para Rafa Manicure, com um design feminino e elegante. Inclui galeria de serviços, integração para contato rápido e layout 100% responsivo.",
-    image:
-      "https://1hcgs7spbatxhpzg.public.blob.vercel-storage.com/featured/featured_rafamanicure.png",
-    technologies: ["Next.js", "TypeScript", "Tailwind CSS"],
-    liveUrl: "https://rafamanicurepedicure.vercel.app/",
-    featured: true,
-    status: "completed",
-    accentColor: "from-rose-500/20 to-pink-600/20",
-  },
-  {
-    id: 2,
     title: "Erik Santos",
     category: "Portfólio Pessoal",
     description:
@@ -61,7 +45,7 @@ const projects: Project[] = [
     fullDescription:
       "Portfólio pessoal com foco em design limpo, navegação fluida e destaque para projetos, tecnologias dominadas e formas de contato. Desenvolvido com animações suaves via Framer Motion e SEO otimizado.",
     image:
-      "https://1hcgs7spbatxhpzg.public.blob.vercel-storage.com/featured/featured_eriksantos.png",
+      "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_eriksantos.png",
     technologies: ["Next.js", "TypeScript", "Framer Motion", "Tailwind CSS"],
     liveUrl: "https://eriksantos.vercel.app",
     featured: true,
@@ -69,53 +53,35 @@ const projects: Project[] = [
     accentColor: "from-purple-500/20 to-pink-600/20",
   },
   {
-    id: 3,
-    title: "João Garcia Fotografia",
-    category: "Fotografia",
-    description:
-      "Landing page artística e elegante para fotógrafo profissional.",
-    fullDescription:
-      "Landing page desenvolvida para o fotógrafo João Garcia, com galeria categorizada, depoimentos e contato direto via WhatsApp. Layout moderno, foco visual e excelente responsividade.",
-    image:
-      "https://1hcgs7spbatxhpzg.public.blob.vercel-storage.com/featured/featured_joaogarcia.png",
-    technologies: [
-      "Next.js",
-      "TypeScript",
-      "Prisma",
-      "Tailwind CSS",
-      "Neon",
-      "ShadCN",
-    ],
-    liveUrl: "https://joaogarcia.vercel.app/",
-    featured: true,
-    status: "completed",
-    accentColor: "from-yellow-500/20 to-orange-600/20",
-  },
-  {
-    id: 4,
-    title: "Marivaldo Corretor de Imóveis",
+    id: 2,
+    title: "Insertion 3D Studio",
     category: "Serviços Profissionais",
     description:
-      "Landing page moderna e estratégica para corretores de imóveis.",
+      "Landing Page moderna e otimizada desenvolvida para um estúdio nacional de design imobiliário 3D.",
     fullDescription:
-      "Desenvolvimento de uma landing page com foco em conversão e autoridade. Inclui apresentação profissional, portfólio de imóveis, formulário de contato e integração com WhatsApp.",
+      "Projeto com foco em SEO, acessibilidade, alta performance e experiência do usuário. Totalmente responsivo e integrado a ferramentas modernas de envio e gestão de conteúdo.",
     image:
-      "https://1hcgs7spbatxhpzg.public.blob.vercel-storage.com/featured/featured_marivaldo.png",
+      "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_insertion.png",
     technologies: [
       "Next.js",
       "TypeScript",
       "Tailwind CSS",
+      "Resend",
+      "Artifact UI",
+      "Aceternity UI",
+      "Framer Motion",
+      "Supabase",
+      "NeonDB",
       "Prisma",
-      "Neon",
-      "ShadCN",
+      "Vercel",
     ],
-    liveUrl: "https://corretor-landing-page.vercel.app/",
+    liveUrl: "https://insertion.com.br/",
     featured: true,
-    status: "in-progress",
-    accentColor: "from-green-500/20 to-emerald-600/20",
+    status: "completed",
+    accentColor: "from-teal-400 to-emerald-500",
   },
   {
-    id: 5,
+    id: 3,
     title: "Neodoxa",
     category: "Agência Digital",
     description:
@@ -123,11 +89,12 @@ const projects: Project[] = [
     fullDescription:
       "Landing page institucional da Neodoxa, criada para reforçar presença digital e captar leads. Interface moderna com animações suaves e seções estratégicas.",
     image:
-      "https://1hcgs7spbatxhpzg.public.blob.vercel-storage.com/featured/featured_neodoxa.png",
+      "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_neodoxa.png",
     technologies: [
       "Next.js",
       "TypeScript",
       "Tailwind CSS",
+      "Framer Motion",
       "Prisma",
       "Neon",
       "ShadCN",
@@ -138,7 +105,132 @@ const projects: Project[] = [
     accentColor: "from-pink-500/20 to-purple-600/20",
   },
   {
+    id: 4,
+    title: "Gil Schinaider Terceirizações",
+    category: "Serviços Profissionais",
+    description:
+      "Landing page institucional desenvolvida para empresa de terceirização e serviços de limpeza profissional.",
+    fullDescription:
+      "Projeto focado em transmitir confiança e credibilidade, com design limpo, responsivo e otimizado para conversão via WhatsApp. Estruturado com tecnologias modernas e performance aprimorada.",
+    image:
+      "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_gilshinaider.png",
+    technologies: [
+      "Next.js",
+      "TypeScript",
+      "Tailwind CSS",
+      "Artifact UI",
+      "Aceternity UI",
+      "NeonDB",
+      "Prisma",
+      "Vercel",
+    ],
+    liveUrl: "https://gilschinaider.vercel.app/",
+    featured: true,
+    status: "completed",
+    accentColor: "from-sky-400/30 to-blue-600/40",
+  },
+  {
+    id: 5,
+    title: "RDS Eletricista",
+    category: "Serviços Profissionais",
+    description:
+      "Landing page institucional para profissional autônomo da área elétrica.",
+    fullDescription:
+      "Site criado para o eletricista RDS, com foco em autoridade, confiança e conversão. Design escuro, moderno e integração direta com WhatsApp para orçamentos.",
+    image:
+      "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_rdseletrecista.png",
+    technologies: ["Next.js", "TypeScript", "Tailwind CSS"],
+    liveUrl: "https://rds-psi.vercel.app/",
+    featured: false,
+    status: "in-progress",
+    accentColor: "from-yellow-400/20 to-orange-500/20",
+  },
+  {
     id: 6,
+    title: "Rafa Manicure & Pedicure",
+    category: "Serviços Profissionais",
+    description: "Landing page para profissionais em limpeza e zeladoria",
+    fullDescription:
+      "Desenvolvido para Rafa Manicure, com um design feminino e elegante. Inclui galeria de serviços, integração para contato rápido e layout 100% responsivo.",
+    image:
+      "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_rafamanicure.png",
+    technologies: ["Next.js", "TypeScript", "Tailwind CSS", "Prisma", "NeonDb"],
+    liveUrl: "https://rafamanicurepedicure.vercel.app/",
+    featured: false,
+    status: "completed",
+    accentColor: "from-rose-500/20 to-pink-600/20",
+  },
+  {
+    id: 7,
+    title: "Itajuba Casamar",
+    category: "Serviços Profissionais",
+    description:
+      "Landing page desenvolvida para destacar empreendimentos imobiliários com design moderno e foco em performance.",
+    fullDescription:
+      "Projeto desenvolvido para a construtora Rottas, apresentando o empreendimento Itajuba Casamar com ênfase em experiência do usuário, responsividade e carregamento otimizado. A página foi criada para valorizar o alto padrão do empreendimento e fortalecer a presença digital da marca.",
+    image:
+      "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_itajubacasamar.png",
+    technologies: [
+      "Next.js",
+      "TypeScript",
+      "Tailwind CSS",
+      "NeonDB",
+      "Prisma",
+      "Vercel",
+    ],
+    liveUrl: "https://itajubacasamar.vercel.app/",
+    featured: true,
+    status: "completed",
+    accentColor: "from-blue-700/30 to-sky-400/30",
+  },
+  {
+    id: 8,
+    title: "Marivaldo Corretor de Imóveis",
+    category: "Serviços Profissionais",
+    description:
+      "Landing page moderna e estratégica para corretores de imóveis.",
+    fullDescription:
+      "Desenvolvimento de uma landing page com foco em conversão e autoridade. Inclui apresentação profissional, portfólio de imóveis, formulário de contato e integração com WhatsApp.",
+    image:
+      "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_marivaldo.png",
+    technologies: [
+      "Next.js",
+      "TypeScript",
+      "Tailwind CSS",
+      "Prisma",
+      "Neon",
+      "ShadCN",
+    ],
+    liveUrl: "https://corretor-landing-page.vercel.app/",
+    featured: false,
+    status: "in-progress",
+    accentColor: "from-green-500/20 to-emerald-600/20",
+  },
+  {
+    id: 9,
+    title: "João Garcia Fotografia",
+    category: "Serviços Profissionais",
+    description:
+      "Landing page artística e elegante para fotógrafo profissional.",
+    fullDescription:
+      "Landing page desenvolvida para o fotógrafo João Garcia, com galeria categorizada, depoimentos e contato direto via WhatsApp. Layout moderno, foco visual e excelente responsividade.",
+    image:
+      "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_joaogarcia.png",
+    technologies: [
+      "Next.js",
+      "TypeScript",
+      "Prisma",
+      "Tailwind CSS",
+      "NeonDb",
+      "ShadCN",
+    ],
+    liveUrl: "https://joaogarcia.vercel.app/",
+    featured: false,
+    status: "completed",
+    accentColor: "from-yellow-500/20 to-orange-600/20",
+  },
+  {
+    id: 10,
     title: "Cantinho Gourmet",
     category: "Restaurante e Delivery",
     description:
@@ -146,14 +238,15 @@ const projects: Project[] = [
     fullDescription:
       "Plataforma completa desenvolvida para o Cantinho Gourmet, apresentando cardápio, pedidos online e integração com WhatsApp. Otimizada para conversão e experiência mobile, com pagamentos via Stripe e painel administrativo.",
     image:
-      "https://1hcgs7spbatxhpzg.public.blob.vercel-storage.com/featured/featured_cantinhogourmet.png",
+      "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_cantinhogourmet.png",
     technologies: [
       "Next.js 14",
       "TypeScript",
       "Prisma",
       "Stripe",
       "Tailwind CSS",
-      "PostgreSQL",
+      "NeonDb",
+      "ShadCN",
     ],
     liveUrl: "https://cantinho-gourmet-theta.vercel.app/",
     featured: true,
@@ -161,23 +254,7 @@ const projects: Project[] = [
     accentColor: "from-blue-500/20 to-purple-600/20",
   },
   {
-    id: 7,
-    title: "RDS Eletricista",
-    category: "Serviços Técnicos",
-    description:
-      "Landing page institucional para profissional autônomo da área elétrica.",
-    fullDescription:
-      "Site criado para o eletricista RDS, com foco em autoridade, confiança e conversão. Design escuro, moderno e integração direta com WhatsApp para orçamentos.",
-    image:
-      "https://1hcgs7spbatxhpzg.public.blob.vercel-storage.com/featured/featured_rdseletrecista.png",
-    technologies: ["Next.js", "TypeScript", "Tailwind CSS"],
-    liveUrl: "https://rds-psi.vercel.app/",
-    featured: true,
-    status: "in-progress",
-    accentColor: "from-yellow-400/20 to-orange-500/20",
-  },
-  {
-    id: 8,
+    id: 11,
     title: "Tarefando",
     category: "Aplicativo Web",
     description:
@@ -185,14 +262,8 @@ const projects: Project[] = [
     fullDescription:
       "Aplicativo web com funcionalidades de adicionar, editar e concluir tarefas. Interface intuitiva e responsiva, com armazenamento local e design minimalista.",
     image:
-      "https://1hcgs7spbatxhpzg.public.blob.vercel-storage.com/featured/featured_tarefando.png",
-    technologies: [
-      "Next.js",
-      "TypeScript",
-      "Local Storage",
-      "Tailwind CSS",
-      "Framer Motion",
-    ],
+      "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_tarefando.png",
+    technologies: ["Python", "Django", "NeonDb"],
     liveUrl: "https://tarefando-one.vercel.app/",
     featured: false,
     status: "completed",
@@ -209,13 +280,10 @@ const SectionProjects = ({ contact, landingpage }: SectionProjectsProps) => {
   // Categorias atualizadas baseadas nos projetos reais
   const categories = [
     "Todos",
-    "Beleza e Estética",
     "Portfólio Pessoal",
-    "Fotografia",
     "Serviços Profissionais",
     "Agência Digital",
     "Restaurante e Delivery",
-    "Serviços Técnicos",
     "Aplicativo Web",
   ];
 

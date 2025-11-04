@@ -83,15 +83,12 @@ const Header = ({ contact, landingpage }: HeaderProps) => {
                   whileHover={{ rotate: 5 }}
                 >
                   <span className="text-sm font-bold text-white">
-                    {landingpage.name.charAt(0)}
+                    {landingpage.name}
                   </span>
                 </motion.div>
               )}
               <div className="font-space text-xl font-bold text-white">
-                {landingpage.name.split(" ")[0]}
-                <span className="text-electric-500">
-                  {landingpage.name.split(" ")[1]}
-                </span>
+                <span className="text-electric-500">{landingpage.name}</span>
               </div>
             </motion.div>
 

@@ -20,9 +20,9 @@ const main = async () => {
           description:
             "Transformo ideias em sites profissionais, rápidos e modernos que geram resultados reais para o seu negócio. Se você quer presença online de verdade, eu te ajudo a construir.",
           avatarImageUrl:
-            "https://1hcgs7spbatxhpzg.public.blob.vercel-storage.com/me4.png",
+            "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/me.png",
           coverImageUrl:
-            "https://1hcgs7spbatxhpzg.public.blob.vercel-storage.com/cover_eriksantos.png",
+            "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/cover.png",
         },
       });
 
@@ -30,8 +30,8 @@ const main = async () => {
       await tx.contactInfo.create({
         data: {
           email: "erikdossantos2006@outlook.com",
-          phone: "(47) 99953-5245",
-          whatsappLink: "https://wa.me/5547999535245",
+          phone: "(47) 9708-6965",
+          whatsappLink: "https://wa.me/554797086965",
           instagramLink: "https://www.instagram.com/dossantoserik_jesus/",
           facebookLink:
             "https://www.facebook.com/profile.php?id=61579313971405",
