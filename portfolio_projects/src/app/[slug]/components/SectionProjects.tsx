@@ -46,7 +46,16 @@ const projects: Project[] = [
       "Portfólio pessoal com foco em design limpo, navegação fluida e destaque para projetos, tecnologias dominadas e formas de contato. Desenvolvido com animações suaves via Framer Motion e SEO otimizado.",
     image:
       "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_eriksantos.png",
-    technologies: ["Next.js", "TypeScript", "Framer Motion", "Tailwind CSS"],
+    technologies: [
+      "Next.js",
+      "TypeScript",
+      "Framer Motion",
+      "Tailwind CSS",
+      "ShadCN",
+      "Prisma",
+      "NeonDB",
+      "Vercel",
+    ],
     liveUrl: "https://eriksantos.vercel.app",
     featured: true,
     status: "completed",
@@ -54,6 +63,33 @@ const projects: Project[] = [
   },
   {
     id: 2,
+    title: "Fran Costa | Mentora & Designer de Olhar",
+    category: "Serviços Profissionais",
+    description:
+      "Divulgação de serviços e curso de beleza da Mentora Fran Costa.",
+    fullDescription:
+      "Foco em designer premium e elegante, palheta de cores seguindo as redes sociais da Fran Costa, navegação fluida e responsiva. Desenvolvido com animações suaves via Framer Motion e SEO otimizado.",
+    image:
+      "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_francostaacademy.png",
+    technologies: [
+      "Next.js",
+      "TypeScript",
+      "Framer Motion",
+      "Tailwind CSS",
+      "Artifact UI",
+      "Aceternity UI",
+      "Supabase",
+      "NeonDB",
+      "Prisma",
+      "Vercel",
+    ],
+    liveUrl: "https://francostaacademy.vercel.app",
+    featured: true,
+    status: "completed",
+    accentColor: "from-purple-500/20 to-pink-600/20",
+  },
+  {
+    id: 3,
     title: "Insertion 3D Studio",
     category: "Serviços Profissionais",
     description:
@@ -81,9 +117,33 @@ const projects: Project[] = [
     accentColor: "from-teal-400 to-emerald-500",
   },
   {
-    id: 3,
+    id: 4,
+    title: "Sendo Metanoiamente Bíblico",
+    category: "Página de Vendas",
+    description:
+      "Landing page para e-book focado em crescimento espiritual e estudo bíblico.",
+    fullDescription:
+      "Página de vendas otimizada para conversão, com design limpo e foco na mensagem do e-book. Inclui seções estratégicas para destacar benefícios, conteúdo e chamada para ação clara.",
+    image:
+      "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_metanoiamentebiblico.png",
+    technologies: [
+      "Next.js",
+      "TypeScript",
+      "Tailwind CSS",
+      "Framer Motion",
+      "Prisma",
+      "Neon",
+      "Aceternity UI",
+    ],
+    liveUrl: "https://metanoiamentebiblico.vercel.app",
+    featured: true,
+    status: "completed",
+    accentColor: "from-pink-500/20 to-purple-600/20",
+  },
+  {
+    id: 5,
     title: "Neodoxa",
-    category: "Agência Digital",
+    category: "Serviços Profissionais",
     description:
       "Landing page para agência de marketing e desenvolvimento digital.",
     fullDescription:
@@ -101,11 +161,34 @@ const projects: Project[] = [
     ],
     liveUrl: "https://neodoxa.vercel.app/neodoxa",
     featured: true,
-    status: "completed",
+    status: "in-progress",
     accentColor: "from-pink-500/20 to-purple-600/20",
   },
   {
-    id: 4,
+    id: 6,
+    title: "Projeto Cafarnaum Em Ação",
+    category: "Institucional",
+    description:
+      "Landing page simples e eficaz para organização sem fins lucrativos.",
+    fullDescription:
+      "Landing page desenvolvida para o Projeto Cafarnaum Em Ação, com foco em apresentar a missão, projetos e formas de apoio. Design limpo, responsivo e otimizado para engajamento.",
+    image:
+      "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_joaogarcia.png",
+    technologies: [
+      "Next.js",
+      "TypeScript",
+      "Prisma",
+      "Tailwind CSS",
+      "NeonDb",
+      "Supabase",
+    ],
+    liveUrl: "https://projetocafarnaum.vercel.app/",
+    featured: false,
+    status: "completed",
+    accentColor: "from-yellow-500/20 to-orange-600/20",
+  },
+  {
+    id: 7,
     title: "Gil Schinaider Terceirizações",
     category: "Serviços Profissionais",
     description:
@@ -130,7 +213,7 @@ const projects: Project[] = [
     accentColor: "from-sky-400/30 to-blue-600/40",
   },
   {
-    id: 5,
+    id: 8,
     title: "RDS Eletricista",
     category: "Serviços Profissionais",
     description:
@@ -146,7 +229,7 @@ const projects: Project[] = [
     accentColor: "from-yellow-400/20 to-orange-500/20",
   },
   {
-    id: 6,
+    id: 9,
     title: "Rafa Manicure & Pedicure",
     category: "Serviços Profissionais",
     description: "Landing page para profissionais em limpeza e zeladoria",
@@ -161,7 +244,7 @@ const projects: Project[] = [
     accentColor: "from-rose-500/20 to-pink-600/20",
   },
   {
-    id: 7,
+    id: 10,
     title: "Itajuba Casamar",
     category: "Serviços Profissionais",
     description:
@@ -179,12 +262,12 @@ const projects: Project[] = [
       "Vercel",
     ],
     liveUrl: "https://itajubacasamar.vercel.app/",
-    featured: true,
+    featured: false,
     status: "completed",
     accentColor: "from-blue-700/30 to-sky-400/30",
   },
   {
-    id: 8,
+    id: 11,
     title: "Marivaldo Corretor de Imóveis",
     category: "Serviços Profissionais",
     description:
@@ -207,7 +290,7 @@ const projects: Project[] = [
     accentColor: "from-green-500/20 to-emerald-600/20",
   },
   {
-    id: 9,
+    id: 12,
     title: "João Garcia Fotografia",
     category: "Serviços Profissionais",
     description:
@@ -230,7 +313,7 @@ const projects: Project[] = [
     accentColor: "from-yellow-500/20 to-orange-600/20",
   },
   {
-    id: 10,
+    id: 13,
     title: "Cantinho Gourmet",
     category: "Restaurante e Delivery",
     description:
@@ -254,7 +337,7 @@ const projects: Project[] = [
     accentColor: "from-blue-500/20 to-purple-600/20",
   },
   {
-    id: 11,
+    id: 14,
     title: "Tarefando",
     category: "Aplicativo Web",
     description:
@@ -282,7 +365,8 @@ const SectionProjects = ({ contact, landingpage }: SectionProjectsProps) => {
     "Todos",
     "Portfólio Pessoal",
     "Serviços Profissionais",
-    "Agência Digital",
+    "Página de Vendas",
+    "Institucional",
     "Restaurante e Delivery",
     "Aplicativo Web",
   ];
