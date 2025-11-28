@@ -173,7 +173,7 @@ const projects: Project[] = [
     fullDescription:
       "Landing page desenvolvida para o Projeto Cafarnaum Em Ação, com foco em apresentar a missão, projetos e formas de apoio. Design limpo, responsivo e otimizado para engajamento.",
     image:
-      "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_joaogarcia.png",
+      "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_projetocafarnaum.png",
     technologies: [
       "Next.js",
       "TypeScript",
@@ -314,14 +314,14 @@ const projects: Project[] = [
   },
   {
     id: 13,
-    title: "Cantinho Gourmet",
+    title: "Neodoxa Delivery",
     category: "Restaurante e Delivery",
     description:
       "Sistema de delivery moderno e responsivo para restaurante especializado em marmitas.",
     fullDescription:
-      "Plataforma completa desenvolvida para o Cantinho Gourmet, apresentando cardápio, pedidos online e integração com WhatsApp. Otimizada para conversão e experiência mobile, com pagamentos via Stripe e painel administrativo.",
+      "Plataforma completa desenvolvida para a Neodoxa Delivery, apresentando cardápio, pedidos online e integração com WhatsApp. Otimizada para conversão e experiência mobile, com pagamentos via Stripe e painel administrativo.",
     image:
-      "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_cantinhogourmet.png",
+      "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_neodoxadelivery.png",
     technologies: [
       "Next.js 14",
       "TypeScript",
@@ -331,9 +331,9 @@ const projects: Project[] = [
       "NeonDb",
       "ShadCN",
     ],
-    liveUrl: "https://cantinho-gourmet-theta.vercel.app/",
+    liveUrl: "https://neodoxa-delivery.vercel.app/",
     featured: true,
-    status: "planned",
+    status: "completed",
     accentColor: "from-blue-500/20 to-purple-600/20",
   },
   {
