@@ -38,58 +38,73 @@ interface Project {
 const projects: Project[] = [
   {
     id: 1,
-    title: "Erik Santos",
-    category: "Portfólio Pessoal",
+    title: "Neodoxa Delivery",
+    category: "Sistema Web",
     description:
-      "Portfólio moderno e minimalista para desenvolvedor web full-stack.",
+      "Sistema de delivery moderno e responsivo para restaurante especializado em marmitas.",
     fullDescription:
-      "Portfólio pessoal com foco em design limpo, navegação fluida e destaque para projetos, tecnologias dominadas e formas de contato. Desenvolvido com animações suaves via Framer Motion e SEO otimizado.",
+      "Plataforma completa desenvolvida para a Neodoxa Delivery, apresentando cardápio, pedidos online e integração com WhatsApp. Otimizada para conversão e experiência mobile, com pagamentos via Stripe e painel administrativo.",
     image:
-      "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_eriksantos.png",
+      "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_neodoxadelivery.png",
     technologies: [
-      "Next.js",
+      "Next.js 14",
       "TypeScript",
-      "Framer Motion",
-      "Tailwind CSS",
-      "ShadCN",
       "Prisma",
+      "Stripe",
+      "Tailwind CSS",
       "NeonDB",
-      "Vercel",
+      "ShadCN",
     ],
-    liveUrl: "https://eriksantos.vercel.app",
+    liveUrl: "https://neodoxa-delivery.vercel.app/",
     featured: true,
-    status: "completed",
-    accentColor: "from-purple-500/20 to-pink-600/20",
+    status: "in-progress",
+    accentColor: "from-blue-500/20 to-purple-600/20",
   },
   {
     id: 2,
-    title: "Fran Costa | Mentora & Designer de Olhar",
-    category: "Serviços Profissionais",
-    description:
-      "Divulgação de serviços e curso de beleza da Mentora Fran Costa.",
+    title: "EPI System",
+    category: "Sistema Web",
+    description: "Sistema web para controle e gestão de EPIs em empresas",
     fullDescription:
-      "Foco em designer premium e elegante, palheta de cores seguindo as redes sociais da Fran Costa, navegação fluida e responsiva. Desenvolvido com animações suaves via Framer Motion e SEO otimizado.",
+      "Sistema web para gestão integral de EPIs, incluindo controle de estoque, registro de entregas, devoluções com assinatura digital e geração de relatórios PDF. A arquitetura utiliza Next.js com TypeScript no frontend e NeonDB como banco de dados PostgreSQL com ORM Prisma de suporte. A aplicação está hospedada na Vercel com integração contínua.",
     image:
-      "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_francostaacademy.png",
+      "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_episystem.png",
     technologies: [
       "Next.js",
       "TypeScript",
-      "Framer Motion",
       "Tailwind CSS",
-      "Artifact UI",
-      "Aceternity UI",
-      "Supabase",
-      "NeonDB",
+      "Lucide React",
+      "ShadCN",
+      "Bcryptjs",
+      "Jspdf",
+      "Recharts",
       "Prisma",
+      "NeonDB",
       "Vercel",
     ],
-    liveUrl: "https://francostaacademy.vercel.app",
+    liveUrl: "https://episystem.vercel.app/",
     featured: true,
-    status: "completed",
+    status: "in-progress",
     accentColor: "from-purple-500/20 to-pink-600/20",
   },
   {
     id: 3,
+    title: "Tarefando",
+    category: "Sistema Web",
+    description:
+      "Gerenciador de tarefas simples e eficiente para organizar o dia a dia.",
+    fullDescription:
+      "Sistema web com funcionalidades de adicionar, editar e concluir tarefas. Interface intuitiva e responsiva, com armazenamento local e design minimalista.",
+    image:
+      "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_tarefando.png",
+    technologies: ["Python", "Django", "NeonDb"],
+    liveUrl: "https://tarefando-one.vercel.app/",
+    featured: false,
+    status: "completed",
+    accentColor: "from-indigo-500/20 to-sky-600/20",
+  },
+  {
+    id: 4,
     title: "Insertion 3D Studio",
     category: "Serviços Profissionais",
     description:
@@ -102,6 +117,7 @@ const projects: Project[] = [
       "Next.js",
       "TypeScript",
       "Tailwind CSS",
+      "Lucide React",
       "Resend",
       "Artifact UI",
       "Aceternity UI",
@@ -117,7 +133,61 @@ const projects: Project[] = [
     accentColor: "from-teal-400 to-emerald-500",
   },
   {
-    id: 4,
+    id: 5,
+    title: "Fran Costa | Mentora & Designer de Olhar",
+    category: "Serviços Profissionais",
+    description:
+      "Divulgação de serviços e curso de beleza da Mentora Fran Costa.",
+    fullDescription:
+      "Foco em designer premium e elegante, palheta de cores seguindo as redes sociais da Fran Costa, navegação fluida e responsiva. Desenvolvido com animações suaves via Framer Motion e SEO otimizado.",
+    image:
+      "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_francostaacademy.png",
+    technologies: [
+      "Next.js",
+      "TypeScript",
+      "Framer Motion",
+      "Tailwind CSS",
+      "Lucide React",
+      "Artifact UI",
+      "Aceternity UI",
+      "Supabase",
+      "NeonDB",
+      "Prisma",
+      "Vercel",
+    ],
+    liveUrl: "https://francostaacademy.vercel.app",
+    featured: true,
+    status: "completed",
+    accentColor: "from-purple-500/20 to-pink-600/20",
+  },
+  {
+    id: 6,
+    title: "Erik Santos",
+    category: "Portfólio Pessoal",
+    description:
+      "Portfólio moderno e minimalista para desenvolvedor web full-stack.",
+    fullDescription:
+      "Portfólio pessoal com foco em design limpo, navegação fluida e destaque para projetos, tecnologias dominadas e formas de contato. Desenvolvido com animações suaves via Framer Motion e SEO otimizado.",
+    image:
+      "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_eriksantos.png",
+    technologies: [
+      "Next.js",
+      "TypeScript",
+      "Framer Motion",
+      "Tailwind CSS",
+      "Lucide React",
+      "ShadCN",
+      "Prisma",
+      "NeonDB",
+      "Vercel",
+    ],
+    liveUrl: "https://eriksantos.vercel.app",
+    featured: true,
+    status: "completed",
+    accentColor: "from-purple-500/20 to-pink-600/20",
+  },
+  {
+    id: 7,
     title: "Sendo Metanoiamente Bíblico",
     category: "Página de Vendas",
     description:
@@ -132,7 +202,7 @@ const projects: Project[] = [
       "Tailwind CSS",
       "Framer Motion",
       "Prisma",
-      "Neon",
+      "NeonDB",
       "Aceternity UI",
     ],
     liveUrl: "https://metanoiamentebiblico.vercel.app",
@@ -141,7 +211,7 @@ const projects: Project[] = [
     accentColor: "from-pink-500/20 to-purple-600/20",
   },
   {
-    id: 5,
+    id: 8,
     title: "Neodoxa",
     category: "Serviços Profissionais",
     description:
@@ -156,7 +226,7 @@ const projects: Project[] = [
       "Tailwind CSS",
       "Framer Motion",
       "Prisma",
-      "Neon",
+      "NeonDB",
       "ShadCN",
     ],
     liveUrl: "https://neodoxa.vercel.app/neodoxa",
@@ -165,7 +235,7 @@ const projects: Project[] = [
     accentColor: "from-pink-500/20 to-purple-600/20",
   },
   {
-    id: 6,
+    id: 9,
     title: "Projeto Cafarnaum Em Ação",
     category: "Institucional",
     description:
@@ -179,7 +249,7 @@ const projects: Project[] = [
       "TypeScript",
       "Prisma",
       "Tailwind CSS",
-      "NeonDb",
+      "NeonDB",
       "Supabase",
     ],
     liveUrl: "https://projetocafarnaum.vercel.app/",
@@ -188,7 +258,7 @@ const projects: Project[] = [
     accentColor: "from-yellow-500/20 to-orange-600/20",
   },
   {
-    id: 7,
+    id: 10,
     title: "Gil Schinaider Terceirizações",
     category: "Serviços Profissionais",
     description:
@@ -208,12 +278,12 @@ const projects: Project[] = [
       "Vercel",
     ],
     liveUrl: "https://gilschinaider.vercel.app/",
-    featured: true,
+    featured: false,
     status: "completed",
     accentColor: "from-sky-400/30 to-blue-600/40",
   },
   {
-    id: 8,
+    id: 11,
     title: "RDS Eletricista",
     category: "Serviços Profissionais",
     description:
@@ -222,14 +292,14 @@ const projects: Project[] = [
       "Site criado para o eletricista RDS, com foco em autoridade, confiança e conversão. Design escuro, moderno e integração direta com WhatsApp para orçamentos.",
     image:
       "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_rdseletrecista.png",
-    technologies: ["Next.js", "TypeScript", "Tailwind CSS"],
+    technologies: ["Next.js", "TypeScript", "Tailwind CSS", "Vercel"],
     liveUrl: "https://rds-psi.vercel.app/",
     featured: false,
-    status: "in-progress",
+    status: "completed",
     accentColor: "from-yellow-400/20 to-orange-500/20",
   },
   {
-    id: 9,
+    id: 12,
     title: "Rafa Manicure & Pedicure",
     category: "Serviços Profissionais",
     description: "Landing page para profissionais em limpeza e zeladoria",
@@ -237,14 +307,21 @@ const projects: Project[] = [
       "Desenvolvido para Rafa Manicure, com um design feminino e elegante. Inclui galeria de serviços, integração para contato rápido e layout 100% responsivo.",
     image:
       "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_rafamanicure.png",
-    technologies: ["Next.js", "TypeScript", "Tailwind CSS", "Prisma", "NeonDb"],
+    technologies: [
+      "Next.js",
+      "TypeScript",
+      "Tailwind CSS",
+      "Prisma",
+      "NeonDB",
+      "Vercel",
+    ],
     liveUrl: "https://rafamanicurepedicure.vercel.app/",
     featured: false,
     status: "completed",
     accentColor: "from-rose-500/20 to-pink-600/20",
   },
   {
-    id: 10,
+    id: 13,
     title: "Itajuba Casamar",
     category: "Serviços Profissionais",
     description:
@@ -267,7 +344,7 @@ const projects: Project[] = [
     accentColor: "from-blue-700/30 to-sky-400/30",
   },
   {
-    id: 11,
+    id: 14,
     title: "Marivaldo Corretor de Imóveis",
     category: "Serviços Profissionais",
     description:
@@ -281,16 +358,17 @@ const projects: Project[] = [
       "TypeScript",
       "Tailwind CSS",
       "Prisma",
-      "Neon",
+      "NeonDB",
       "ShadCN",
+      "Vercel",
     ],
     liveUrl: "https://corretor-landing-page.vercel.app/",
     featured: false,
-    status: "in-progress",
+    status: "completed",
     accentColor: "from-green-500/20 to-emerald-600/20",
   },
   {
-    id: 12,
+    id: 15,
     title: "João Garcia Fotografia",
     category: "Serviços Profissionais",
     description:
@@ -304,53 +382,14 @@ const projects: Project[] = [
       "TypeScript",
       "Prisma",
       "Tailwind CSS",
-      "NeonDb",
+      "NeonDB",
       "ShadCN",
+      "Vercel",
     ],
     liveUrl: "https://joaogarcia.vercel.app/",
     featured: false,
     status: "completed",
     accentColor: "from-yellow-500/20 to-orange-600/20",
-  },
-  {
-    id: 13,
-    title: "Neodoxa Delivery",
-    category: "Restaurante e Delivery",
-    description:
-      "Sistema de delivery moderno e responsivo para restaurante especializado em marmitas.",
-    fullDescription:
-      "Plataforma completa desenvolvida para a Neodoxa Delivery, apresentando cardápio, pedidos online e integração com WhatsApp. Otimizada para conversão e experiência mobile, com pagamentos via Stripe e painel administrativo.",
-    image:
-      "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_neodoxadelivery.png",
-    technologies: [
-      "Next.js 14",
-      "TypeScript",
-      "Prisma",
-      "Stripe",
-      "Tailwind CSS",
-      "NeonDb",
-      "ShadCN",
-    ],
-    liveUrl: "https://neodoxa-delivery.vercel.app/",
-    featured: true,
-    status: "completed",
-    accentColor: "from-blue-500/20 to-purple-600/20",
-  },
-  {
-    id: 14,
-    title: "Tarefando",
-    category: "Aplicativo Web",
-    description:
-      "Gerenciador de tarefas simples e eficiente para organizar o dia a dia.",
-    fullDescription:
-      "Aplicativo web com funcionalidades de adicionar, editar e concluir tarefas. Interface intuitiva e responsiva, com armazenamento local e design minimalista.",
-    image:
-      "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_tarefando.png",
-    technologies: ["Python", "Django", "NeonDb"],
-    liveUrl: "https://tarefando-one.vercel.app/",
-    featured: false,
-    status: "completed",
-    accentColor: "from-indigo-500/20 to-sky-600/20",
   },
 ];
 
@@ -367,8 +406,7 @@ const SectionProjects = ({ contact, landingpage }: SectionProjectsProps) => {
     "Serviços Profissionais",
     "Página de Vendas",
     "Institucional",
-    "Restaurante e Delivery",
-    "Aplicativo Web",
+    "Sistema Web",
   ];
 
   const filteredProjects =
