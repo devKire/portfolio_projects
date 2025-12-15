@@ -21,6 +21,7 @@ const Page = async ({ params }: LandingPageProps) => {
     where: { slug },
     include: {
       contactInfo: true,
+      projects: true,
     },
   });
 
@@ -48,6 +49,7 @@ const Page = async ({ params }: LandingPageProps) => {
           <SectionProjects
             contact={landingpage.contactInfo}
             landingpage={landingpage}
+            projects={landingpage.projects}
           />
         </section>
         <Separator />

@@ -1,8 +1,4 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// schema.prisma
 
 generator client {
   provider = "prisma-client-js"
@@ -23,7 +19,8 @@ model LandingPage {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  contactInfo    ContactInfo?
+  contactInfo ContactInfo?
+  projects    Project[]
 }
 
 model ContactInfo {
@@ -38,4 +35,35 @@ model ContactInfo {
   // Relations
   landingpage   LandingPage @relation(fields: [landingpageId], references: [id], onDelete: Cascade)
   landingpageId String      @unique
+}
+
+model Project {
+  id               String   @id @default(uuid())
+  title            String
+  category         String
+  description      String
+  fullDescription  String
+  image            String
+  technologies     String[] // Array de strings
+  liveUrl          String?
+  githubUrl        String?
+  featured         Boolean  @default(false)
+  status           String   @default("completed") // "completed" | "in-progress" | "planned"
+  accentColor      String?  @default("from-gray-500/20 to-gray-600/20")
+  position         Int      @default(0) // Para ordenação
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
+  landingpage   LandingPage @relation(fields: [landingpageId], references: [id], onDelete: Cascade)
+  landingpageId String
+}
+
+// Modelo para administrador
+model Admin {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  password  String   // Armazenaremos hash da senha
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
