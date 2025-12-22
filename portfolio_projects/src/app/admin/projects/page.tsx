@@ -26,7 +26,7 @@ import {
 } from "@/app/actions/project";
 
 // Supondo que você tenha uma landingpage padrão
-const DEFAULT_LANDINGPAGE_ID = "c365c35f-ea6a-4a9d-92fa-4a3dc1e829db";
+const DEFAULT_LANDINGPAGE_ID = "3eb3839d-eb78-43ed-9eb7-8f39352d64bb";
 
 export default function AdminProjectsPage() {
   const [projects, setProjects] = useState<any[]>([]);
