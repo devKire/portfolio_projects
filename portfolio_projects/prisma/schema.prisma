@@ -21,6 +21,8 @@ model LandingPage {
 
   contactInfo ContactInfo?
   projects    Project[]
+  pageViews  PageView[]
+  socialInteractions SocialInteraction[]
 }
 
 model ContactInfo {
@@ -66,4 +68,40 @@ model Admin {
   password  String   // Armazenaremos hash da senha
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Adicione estes modelos ao seu schema.prisma
+
+// Modelo para rastreamento de visualizações
+model PageView {
+  id        String   @id @default(uuid())
+  page      String   // Ex: 'home', 'projects', 'about'
+  path      String   // URL completa
+  ip        String?
+  userAgent String?
+  country   String?
+  city      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  landingpage   LandingPage @relation(fields: [landingpageId], references: [id], onDelete: Cascade)
+  landingpageId String
+}
+
+// Modelo para interações sociais
+model SocialInteraction {
+  id        String   @id @default(uuid())
+  platform  String   // 'linkedin', 'github', 'instagram', etc
+  type      String   // 'follow', 'like', 'comment', 'share'
+  content   String?  // Conteúdo do comentário, etc
+  count     Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  landingpage   LandingPage @relation(fields: [landingpageId], references: [id], onDelete: Cascade)
+  landingpageId String
+
+  @@unique([platform, type, landingpageId, createdAt])
 }

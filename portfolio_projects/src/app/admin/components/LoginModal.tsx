@@ -1,40 +1,18 @@
-// app/admin/login/page.tsx
 "use client";
 
 import { Eye, EyeOff, Loader2, Lock, LogIn } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { loginAdmin } from "@/app/actions/auth";
 
-export default function AdminLoginPage() {
-  const router = useRouter();
+interface LoginModalProps {
+  onLoginSuccess: () => void;
+}
+
+export default function LoginModal({ onLoginSuccess }: LoginModalProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  // Verificar se já está autenticado
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const response = await fetch("/api/check-auth", {
-          method: "GET",
-          credentials: "include",
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.authenticated) {
-            router.push("/admin/projects");
-          }
-        }
-      } catch (error) {
-        console.error("Auth check error:", error);
-      }
-    };
-
-    checkAuth();
-  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,8 +24,7 @@ export default function AdminLoginPage() {
       const result = await loginAdmin(formData);
 
       if (result.success) {
-        // Usar window.location para forçar recarregamento completo
-        window.location.href = "/admin/projects";
+        onLoginSuccess();
       } else {
         setError(result.error || "Credenciais inválidas");
       }
