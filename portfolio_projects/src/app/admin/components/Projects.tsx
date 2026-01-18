@@ -12,6 +12,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 
 import {
@@ -587,9 +588,11 @@ export default function Projects() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 overflow-hidden rounded bg-gray-700">
-                          <img
+                          <Image
                             src={project.image}
                             alt={project.title}
+                            width={40}
+                            height={40}
                             className="h-full w-full object-cover"
                           />
                         </div>

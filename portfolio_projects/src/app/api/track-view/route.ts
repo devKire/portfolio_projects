@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const days = parseInt(searchParams.get("days") || "7");
 
     // Aqui você poderia retornar estatísticas básicas

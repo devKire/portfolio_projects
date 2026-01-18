@@ -68,6 +68,7 @@ const SectionProjects = ({
   landingpage,
   projects: prismaProjects,
 }: SectionProjectsProps) => {
+  console.log(contact, landingpage);
   // Converter projetos do Prisma para a interface Project
   const projects = useMemo(
     () =>

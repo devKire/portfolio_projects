@@ -57,6 +57,7 @@ export default function Dashboard({ stats: initialStats }: DashboardProps) {
 
   useEffect(() => {
     loadDetailedStats();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeRange]);
 
   const loadStats = async () => {
