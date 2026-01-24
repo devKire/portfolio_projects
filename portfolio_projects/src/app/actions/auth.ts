@@ -78,10 +78,10 @@ export async function logoutAdmin() {
     console.log("Logout successful");
 
     // Redirecionar para login
-    redirect("/admin/login");
+    redirect("/admin");
   } catch (error) {
     console.error("Logout error:", error);
-    redirect("/admin/login");
+    redirect("/admin");
   }
 }
 
