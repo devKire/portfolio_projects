@@ -1,0 +1,107 @@
+// schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model LandingPage {
+  id             String   @id @default(uuid())
+  name           String
+  slug           String   @unique
+  description    String
+  avatarImageUrl String
+  coverImageUrl  String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  contactInfo ContactInfo?
+  projects    Project[]
+  pageViews  PageView[]
+  socialInteractions SocialInteraction[]
+}
+
+model ContactInfo {
+  id            String  @id @default(uuid())
+  email         String
+  phone         String?
+  whatsappLink  String?
+  instagramLink String?
+  facebookLink  String?
+  linkedinLink  String?
+
+  // Relations
+  landingpage   LandingPage @relation(fields: [landingpageId], references: [id], onDelete: Cascade)
+  landingpageId String      @unique
+}
+
+model Project {
+  id               String   @id @default(uuid())
+  title            String
+  category         String
+  description      String
+  fullDescription  String
+  image            String
+  technologies     String[] // Array de strings
+  liveUrl          String?
+  githubUrl        String?
+  featured         Boolean  @default(false)
+  status           String   @default("completed") // "completed" | "in-progress" | "planned"
+  accentColor      String?  @default("from-gray-500/20 to-gray-600/20")
+  position         Int      @default(0) // Para ordenação
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
+  landingpage   LandingPage @relation(fields: [landingpageId], references: [id], onDelete: Cascade)
+  landingpageId String
+}
+
+// Modelo para administrador
+model Admin {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  password  String   // Armazenaremos hash da senha
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Adicione estes modelos ao seu schema.prisma
+
+// Modelo para rastreamento de visualizações
+model PageView {
+  id        String   @id @default(uuid())
+  page      String   // Ex: 'home', 'projects', 'about'
+  path      String   // URL completa
+  ip        String?
+  userAgent String?
+  country   String?
+  city      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  landingpage   LandingPage @relation(fields: [landingpageId], references: [id], onDelete: Cascade)
+  landingpageId String
+}
+
+// Modelo para interações sociais
+model SocialInteraction {
+  id        String   @id @default(uuid())
+  platform  String   // 'linkedin', 'github', 'instagram', etc
+  type      String   // 'follow', 'like', 'comment', 'share'
+  content   String?  // Conteúdo do comentário, etc
+  count     Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  landingpage   LandingPage @relation(fields: [landingpageId], references: [id], onDelete: Cascade)
+  landingpageId String
+
+  @@unique([platform, type, landingpageId, createdAt])
+}
