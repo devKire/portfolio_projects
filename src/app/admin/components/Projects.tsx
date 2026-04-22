@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-"use client";
+'use client';
 
 import {
   ArrowDown,
@@ -11,9 +11,9 @@ import {
   Plus,
   Trash2,
   X,
-} from "lucide-react";
-import Image from "next/image";
-import { useEffect, useState } from "react";
+} from 'lucide-react';
+import Image from 'next/image';
+import { useEffect, useState } from 'react';
 
 import {
   createProject,
@@ -22,10 +22,10 @@ import {
   ProjectFormData,
   reorderProjects,
   updateProject,
-} from "@/app/actions/project";
+} from '@/app/actions/project';
 
 // Supondo que você tenha uma landingpage padrão
-const DEFAULT_LANDINGPAGE_ID = "3eb3839d-eb78-43ed-9eb7-8f39352d64bb";
+const DEFAULT_LANDINGPAGE_ID = '3eb3839d-eb78-43ed-9eb7-8f39352d64bb';
 
 export default function Projects() {
   const [projects, setProjects] = useState<any[]>([]);
@@ -37,36 +37,36 @@ export default function Projects() {
   const [isReordering, setIsReordering] = useState(false);
   // Form state
   const [formData, setFormData] = useState<ProjectFormData>({
-    title: "",
-    category: "Sistema Web",
-    description: "",
-    fullDescription: "",
-    image: "",
+    title: '',
+    category: 'Sistema Web',
+    description: '',
+    fullDescription: '',
+    image: '',
     technologies: [],
-    liveUrl: "",
-    githubUrl: "",
+    liveUrl: '',
+    githubUrl: '',
     featured: false,
-    status: "completed",
-    accentColor: "from-gray-500/20 to-gray-600/20",
+    status: 'completed',
+    accentColor: 'from-gray-500/20 to-gray-600/20',
     landingpageId: DEFAULT_LANDINGPAGE_ID,
   });
 
-  const [techInput, setTechInput] = useState("");
+  const [techInput, setTechInput] = useState('');
 
   // Categorias disponíveis
   const categories = [
-    "Sistema Web",
-    "Portfólio Pessoal",
-    "Serviços Profissionais",
-    "Página de Vendas",
-    "Institucional",
+    'Sistema Web',
+    'Portfólio Pessoal',
+    'Serviços Profissionais',
+    'Página de Vendas',
+    'Institucional',
   ];
 
   // Status disponíveis
   const statusOptions = [
-    { value: "completed", label: "Concluído" },
-    { value: "in-progress", label: "Em Desenvolvimento" },
-    { value: "planned", label: "Planejado" },
+    { value: 'completed', label: 'Concluído' },
+    { value: 'in-progress', label: 'Em Desenvolvimento' },
+    { value: 'planned', label: 'Planejado' },
   ];
 
   // Carregar projetos
@@ -79,7 +79,7 @@ export default function Projects() {
       const data = await getProjects(DEFAULT_LANDINGPAGE_ID);
       setProjects(data);
     } catch (error) {
-      console.error("Error loading projects:", error);
+      console.error('Error loading projects:', error);
     } finally {
       setLoading(false);
     }
@@ -92,7 +92,7 @@ export default function Projects() {
         ...formData,
         technologies: [...formData.technologies, techInput.trim()],
       });
-      setTechInput("");
+      setTechInput('');
     }
   };
 
@@ -106,17 +106,17 @@ export default function Projects() {
   // Reset form
   const resetForm = () => {
     setFormData({
-      title: "",
-      category: "Sistema Web",
-      description: "",
-      fullDescription: "",
-      image: "",
+      title: '',
+      category: 'Sistema Web',
+      description: '',
+      fullDescription: '',
+      image: '',
       technologies: [],
-      liveUrl: "",
-      githubUrl: "",
+      liveUrl: '',
+      githubUrl: '',
       featured: false,
-      status: "completed",
-      accentColor: "from-gray-500/20 to-gray-600/20",
+      status: 'completed',
+      accentColor: 'from-gray-500/20 to-gray-600/20',
       landingpageId: DEFAULT_LANDINGPAGE_ID,
     });
     setEditingProject(null);
@@ -137,8 +137,8 @@ export default function Projects() {
       resetForm();
       await loadProjects();
     } catch (error) {
-      console.error("Error saving project:", error);
-      alert("Erro ao salvar projeto");
+      console.error('Error saving project:', error);
+      alert('Erro ao salvar projeto');
     } finally {
       setLoading(false);
     }
@@ -154,26 +154,26 @@ export default function Projects() {
       fullDescription: project.fullDescription,
       image: project.image,
       technologies: project.technologies,
-      liveUrl: project.liveUrl || "",
-      githubUrl: project.githubUrl || "",
+      liveUrl: project.liveUrl || '',
+      githubUrl: project.githubUrl || '',
       featured: project.featured,
       status: project.status,
-      accentColor: project.accentColor || "from-gray-500/20 to-gray-600/20",
+      accentColor: project.accentColor || 'from-gray-500/20 to-gray-600/20',
       landingpageId: project.landingpageId,
     });
     setShowForm(true);
   };
   // Deletar projeto
   const handleDelete = async (id: string) => {
-    if (!confirm("Tem certeza que deseja deletar este projeto?")) return;
+    if (!confirm('Tem certeza que deseja deletar este projeto?')) return;
 
     setLoading(true);
     try {
       await deleteProject(id);
       await loadProjects();
     } catch (error) {
-      console.error("Error deleting project:", error);
-      alert("Erro ao deletar projeto");
+      console.error('Error deleting project:', error);
+      alert('Erro ao deletar projeto');
     } finally {
       setLoading(false);
       setDeletingId(null);
@@ -181,17 +181,17 @@ export default function Projects() {
   };
 
   // Reordenar projeto
-  const moveProject = async (index: number, direction: "up" | "down") => {
+  const moveProject = async (index: number, direction: 'up' | 'down') => {
     if (
-      (direction === "up" && index === 0) ||
-      (direction === "down" && index === projects.length - 1)
+      (direction === 'up' && index === 0) ||
+      (direction === 'down' && index === projects.length - 1)
     ) {
       return;
     }
 
     setIsReordering(true);
     const newProjects = [...projects];
-    const newIndex = direction === "up" ? index - 1 : index + 1;
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
 
     // Trocar posições
     const temp = newProjects[index];
@@ -212,10 +212,10 @@ export default function Projects() {
         projectsWithUpdatedPositions.map((p) => ({
           id: p.id,
           position: p.position,
-        })),
+        }))
       );
     } catch (error) {
-      console.error("Error reordering projects:", error);
+      console.error('Error reordering projects:', error);
       await loadProjects(); // Recarregar se der erro
     } finally {
       setIsReordering(false);
@@ -262,7 +262,7 @@ export default function Projects() {
         <div className="mb-8 rounded-2xl border border-gray-700/50 bg-gray-800/50 p-6 shadow-2xl backdrop-blur-sm">
           <div className="mb-6 flex items-center justify-between">
             <h3 className="text-xl font-semibold text-white">
-              {editingProject ? "Editar Projeto" : "Novo Projeto"}
+              {editingProject ? 'Editar Projeto' : 'Novo Projeto'}
             </h3>
             <button
               onClick={resetForm}
@@ -408,7 +408,7 @@ export default function Projects() {
                     value={techInput}
                     onChange={(e) => setTechInput(e.target.value)}
                     onKeyPress={(e) =>
-                      e.key === "Enter" && (e.preventDefault(), addTechnology())
+                      e.key === 'Enter' && (e.preventDefault(), addTechnology())
                     }
                     className="flex-1 rounded-lg border border-gray-700 bg-gray-900/50 px-4 py-2 text-white"
                     placeholder="Digite uma tecnologia e pressione Enter"
@@ -507,7 +507,7 @@ export default function Projects() {
                 ) : (
                   <span className="flex items-center justify-center gap-2">
                     <Check className="h-5 w-5" />
-                    {editingProject ? "Atualizar" : "Criar"} Projeto
+                    {editingProject ? 'Atualizar' : 'Criar'} Projeto
                   </span>
                 )}
               </button>
@@ -562,7 +562,7 @@ export default function Projects() {
                       <div className="flex flex-col items-start gap-1">
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={() => moveProject(index, "up")}
+                            onClick={() => moveProject(index, 'up')}
                             disabled={index === 0 || isReordering}
                             className="p-1 text-gray-400 hover:text-white disabled:opacity-30"
                           >
@@ -570,7 +570,7 @@ export default function Projects() {
                           </button>
                           <span className="text-gray-300">{index + 1}</span>
                           <button
-                            onClick={() => moveProject(index, "down")}
+                            onClick={() => moveProject(index, 'down')}
                             disabled={
                               index === projects.length - 1 || isReordering
                             }
@@ -616,18 +616,18 @@ export default function Projects() {
                     <td className="px-6 py-4">
                       <span
                         className={`inline-block rounded-full px-3 py-1 text-xs ${
-                          project.status === "completed"
-                            ? "bg-green-500/20 text-green-300"
-                            : project.status === "in-progress"
-                              ? "bg-yellow-500/20 text-yellow-300"
-                              : "bg-blue-500/20 text-blue-300"
+                          project.status === 'completed'
+                            ? 'bg-green-500/20 text-green-300'
+                            : project.status === 'in-progress'
+                              ? 'bg-yellow-500/20 text-yellow-300'
+                              : 'bg-blue-500/20 text-blue-300'
                         }`}
                       >
-                        {project.status === "completed"
-                          ? "Concluído"
-                          : project.status === "in-progress"
-                            ? "Em Desenvolvimento"
-                            : "Planejado"}
+                        {project.status === 'completed'
+                          ? 'Concluído'
+                          : project.status === 'in-progress'
+                            ? 'Em Desenvolvimento'
+                            : 'Planejado'}
                       </span>
                     </td>
 
@@ -652,7 +652,7 @@ export default function Projects() {
                         </button>
 
                         <a
-                          href={project.liveUrl || "#"}
+                          href={project.liveUrl || '#'}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="rounded-lg p-2 text-green-400 hover:bg-green-500/10 hover:text-green-300"

@@ -1,8 +1,8 @@
 //src\app\api\track-view\route.ts
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from 'next/server';
 
-import { trackPageView } from "@/app/actions/dashboard";
+import { trackPageView } from '@/app/actions/dashboard';
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,8 +11,8 @@ export async function POST(request: NextRequest) {
 
     if (!page || !path) {
       return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 },
+        { error: 'Missing required fields' },
+        { status: 400 }
       );
     }
 
@@ -21,10 +21,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error in track-view API:", error);
+    console.error('Error in track-view API:', error);
     return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
+      { error: 'Internal server error' },
+      { status: 500 }
     );
   }
 }
@@ -34,21 +34,21 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const days = parseInt(searchParams.get("days") || "7");
+    const days = parseInt(searchParams.get('days') || '7');
 
     // Aqui você poderia retornar estatísticas básicas
     return NextResponse.json({
-      message: "Tracking API is running",
+      message: 'Tracking API is running',
       endpoints: {
-        POST: "Track a page view",
-        GET: "Get basic stats",
+        POST: 'Track a page view',
+        GET: 'Get basic stats',
       },
     });
   } catch (error) {
-    console.error("Error in track-view GET:", error);
+    console.error('Error in track-view GET:', error);
     return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
+      { error: 'Internal server error' },
+      { status: 500 }
     );
   }
 }

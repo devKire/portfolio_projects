@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { ContactInfo, LandingPage } from "@prisma/client";
-import { motion } from "framer-motion";
+import { ContactInfo, LandingPage } from '@prisma/client';
+import { motion } from 'framer-motion';
 import {
   Code,
   Instagram,
@@ -10,10 +10,10 @@ import {
   MessageCircle,
   Sparkles,
   Zap,
-} from "lucide-react";
-import Image from "next/image";
+} from 'lucide-react';
+import Image from 'next/image';
 
-import { ThreeDMarquee } from "@/components/ui/3d-marquee";
+import { ThreeDMarquee } from '@/components/ui/3d-marquee';
 
 interface SectionHeroProps {
   contact: ContactInfo;
@@ -24,52 +24,52 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
   const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId);
     if (element) {
-      element.scrollIntoView({ behavior: "smooth" });
+      element.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
   const images = [
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_cantinhogourmet.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_eriksantos.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_francostaacademy.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_nazariocicles.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_gilshinaider.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_insertion.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_itajubacasamar.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_joaogarcia.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_marivaldo.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_metanoiamentebiblico.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_episystem.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_neodoxa.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_projetocafarnaum.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_rafamanicure.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_rdseletrecista.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_tarefando.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_cantinhogourmet.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_eriksantos.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_francostaacademy.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_nazariocicles.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_gilshinaider.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_insertion.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_itajubacasamar.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_joaogarcia.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_marivaldo.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_metanoiamentebiblico.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_episystem.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_neodoxa.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_projetocafarnaum.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_rafamanicure.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_rdseletrecista.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_tarefando.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_cantinhogourmet.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_eriksantos.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_francostaacademy.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_nazariocicles.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_gilshinaider.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_insertion.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_itajubacasamar.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_joaogarcia.png",
-    "https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_marivaldo.png",
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_cantinhogourmet.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_eriksantos.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_francostaacademy.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_nazariocicles.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_gilshinaider.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_insertion.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_itajubacasamar.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_joaogarcia.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_marivaldo.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_metanoiamentebiblico.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_episystem.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_neodoxa.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_projetocafarnaum.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_rafamanicure.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_rdseletrecista.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_tarefando.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_cantinhogourmet.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_eriksantos.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_francostaacademy.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_nazariocicles.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_gilshinaider.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_insertion.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_itajubacasamar.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_joaogarcia.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_marivaldo.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_metanoiamentebiblico.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_episystem.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_neodoxa.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_projetocafarnaum.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_rafamanicure.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_rdseletrecista.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_tarefando.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_cantinhogourmet.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_eriksantos.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_francostaacademy.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_nazariocicles.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_gilshinaider.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_insertion.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_itajubacasamar.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_joaogarcia.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_marivaldo.png',
   ];
 
   // Social links baseadas nos dados do banco
@@ -79,7 +79,7 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
           {
             icon: MessageCircle,
             href: contact.whatsappLink,
-            label: "WhatsApp",
+            label: 'WhatsApp',
           },
         ]
       : []),
@@ -88,7 +88,7 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
           {
             icon: Instagram,
             href: contact.instagramLink,
-            label: "Instagram",
+            label: 'Instagram',
           },
         ]
       : []),
@@ -97,21 +97,21 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
           {
             icon: Linkedin,
             href: contact.linkedinLink,
-            label: "LinkedIn",
+            label: 'LinkedIn',
           },
         ]
       : []),
     {
       icon: Mail,
       href: `mailto:${contact.email}`,
-      label: "Email",
+      label: 'Email',
     },
   ];
 
   const highlights = [
-    { icon: Code, text: "Código Limpo" },
-    { icon: Zap, text: "Alta Performance" },
-    { icon: Sparkles, text: "Design Moderno" },
+    { icon: Code, text: 'Código Limpo' },
+    { icon: Zap, text: 'Alta Performance' },
+    { icon: Sparkles, text: 'Design Moderno' },
   ];
 
   return (
@@ -124,10 +124,10 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
         <motion.div
           animate={{
             background: [
-              "radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 50%)",
-              "radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.1) 0%, transparent 50%)",
-              "radial-gradient(circle at 40% 80%, rgba(16, 185, 129, 0.1) 0%, transparent 50%)",
-              "radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 50%)",
+              'radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 50%)',
+              'radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.1) 0%, transparent 50%)',
+              'radial-gradient(circle at 40% 80%, rgba(16, 185, 129, 0.1) 0%, transparent 50%)',
+              'radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 50%)',
             ],
           }}
           transition={{ duration: 10, repeat: Infinity }}
@@ -182,7 +182,7 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
           <motion.div
             initial={{ opacity: 0, scale: 0 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2, type: "spring" }}
+            transition={{ delay: 0.2, type: 'spring' }}
             className="mb-6 flex justify-center md:mb-8"
           >
             <div className="relative">
@@ -205,7 +205,7 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
                 className="font-inter absolute -right-1 -bottom-1 rounded-full bg-gradient-to-r from-green-500 to-green-600 px-2 py-1 text-[10px] font-semibold text-white shadow-lg md:-right-2 md:-bottom-2 md:px-3 md:text-xs"
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
-                transition={{ delay: 0.8, type: "spring" }}
+                transition={{ delay: 0.8, type: 'spring' }}
               >
                 Disponível
               </motion.div>
@@ -220,7 +220,7 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
               transition={{ delay: 0.3, duration: 0.8 }}
               className="font-space text-3xl leading-tight font-bold sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl"
             >
-              Olá, sou{" "}
+              Olá, sou{' '}
               <span className="bg-gradient-to-r from-sky-400 via-purple-400 to-purple-500 bg-clip-text text-transparent">
                 {landingpage.name}
               </span>
@@ -233,7 +233,7 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
               className="space-y-3 md:space-y-4"
             >
               <h2 className="font-space text-xl text-gray-300 sm:text-2xl md:text-3xl lg:text-4xl">
-                Desenvolvedor{" "}
+                Desenvolvedor{' '}
                 <span className="text-electric-500">Full-Stack</span>
               </h2>
 
@@ -281,10 +281,10 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
             <motion.button
               whileHover={{
                 scale: 1.05,
-                boxShadow: "0 0 40px rgba(59, 130, 246, 0.5)",
+                boxShadow: '0 0 40px rgba(59, 130, 246, 0.5)',
               }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => scrollToSection("projetos")}
+              onClick={() => scrollToSection('projetos')}
               className="group from-electric-500 hover:from-electric-600 font-inter shadow-electric-500/25 relative w-full overflow-hidden rounded-full bg-gradient-to-r to-blue-600 px-6 py-3 font-semibold text-white shadow-2xl transition-all duration-300 hover:to-blue-700 sm:w-auto sm:px-8 sm:py-4"
             >
               <span className="relative z-10">Ver Projetos</span>
@@ -294,7 +294,7 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => scrollToSection("contato")}
+              onClick={() => scrollToSection('contato')}
               className="group font-inter hover:border-electric-500 hover:shadow-electric-500/20 w-full rounded-full border-2 border-gray-600 px-6 py-3 font-semibold text-gray-300 backdrop-blur-sm transition-all duration-300 hover:text-white hover:shadow-lg sm:w-auto sm:px-8 sm:py-4"
             >
               <span className="group-hover:from-electric-400 bg-gradient-to-r from-gray-300 to-white bg-clip-text text-transparent group-hover:to-blue-400">
@@ -322,7 +322,7 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
                 whileHover={{
                   scale: 1.2,
                   y: -5,
-                  color: "#3B82F6",
+                  color: '#3B82F6',
                 }}
                 className="hover:text-electric-500 hover:border-electric-500/50 rounded-xl border border-gray-700 bg-gray-800/50 p-2 text-gray-400 shadow-lg backdrop-blur-sm transition-all duration-300 sm:p-3"
                 aria-label={label}

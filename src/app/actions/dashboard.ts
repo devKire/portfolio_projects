@@ -1,11 +1,11 @@
-"use server";
+'use server';
 
-import { endOfDay, format, startOfDay, subDays } from "date-fns";
+import { endOfDay, format, startOfDay, subDays } from 'date-fns';
 
-import { db } from "@/lib/prisma";
+import { db } from '@/lib/prisma';
 
 // Supondo que você tenha uma landingpage padrão
-const DEFAULT_LANDINGPAGE_ID = "3eb3839d-eb78-43ed-9eb7-8f39352d64bb";
+const DEFAULT_LANDINGPAGE_ID = '3eb3839d-eb78-43ed-9eb7-8f39352d64bb';
 
 export interface DashboardStats {
   portfolioViews: number;
@@ -18,11 +18,11 @@ export interface DashboardStats {
   recentActivities: {
     title: string;
     time: string;
-    type: "view" | "comment" | "follower" | "update";
+    type: 'view' | 'comment' | 'follower' | 'update';
   }[];
 }
 
-type ActivityType = DashboardStats["recentActivities"][number]["type"];
+type ActivityType = DashboardStats['recentActivities'][number]['type'];
 
 function createActivity(activity: {
   title: string;
@@ -51,7 +51,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       where: {
         landingpageId: DEFAULT_LANDINGPAGE_ID,
         status: {
-          in: ["completed", "in-progress"],
+          in: ['completed', 'in-progress'],
         },
       },
     });
@@ -60,8 +60,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     const linkedinFollowers = await db.socialInteraction.aggregate({
       where: {
         landingpageId: DEFAULT_LANDINGPAGE_ID,
-        platform: "linkedin",
-        type: "follow",
+        platform: 'linkedin',
+        type: 'follow',
       },
       _sum: {
         count: true,
@@ -71,8 +71,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     const githubFollowers = await db.socialInteraction.aggregate({
       where: {
         landingpageId: DEFAULT_LANDINGPAGE_ID,
-        platform: "github",
-        type: "follow",
+        platform: 'github',
+        type: 'follow',
       },
       _sum: {
         count: true,
@@ -82,7 +82,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     const socialMediaComments = await db.socialInteraction.aggregate({
       where: {
         landingpageId: DEFAULT_LANDINGPAGE_ID,
-        type: "comment",
+        type: 'comment',
       },
       _sum: {
         count: true,
@@ -98,13 +98,13 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       return {
         start: startOfDay(date),
         end: endOfDay(date),
-        formattedDate: format(date, "dd/MM"),
+        formattedDate: format(date, 'dd/MM'),
       };
     });
 
     // Buscar views agrupadas por dia
     const pageViewsData = await db.pageView.groupBy({
-      by: ["createdAt"],
+      by: ['createdAt'],
       where: {
         landingpageId: DEFAULT_LANDINGPAGE_ID,
         createdAt: {
@@ -125,7 +125,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
       const totalViews = viewsForDay.reduce(
         (sum, view) => sum + view._count.id,
-        0,
+        0
       );
 
       return {
@@ -140,7 +140,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
         landingpageId: DEFAULT_LANDINGPAGE_ID,
       },
       orderBy: {
-        createdAt: "desc",
+        createdAt: 'desc',
       },
       take: 10,
     });
@@ -151,7 +151,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
         landingpageId: DEFAULT_LANDINGPAGE_ID,
       },
       orderBy: {
-        updatedAt: "desc",
+        updatedAt: 'desc',
       },
       take: 5,
     });
@@ -162,7 +162,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
         landingpageId: DEFAULT_LANDINGPAGE_ID,
       },
       orderBy: {
-        createdAt: "desc",
+        createdAt: 'desc',
       },
       take: 5,
     });
@@ -171,24 +171,24 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     const recentActivities = [
       ...recentPageViews.map((view) =>
         createActivity({
-          title: `Visualização da página: ${view.page || "Home"}`,
+          title: `Visualização da página: ${view.page || 'Home'}`,
           time: formatTimeAgo(view.createdAt),
-          type: "view",
-        }),
+          type: 'view',
+        })
       ),
       ...recentProjectUpdates.map((project) =>
         createActivity({
           title: `Projeto atualizado: ${project.title}`,
           time: formatTimeAgo(project.updatedAt),
-          type: "update",
-        }),
+          type: 'update',
+        })
       ),
       ...recentSocialInteractions.map((interaction) =>
         createActivity({
           title: `Nova interação no ${interaction.platform}: ${interaction.type}`,
           time: formatTimeAgo(interaction.createdAt),
-          type: interaction.type === "comment" ? "comment" : "follower",
-        }),
+          type: interaction.type === 'comment' ? 'comment' : 'follower',
+        })
       ),
     ]
       .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
@@ -200,12 +200,12 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       githubFollowers: githubFollowers._sum.count || 0,
       socialMediaComments: socialMediaComments._sum.count || 0,
       projectsCount,
-      lastUpdated: format(new Date(), "dd/MM/yyyy HH:mm"),
+      lastUpdated: format(new Date(), 'dd/MM/yyyy HH:mm'),
       pageViewsByDay,
       recentActivities,
     };
   } catch (error) {
-    console.error("Error fetching dashboard stats:", error);
+    console.error('Error fetching dashboard stats:', error);
 
     // Retornar dados simulados em caso de erro
     return {
@@ -214,7 +214,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       githubFollowers: 0,
       socialMediaComments: 0,
       projectsCount: 0,
-      lastUpdated: format(new Date(), "dd/MM/yyyy HH:mm"),
+      lastUpdated: format(new Date(), 'dd/MM/yyyy HH:mm'),
       pageViewsByDay: [],
       recentActivities: [],
     };
@@ -230,13 +230,13 @@ function formatTimeAgo(date: Date): string {
   const diffDays = Math.floor(diffMs / 86400000);
 
   if (diffMins < 1) {
-    return "agora";
+    return 'agora';
   } else if (diffMins < 60) {
-    return `${diffMins} min${diffMins !== 1 ? "s" : ""} atrás`;
+    return `${diffMins} min${diffMins !== 1 ? 's' : ''} atrás`;
   } else if (diffHours < 24) {
-    return `${diffHours} hora${diffHours !== 1 ? "s" : ""} atrás`;
+    return `${diffHours} hora${diffHours !== 1 ? 's' : ''} atrás`;
   } else {
-    return `${diffDays} dia${diffDays !== 1 ? "s" : ""} atrás`;
+    return `${diffDays} dia${diffDays !== 1 ? 's' : ''} atrás`;
   }
 }
 
@@ -245,7 +245,7 @@ export async function trackPageView(
   page: string,
   path: string,
   ip?: string,
-  userAgent?: string,
+  userAgent?: string
 ) {
   try {
     await db.pageView.create({
@@ -258,7 +258,7 @@ export async function trackPageView(
       },
     });
   } catch (error) {
-    console.error("Error tracking page view:", error);
+    console.error('Error tracking page view:', error);
   }
 }
 
@@ -267,7 +267,7 @@ export async function trackSocialInteraction(
   platform: string,
   type: string,
   content?: string,
-  count: number = 1,
+  count: number = 1
 ) {
   try {
     await db.socialInteraction.create({
@@ -280,22 +280,22 @@ export async function trackSocialInteraction(
       },
     });
   } catch (error) {
-    console.error("Error tracking social interaction:", error);
+    console.error('Error tracking social interaction:', error);
   }
 }
 
 // Função para obter estatísticas detalhadas
-export async function getDetailedStats(timeRange: "7d" | "30d" | "90d") {
+export async function getDetailedStats(timeRange: '7d' | '30d' | '90d') {
   try {
     let daysAgo: number;
     switch (timeRange) {
-      case "7d":
+      case '7d':
         daysAgo = 7;
         break;
-      case "30d":
+      case '30d':
         daysAgo = 30;
         break;
-      case "90d":
+      case '90d':
         daysAgo = 90;
         break;
     }
@@ -314,7 +314,7 @@ export async function getDetailedStats(timeRange: "7d" | "30d" | "90d") {
 
     // Visualizações por página
     const viewsByPage = await db.pageView.groupBy({
-      by: ["page"],
+      by: ['page'],
       where: {
         landingpageId: DEFAULT_LANDINGPAGE_ID,
         createdAt: {
@@ -326,20 +326,20 @@ export async function getDetailedStats(timeRange: "7d" | "30d" | "90d") {
       },
       orderBy: {
         _count: {
-          id: "desc",
+          id: 'desc',
         },
       },
     });
 
     // Top páginas
     const topPages = viewsByPage.slice(0, 5).map((item) => ({
-      page: item.page || "Home",
+      page: item.page || 'Home',
       views: item._count.id,
     }));
 
     // Interações sociais por plataforma
     const socialByPlatform = await db.socialInteraction.groupBy({
-      by: ["platform", "type"],
+      by: ['platform', 'type'],
       where: {
         landingpageId: DEFAULT_LANDINGPAGE_ID,
         createdAt: {
@@ -361,7 +361,7 @@ export async function getDetailedStats(timeRange: "7d" | "30d" | "90d") {
       })),
     };
   } catch (error) {
-    console.error("Error fetching detailed stats:", error);
+    console.error('Error fetching detailed stats:', error);
     return {
       totalViews: 0,
       topPages: [],

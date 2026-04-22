@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, Code, Globe, Rocket, Sparkles, Zap } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from 'framer-motion';
+import { ArrowRight, Code, Globe, Rocket, Sparkles, Zap } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 export default function WelcomePage() {
   const router = useRouter();
@@ -25,8 +25,8 @@ export default function WelcomePage() {
       });
     };
 
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   useEffect(() => {
@@ -45,7 +45,7 @@ export default function WelcomePage() {
     const timer = setTimeout(() => {
       setIsVisible(false);
       setTimeout(() => {
-        router.push("/erikdossantos");
+        router.push('/erikdossantos');
       }, 800);
     }, 3000);
 
@@ -58,7 +58,7 @@ export default function WelcomePage() {
   const handleSkip = () => {
     setIsVisible(false);
     setTimeout(() => {
-      router.push("/erikdossantos");
+      router.push('/erikdossantos');
     }, 500);
   };
 
@@ -121,7 +121,7 @@ export default function WelcomePage() {
               initial={{ scale: 0, rotate: -180 }}
               animate={{ scale: 1, rotate: 0 }}
               transition={{
-                type: "spring",
+                type: 'spring',
                 stiffness: 200,
                 damping: 15,
                 delay: 0.2,
@@ -132,7 +132,7 @@ export default function WelcomePage() {
                 <motion.div
                   className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 shadow-2xl shadow-blue-400/30"
                   whileHover={{ scale: 1.05 }}
-                  transition={{ type: "spring", stiffness: 400 }}
+                  transition={{ type: 'spring', stiffness: 400 }}
                 >
                   <Globe className="h-12 w-12 text-white" />
                 </motion.div>
@@ -197,14 +197,14 @@ export default function WelcomePage() {
             {/* Progress Bar */}
             <motion.div
               initial={{ width: 0 }}
-              animate={{ width: "100%" }}
+              animate={{ width: '100%' }}
               transition={{ delay: 1.2, duration: 2 }}
               className="mx-auto mb-8 max-w-sm"
             >
               <div className="h-2 overflow-hidden rounded-full bg-blue-200">
                 <motion.div
                   className="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-600"
-                  initial={{ width: "0%" }}
+                  initial={{ width: '0%' }}
                   animate={{ width: `${progress}%` }}
                   transition={{ duration: 0.1 }}
                 />

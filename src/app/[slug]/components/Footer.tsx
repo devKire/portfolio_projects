@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { ContactInfo, LandingPage } from "@prisma/client";
-import { motion } from "framer-motion";
+import { ContactInfo, LandingPage } from '@prisma/client';
+import { motion } from 'framer-motion';
 import {
   Coffee,
   Facebook,
@@ -11,8 +11,8 @@ import {
   Mail,
   MessageCircle,
   Phone,
-} from "lucide-react";
-import Image from "next/image";
+} from 'lucide-react';
+import Image from 'next/image';
 interface FooterProps {
   contact: ContactInfo;
   landingpage: LandingPage;
@@ -25,35 +25,35 @@ const Footer = ({ contact, landingpage }: FooterProps) => {
   const socialLinks = [
     {
       icon: MessageCircle,
-      href: contact.whatsappLink || "#",
-      label: "WhatsApp",
+      href: contact.whatsappLink || '#',
+      label: 'WhatsApp',
     },
     {
       icon: Instagram,
-      href: contact.instagramLink || "#",
-      label: "Instagram",
+      href: contact.instagramLink || '#',
+      label: 'Instagram',
     },
     {
       icon: Facebook,
-      href: contact.facebookLink || "#",
-      label: "Facebook",
+      href: contact.facebookLink || '#',
+      label: 'Facebook',
     },
     {
       icon: Linkedin,
-      href: contact.linkedinLink || "#",
-      label: "LinkedIn",
+      href: contact.linkedinLink || '#',
+      label: 'LinkedIn',
     },
     {
       icon: Mail,
       href: `mailto:${contact.email}`,
-      label: "Email",
+      label: 'Email',
     },
-  ].filter((link) => link.href !== "#"); // Filtra links não preenchidos
+  ].filter((link) => link.href !== '#'); // Filtra links não preenchidos
 
   const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId);
     if (element) {
-      element.scrollIntoView({ behavior: "smooth" });
+      element.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
@@ -87,9 +87,9 @@ const Footer = ({ contact, landingpage }: FooterProps) => {
                 </div>
               )}
               <div className="font-space text-2xl font-bold text-white">
-                {landingpage.name.split(" ")[0]}
+                {landingpage.name.split(' ')[0]}
                 <span className="text-electric-500">
-                  {landingpage.name.split(" ")[1]}
+                  {landingpage.name.split(' ')[1]}
                 </span>
               </div>
             </div>
@@ -134,10 +134,10 @@ const Footer = ({ contact, landingpage }: FooterProps) => {
             </h3>
             <nav className="space-y-4">
               {[
-                { name: "Inicio", id: "hero" },
-                { name: "Sobre", id: "sobre" },
-                { name: "Projetos", id: "Projetos" },
-                { name: "Contato", id: "contato" },
+                { name: 'Inicio', id: 'hero' },
+                { name: 'Sobre', id: 'sobre' },
+                { name: 'Projetos', id: 'Projetos' },
+                { name: 'Contato', id: 'contato' },
               ].map((item) => (
                 <button
                   key={item.id}

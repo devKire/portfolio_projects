@@ -1,14 +1,14 @@
-import { notFound } from "next/navigation";
+import { notFound } from 'next/navigation';
 
-import { Separator } from "@/components/ui/separator";
-import { db } from "@/lib/prisma";
+import { Separator } from '@/components/ui/separator';
+import { db } from '@/lib/prisma';
 
-import Footer from "./components/Footer";
-import Header from "./components/Header";
-import SectionAbout from "./components/SectionAbout";
-import SectionContacts from "./components/SectionContacts";
-import SectionHero from "./components/SectionHero";
-import SectionProjects from "./components/SectionProjects";
+import Footer from './components/Footer';
+import Header from './components/Header';
+import SectionAbout from './components/SectionAbout';
+import SectionContacts from './components/SectionContacts';
+import SectionHero from './components/SectionHero';
+import SectionProjects from './components/SectionProjects';
 
 interface LandingPageProps {
   params: Promise<{ slug: string }>;

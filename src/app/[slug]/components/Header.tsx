@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { ContactInfo, LandingPage } from "@prisma/client";
-import { AnimatePresence, motion } from "framer-motion";
-import { Mail, Menu, MessageCircle, Phone, X } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import { ContactInfo, LandingPage } from '@prisma/client';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Mail, Menu, MessageCircle, Phone, X } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 
 interface HeaderProps {
   contact: ContactInfo;
@@ -13,14 +13,14 @@ interface HeaderProps {
 const Header = ({ contact, landingpage }: HeaderProps) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState("inicio");
+  const [activeSection, setActiveSection] = useState('inicio');
 
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
 
       // Atualiza a seção ativa baseada no scroll
-      const sections = ["inicio", "projetos", "sobre", "servicos", "contato"];
+      const sections = ['inicio', 'projetos', 'sobre', 'servicos', 'contato'];
       const current = sections.find((section) => {
         const element = document.getElementById(section);
         if (element) {
@@ -32,23 +32,23 @@ const Header = ({ contact, landingpage }: HeaderProps) => {
       if (current) setActiveSection(current);
     };
 
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId);
     if (element) {
-      element.scrollIntoView({ behavior: "smooth" });
+      element.scrollIntoView({ behavior: 'smooth' });
       setIsMobileMenuOpen(false);
     }
   };
 
   const navItems = [
-    { name: "Início", id: "hero" },
-    { name: "Projetos", id: "projects" },
-    { name: "Sobre", id: "about" },
-    { name: "Contato", id: "contact" },
+    { name: 'Início', id: 'hero' },
+    { name: 'Projetos', id: 'projects' },
+    { name: 'Sobre', id: 'about' },
+    { name: 'Contato', id: 'contact' },
   ];
 
   return (
@@ -58,8 +58,8 @@ const Header = ({ contact, landingpage }: HeaderProps) => {
         animate={{ y: 0 }}
         className={`fixed top-0 right-0 left-0 z-50 transition-all duration-500 ${
           isScrolled
-            ? "border-b border-gray-800/50 bg-gray-900/95 shadow-2xl shadow-black/20 backdrop-blur-xl"
-            : "bg-transparent"
+            ? 'border-b border-gray-800/50 bg-gray-900/95 shadow-2xl shadow-black/20 backdrop-blur-xl'
+            : 'bg-transparent'
         }`}
       >
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
@@ -68,7 +68,7 @@ const Header = ({ contact, landingpage }: HeaderProps) => {
             <motion.div
               whileHover={{ scale: 1.05 }}
               className="group flex cursor-pointer items-center gap-3"
-              onClick={() => scrollToSection("inicio")}
+              onClick={() => scrollToSection('inicio')}
             >
               {landingpage.avatarImageUrl ? (
                 <motion.img
@@ -104,8 +104,8 @@ const Header = ({ contact, landingpage }: HeaderProps) => {
                   onClick={() => scrollToSection(item.id)}
                   className={`font-inter relative rounded-lg px-4 py-2 transition-all duration-300 ${
                     activeSection === item.id
-                      ? "text-electric-500 font-semibold"
-                      : "text-gray-300 hover:text-white"
+                      ? 'text-electric-500 font-semibold'
+                      : 'text-gray-300 hover:text-white'
                   }`}
                 >
                   {item.name}
@@ -116,7 +116,7 @@ const Header = ({ contact, landingpage }: HeaderProps) => {
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
                       transition={{
-                        type: "spring",
+                        type: 'spring',
                         stiffness: 300,
                         damping: 20,
                       }}
@@ -144,7 +144,7 @@ const Header = ({ contact, landingpage }: HeaderProps) => {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => scrollToSection("contato")}
+                onClick={() => scrollToSection('contato')}
                 className="from-electric-500 hover:from-electric-600 font-inter shadow-electric-500/25 rounded-lg bg-gradient-to-r to-blue-600 px-6 py-2 font-semibold text-white shadow-lg transition-all duration-300 hover:to-blue-700"
               >
                 Vamos Conversar
@@ -167,7 +167,7 @@ const Header = ({ contact, landingpage }: HeaderProps) => {
           {isMobileMenuOpen && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
+              animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
               className="overflow-hidden border-t border-gray-800 bg-gray-900/95 backdrop-blur-xl lg:hidden"
             >
@@ -179,8 +179,8 @@ const Header = ({ contact, landingpage }: HeaderProps) => {
                     onClick={() => scrollToSection(item.id)}
                     className={`font-inter block w-full border-l-2 px-4 py-3 text-left transition-all duration-300 ${
                       activeSection === item.id
-                        ? "text-electric-500 border-electric-500 bg-electric-500/10 font-semibold"
-                        : "border-transparent text-gray-300 hover:border-gray-600 hover:text-white"
+                        ? 'text-electric-500 border-electric-500 bg-electric-500/10 font-semibold'
+                        : 'border-transparent text-gray-300 hover:border-gray-600 hover:text-white'
                     }`}
                   >
                     {item.name}

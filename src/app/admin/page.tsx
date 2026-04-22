@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import {
   BarChart3,
@@ -12,15 +12,15 @@ import {
   Settings,
   Users,
   X,
-} from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+} from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 
-import { checkAuth, logoutAdmin } from "@/app/actions/auth";
+import { checkAuth, logoutAdmin } from '@/app/actions/auth';
 
-import Dashboard from "./components/Dashboard";
-import LoginModal from "./components/LoginModal";
-import Projects from "./components/Projects";
+import Dashboard from './components/Dashboard';
+import LoginModal from './components/LoginModal';
+import Projects from './components/Projects';
 
 // Componente para loading
 function LoadingSpinner() {
@@ -33,7 +33,7 @@ function LoadingSpinner() {
 
 export default function AdminPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<string>("dashboard");
+  const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [showMobileMenu, setShowMobileMenu] = useState<boolean>(false);
@@ -48,7 +48,7 @@ export default function AdminPage() {
         const authResult = await checkAuth();
         setIsAuthenticated(authResult.authenticated);
       } catch (error) {
-        console.error("Auth check error:", error);
+        console.error('Auth check error:', error);
         setIsAuthenticated(false);
       } finally {
         setLoading(false);
@@ -70,9 +70,9 @@ export default function AdminPage() {
       }
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showMobileMenu]);
 
@@ -80,12 +80,12 @@ export default function AdminPage() {
     try {
       await logoutAdmin();
       setIsAuthenticated(false);
-      setActiveTab("dashboard");
+      setActiveTab('dashboard');
       setShowMobileMenu(false);
     } catch (error) {
-      console.error("Logout error:", error);
+      console.error('Logout error:', error);
       setIsAuthenticated(false);
-      router.push("/admin");
+      router.push('/admin');
     }
   };
 
@@ -95,12 +95,12 @@ export default function AdminPage() {
 
   // Tabs de navegação
   const tabs = [
-    { id: "dashboard", label: "Dashboard", icon: BarChart3 },
-    { id: "projects", label: "Projetos", icon: Folder },
-    { id: "social", label: "Redes Sociais", icon: Users },
-    { id: "comments", label: "Comentários", icon: MessageSquare },
-    { id: "analytics", label: "Analytics", icon: Globe },
-    { id: "settings", label: "Configurações", icon: Settings },
+    { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+    { id: 'projects', label: 'Projetos', icon: Folder },
+    { id: 'social', label: 'Redes Sociais', icon: Users },
+    { id: 'comments', label: 'Comentários', icon: MessageSquare },
+    { id: 'analytics', label: 'Analytics', icon: Globe },
+    { id: 'settings', label: 'Configurações', icon: Settings },
   ];
 
   if (loading) {
@@ -118,36 +118,36 @@ export default function AdminPage() {
     githubFollowers: 289,
     socialMediaComments: 87,
     projectsCount: 12,
-    lastUpdated: new Date().toLocaleDateString("pt-BR"),
+    lastUpdated: new Date().toLocaleDateString('pt-BR'),
     pageViewsByDay: [
-      { date: "01/01", views: 150 },
-      { date: "02/01", views: 200 },
-      { date: "03/01", views: 180 },
-      { date: "04/01", views: 220 },
-      { date: "05/01", views: 250 },
-      { date: "06/01", views: 230 },
-      { date: "07/01", views: 210 },
+      { date: '01/01', views: 150 },
+      { date: '02/01', views: 200 },
+      { date: '03/01', views: 180 },
+      { date: '04/01', views: 220 },
+      { date: '05/01', views: 250 },
+      { date: '06/01', views: 230 },
+      { date: '07/01', views: 210 },
     ],
     recentActivities: [
       {
-        title: "Visualização da página: home",
-        time: "2 horas atrás",
-        type: "view" as const,
+        title: 'Visualização da página: home',
+        time: '2 horas atrás',
+        type: 'view' as const,
       },
       {
         title: "Visualização do projeto 'E-commerce'",
-        time: "4 horas atrás",
-        type: "view" as const,
+        time: '4 horas atrás',
+        type: 'view' as const,
       },
       {
-        title: "Novo seguidor no GitHub",
-        time: "1 dia atrás",
-        type: "follower" as const,
+        title: 'Novo seguidor no GitHub',
+        time: '1 dia atrás',
+        type: 'follower' as const,
       },
       {
         title: "Projeto atualizado: 'Dashboard Admin'",
-        time: "2 dias atrás",
-        type: "update" as const,
+        time: '2 dias atrás',
+        type: 'update' as const,
       },
     ],
   };
@@ -160,12 +160,12 @@ export default function AdminPage() {
           <button
             onClick={() => setShowMobileMenu(!showMobileMenu)}
             className="rounded-lg p-2 hover:bg-gray-800"
-            aria-label={showMobileMenu ? "Fechar menu" : "Abrir menu"}
+            aria-label={showMobileMenu ? 'Fechar menu' : 'Abrir menu'}
           >
             {showMobileMenu ? <X size={22} /> : <Menu size={22} />}
           </button>
           <h1 className="text-lg font-semibold">
-            {tabs.find((tab) => tab.id === activeTab)?.label || "Admin"}
+            {tabs.find((tab) => tab.id === activeTab)?.label || 'Admin'}
           </h1>
         </div>
         <button
@@ -181,13 +181,13 @@ export default function AdminPage() {
         {/* Sidebar Desktop */}
         <aside
           className={`hidden border-r border-gray-800 bg-gray-900/95 backdrop-blur-sm transition-all duration-300 lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col ${
-            isSidebarCollapsed ? "lg:w-16" : "lg:w-64"
+            isSidebarCollapsed ? 'lg:w-16' : 'lg:w-64'
           }`}
         >
           {/* Header da Sidebar */}
           <div className="border-b border-gray-800 p-4">
             <div
-              className={`flex items-center justify-between ${isSidebarCollapsed ? "justify-center" : ""}`}
+              className={`flex items-center justify-between ${isSidebarCollapsed ? 'justify-center' : ''}`}
             >
               {!isSidebarCollapsed && (
                 <div>
@@ -203,7 +203,7 @@ export default function AdminPage() {
                 onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
                 className="ml-2 rounded-lg p-2 hover:bg-gray-800"
                 aria-label={
-                  isSidebarCollapsed ? "Expandir menu" : "Recolher menu"
+                  isSidebarCollapsed ? 'Expandir menu' : 'Recolher menu'
                 }
               >
                 {isSidebarCollapsed ? (
@@ -226,10 +226,10 @@ export default function AdminPage() {
                     onClick={() => setActiveTab(tab.id)}
                     className={`flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition-all ${
                       activeTab === tab.id
-                        ? "border-l-2 border-blue-500 bg-gradient-to-r from-blue-500/15 to-purple-500/10 text-white"
-                        : "text-gray-400 hover:bg-gray-800/50 hover:text-white"
-                    } ${isSidebarCollapsed ? "justify-center px-2" : ""}`}
-                    title={isSidebarCollapsed ? tab.label : ""}
+                        ? 'border-l-2 border-blue-500 bg-gradient-to-r from-blue-500/15 to-purple-500/10 text-white'
+                        : 'text-gray-400 hover:bg-gray-800/50 hover:text-white'
+                    } ${isSidebarCollapsed ? 'justify-center px-2' : ''}`}
+                    title={isSidebarCollapsed ? tab.label : ''}
                   >
                     <Icon size={20} className="flex-shrink-0" />
                     {!isSidebarCollapsed && (
@@ -246,9 +246,9 @@ export default function AdminPage() {
             <button
               onClick={handleLogout}
               className={`flex w-full items-center gap-3 rounded-lg px-3 py-3 text-red-400 transition-all hover:bg-red-500/10 hover:text-red-300 ${
-                isSidebarCollapsed ? "justify-center px-2" : ""
+                isSidebarCollapsed ? 'justify-center px-2' : ''
               }`}
-              title={isSidebarCollapsed ? "Sair" : ""}
+              title={isSidebarCollapsed ? 'Sair' : ''}
             >
               <LogOut size={20} className="flex-shrink-0" />
               {!isSidebarCollapsed && <span>Sair</span>}
@@ -287,8 +287,8 @@ export default function AdminPage() {
                         }}
                         className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left transition-all ${
                           activeTab === tab.id
-                            ? "border-l-2 border-blue-500 bg-gradient-to-r from-blue-500/20 to-purple-500/15 text-white"
-                            : "text-gray-400 hover:bg-gray-800/50 hover:text-white"
+                            ? 'border-l-2 border-blue-500 bg-gradient-to-r from-blue-500/20 to-purple-500/15 text-white'
+                            : 'text-gray-400 hover:bg-gray-800/50 hover:text-white'
                         }`}
                       >
                         <Icon size={20} />
@@ -316,7 +316,7 @@ export default function AdminPage() {
         {/* Conteúdo Principal */}
         <main
           className={`min-h-screen flex-1 p-4 transition-all duration-300 lg:p-6 ${
-            isSidebarCollapsed ? "lg:ml-16" : "lg:ml-64"
+            isSidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
           }`}
         >
           <div className="mx-auto max-w-7xl">
@@ -331,11 +331,11 @@ export default function AdminPage() {
 
             {/* Container Responsivo */}
             <div className="rounded-xl border border-gray-800/50 bg-gray-900/40 p-4 backdrop-blur-sm sm:rounded-2xl sm:p-6">
-              {activeTab === "dashboard" && (
+              {activeTab === 'dashboard' && (
                 <Dashboard stats={dashboardStats} />
               )}
-              {activeTab === "projects" && <Projects />}
-              {activeTab === "social" && (
+              {activeTab === 'projects' && <Projects />}
+              {activeTab === 'social' && (
                 <div className="p-4 text-center sm:p-8">
                   <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-gray-800/50 p-3 sm:h-20 sm:w-20 sm:p-4">
                     <Users className="h-full w-full text-gray-600" />
@@ -346,7 +346,7 @@ export default function AdminPage() {
                   <p className="text-gray-400">Em breve...</p>
                 </div>
               )}
-              {activeTab === "comments" && (
+              {activeTab === 'comments' && (
                 <div className="p-4 text-center sm:p-8">
                   <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-gray-800/50 p-3 sm:h-20 sm:w-20 sm:p-4">
                     <MessageSquare className="h-full w-full text-gray-600" />
@@ -357,7 +357,7 @@ export default function AdminPage() {
                   <p className="text-gray-400">Em breve...</p>
                 </div>
               )}
-              {activeTab === "analytics" && (
+              {activeTab === 'analytics' && (
                 <div className="p-4 text-center sm:p-8">
                   <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-gray-800/50 p-3 sm:h-20 sm:w-20 sm:p-4">
                     <Globe className="h-full w-full text-gray-600" />
@@ -368,7 +368,7 @@ export default function AdminPage() {
                   <p className="text-gray-400">Em breve...</p>
                 </div>
               )}
-              {activeTab === "settings" && (
+              {activeTab === 'settings' && (
                 <div className="p-4 text-center sm:p-8">
                   <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-gray-800/50 p-3 sm:h-20 sm:w-20 sm:p-4">
                     <Settings className="h-full w-full text-gray-600" />

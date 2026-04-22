@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
 import {
   ContactInfo,
   LandingPage,
   Project as PrismaProject,
-} from "@prisma/client";
-import { AnimatePresence, motion } from "framer-motion";
+} from '@prisma/client';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowUpRight,
   ChevronDown,
@@ -17,9 +17,9 @@ import {
   Sparkles,
   X,
   Zap,
-} from "lucide-react";
-import Image from "next/image";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+} from 'lucide-react';
+import Image from 'next/image';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 interface SectionProjectsProps {
   contact: ContactInfo;
@@ -39,14 +39,14 @@ interface Project {
   liveUrl?: string;
   githubUrl?: string;
   featured?: boolean;
-  status: "completed" | "in-progress" | "planned";
+  status: 'completed' | 'in-progress' | 'planned';
   position: number; // Alterado de 'int' para 'number'
   accentColor?: string;
 }
 
 // Função para converter PrismaProject para Project
 const convertPrismaProjectToProject = (
-  prismaProject: PrismaProject,
+  prismaProject: PrismaProject
 ): Project => ({
   id: prismaProject.id,
   title: prismaProject.title,
@@ -58,9 +58,9 @@ const convertPrismaProjectToProject = (
   liveUrl: prismaProject.liveUrl || undefined,
   githubUrl: prismaProject.githubUrl || undefined,
   featured: prismaProject.featured,
-  status: prismaProject.status as "completed" | "in-progress" | "planned",
+  status: prismaProject.status as 'completed' | 'in-progress' | 'planned',
   position: prismaProject.position,
-  accentColor: prismaProject.accentColor || "from-gray-500/20 to-gray-600/20",
+  accentColor: prismaProject.accentColor || 'from-gray-500/20 to-gray-600/20',
 });
 
 const SectionProjects = ({
@@ -76,13 +76,13 @@ const SectionProjects = ({
       prismaProjects
         .map(convertPrismaProjectToProject)
         .sort((a, b) => a.position - b.position),
-    [prismaProjects],
+    [prismaProjects]
   );
 
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [filter, setFilter] = useState("Todos");
+  const [filter, setFilter] = useState('Todos');
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [visibleProjects, setVisibleProjects] = useState(6);
   const [isMobile, setIsMobile] = useState(false);
@@ -94,20 +94,20 @@ const SectionProjects = ({
     };
 
     checkMobile();
-    window.addEventListener("resize", checkMobile);
+    window.addEventListener('resize', checkMobile);
 
-    return () => window.removeEventListener("resize", checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
   // Extrai categorias únicas dos projetos
   const categories = useMemo(() => {
     const allCategories = [
-      "Todos",
+      'Todos',
       ...Array.from(new Set(projects.map((p) => p.category))),
     ];
     return allCategories.filter(
       (category) =>
-        category === "Todos" || projects.some((p) => p.category === category),
+        category === 'Todos' || projects.some((p) => p.category === category)
     );
   }, [projects]);
 
@@ -116,20 +116,20 @@ const SectionProjects = ({
     let result = projects;
 
     // Filtro por categoria
-    if (filter !== "Todos") {
+    if (filter !== 'Todos') {
       result = result.filter((project) => project.category === filter);
     }
 
     // Busca por texto
-    if (searchQuery.trim() !== "") {
+    if (searchQuery.trim() !== '') {
       const query = searchQuery.toLowerCase();
       result = result.filter(
         (project) =>
           project.title.toLowerCase().includes(query) ||
           project.description.toLowerCase().includes(query) ||
           project.technologies.some((tech) =>
-            tech.toLowerCase().includes(query),
-          ),
+            tech.toLowerCase().includes(query)
+          )
       );
     }
 
@@ -149,42 +149,42 @@ const SectionProjects = ({
   // Projetos visíveis (paginados)
   const displayedProjects = useMemo(
     () => filteredProjects.slice(0, visibleProjects),
-    [filteredProjects, visibleProjects],
+    [filteredProjects, visibleProjects]
   );
 
   // Contador de projetos
   const getProjectCountByCategory = useCallback(
     (category: string) => {
-      if (category === "Todos") return projects.length;
+      if (category === 'Todos') return projects.length;
       return projects.filter((project) => project.category === category).length;
     },
-    [projects],
+    [projects]
   );
 
   // Cores de status
-  const getStatusColor = (status: Project["status"]) => {
+  const getStatusColor = (status: Project['status']) => {
     switch (status) {
-      case "completed":
-        return "text-green-500 bg-green-500/10";
-      case "in-progress":
-        return "text-yellow-500 bg-yellow-500/10";
-      case "planned":
-        return "text-blue-500 bg-blue-500/10";
+      case 'completed':
+        return 'text-green-500 bg-green-500/10';
+      case 'in-progress':
+        return 'text-yellow-500 bg-yellow-500/10';
+      case 'planned':
+        return 'text-blue-500 bg-blue-500/10';
       default:
-        return "text-gray-500 bg-gray-500/10";
+        return 'text-gray-500 bg-gray-500/10';
     }
   };
 
-  const getStatusText = (status: Project["status"]) => {
+  const getStatusText = (status: Project['status']) => {
     switch (status) {
-      case "completed":
-        return "Concluído";
-      case "in-progress":
-        return "Em Desenvolvimento";
-      case "planned":
-        return "Planejado";
+      case 'completed':
+        return 'Concluído';
+      case 'in-progress':
+        return 'Em Desenvolvimento';
+      case 'planned':
+        return 'Planejado';
       default:
-        return "Indisponível";
+        return 'Indisponível';
     }
   };
 
@@ -337,8 +337,8 @@ const SectionProjects = ({
           </div>
 
           <h2 className="font-space mb-4 text-2xl font-bold md:text-4xl lg:text-5xl xl:text-6xl">
-            Veja os{" "}
-            <span className="text-electric-500">{projects.length}+</span>{" "}
+            Veja os{' '}
+            <span className="text-electric-500">{projects.length}+</span>{' '}
             Projetos <span className="text-electric-500">Impactantes</span>
           </h2>
           <p className="mx-auto max-w-3xl text-sm text-gray-400 md:text-base lg:text-lg xl:text-xl">
@@ -383,7 +383,7 @@ const SectionProjects = ({
                 </div>
                 <ChevronDown
                   size={16}
-                  className={`transition-transform ${showFilterDropdown ? "rotate-180" : ""}`}
+                  className={`transition-transform ${showFilterDropdown ? 'rotate-180' : ''}`}
                 />
               </button>
 
@@ -415,8 +415,8 @@ const SectionProjects = ({
                   onClick={() => handleFilterChange(category)}
                   className={`rounded-lg px-3 py-2 text-sm transition-colors ${
                     filter === category
-                      ? "bg-electric-500 text-white"
-                      : "bg-gray-800/50 text-gray-400 hover:bg-gray-700/50"
+                      ? 'bg-electric-500 text-white'
+                      : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700/50'
                   }`}
                 >
                   {category} ({getProjectCountByCategory(category)})
@@ -426,7 +426,7 @@ const SectionProjects = ({
 
             {/* Contador de resultados */}
             <div className="text-sm text-gray-500">
-              Mostrando {Math.min(visibleProjects, filteredProjects.length)} de{" "}
+              Mostrando {Math.min(visibleProjects, filteredProjects.length)} de{' '}
               {filteredProjects.length} projetos
             </div>
           </div>
@@ -540,7 +540,7 @@ const SectionProjects = ({
               className="group relative overflow-hidden rounded-xl bg-gradient-to-r from-gray-800 to-gray-900 px-8 py-3 font-semibold transition-all hover:from-gray-700 hover:to-gray-800 disabled:opacity-50"
             >
               <span className="relative z-10">
-                {isLoading ? "Carregando..." : "Carregar Mais Projetos"}
+                {isLoading ? 'Carregando...' : 'Carregar Mais Projetos'}
               </span>
               <div className="group-hover:animate-shine absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover:translate-x-full" />
             </button>
@@ -559,8 +559,8 @@ const SectionProjects = ({
               Nenhum projeto encontrado
             </h3>
             <p className="text-gray-500">
-              Não encontramos resultados para &ldquo;{searchQuery}&rdquo;{" "}
-              {filter !== "Todos" && `na categoria ${filter}`}
+              Não encontramos resultados para &ldquo;{searchQuery}&rdquo;{' '}
+              {filter !== 'Todos' && `na categoria ${filter}`}
             </p>
           </motion.div>
         )}

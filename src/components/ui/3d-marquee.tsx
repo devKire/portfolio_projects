@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { motion } from "framer-motion";
+import { motion } from 'framer-motion';
 
-import { cn } from "@/lib/utils";
+import { cn } from '@/lib/utils';
 
 export const ThreeDMarquee = ({
   images,
@@ -20,15 +20,15 @@ export const ThreeDMarquee = ({
   return (
     <div
       className={cn(
-        "mx-auto block h-[600px] overflow-hidden rounded-2xl max-sm:h-100",
-        className,
+        'mx-auto block h-[600px] overflow-hidden rounded-2xl max-sm:h-100',
+        className
       )}
     >
       <div className="flex size-full items-center justify-center">
         <div className="size-[1720px] shrink-0 scale-50 sm:scale-75 lg:scale-100">
           <div
             style={{
-              transform: "rotateX(55deg) rotateY(0deg) rotateZ(-45deg)",
+              transform: 'rotateX(55deg) rotateY(0deg) rotateZ(-45deg)',
             }}
             className="relative top-96 right-[50%] grid size-full origin-top-left grid-cols-4 gap-8 transform-3d"
           >
@@ -38,9 +38,9 @@ export const ThreeDMarquee = ({
                 transition={{
                   duration: colIndex % 2 === 0 ? 10 : 15,
                   repeat: Infinity,
-                  repeatType: "reverse",
+                  repeatType: 'reverse',
                 }}
-                key={colIndex + "marquee"}
+                key={colIndex + 'marquee'}
                 className="flex flex-col items-start gap-8"
               >
                 <GridLineVertical className="-left-4" offset="80px" />
@@ -53,7 +53,7 @@ export const ThreeDMarquee = ({
                       }}
                       transition={{
                         duration: 0.3,
-                        ease: "easeInOut",
+                        ease: 'easeInOut',
                       }}
                       key={imageIndex + image}
                       src={image}
@@ -84,25 +84,25 @@ const GridLineHorizontal = ({
     <div
       style={
         {
-          "--background": "#ffffff",
-          "--color": "rgba(0, 0, 0, 0.2)",
-          "--height": "1px",
-          "--width": "5px",
-          "--fade-stop": "90%",
-          "--offset": offset || "200px", //-100px if you want to keep the line inside
-          "--color-dark": "rgba(255, 255, 255, 0.2)",
-          maskComposite: "exclude",
+          '--background': '#ffffff',
+          '--color': 'rgba(0, 0, 0, 0.2)',
+          '--height': '1px',
+          '--width': '5px',
+          '--fade-stop': '90%',
+          '--offset': offset || '200px', //-100px if you want to keep the line inside
+          '--color-dark': 'rgba(255, 255, 255, 0.2)',
+          maskComposite: 'exclude',
         } as React.CSSProperties
       }
       className={cn(
-        "absolute left-[calc(var(--offset)/2*-1)] h-[var(--height)] w-[calc(100%+var(--offset))]",
-        "bg-[linear-gradient(to_right,var(--color),var(--color)_50%,transparent_0,transparent)]",
-        "[background-size:var(--width)_var(--height)]",
-        "[mask:linear-gradient(to_left,var(--background)_var(--fade-stop),transparent),_linear-gradient(to_right,var(--background)_var(--fade-stop),transparent),_linear-gradient(black,black)]",
-        "[mask-composite:exclude]",
-        "z-30",
-        "dark:bg-[linear-gradient(to_right,var(--color-dark),var(--color-dark)_50%,transparent_0,transparent)]",
-        className,
+        'absolute left-[calc(var(--offset)/2*-1)] h-[var(--height)] w-[calc(100%+var(--offset))]',
+        'bg-[linear-gradient(to_right,var(--color),var(--color)_50%,transparent_0,transparent)]',
+        '[background-size:var(--width)_var(--height)]',
+        '[mask:linear-gradient(to_left,var(--background)_var(--fade-stop),transparent),_linear-gradient(to_right,var(--background)_var(--fade-stop),transparent),_linear-gradient(black,black)]',
+        '[mask-composite:exclude]',
+        'z-30',
+        'dark:bg-[linear-gradient(to_right,var(--color-dark),var(--color-dark)_50%,transparent_0,transparent)]',
+        className
       )}
     ></div>
   );
@@ -119,25 +119,25 @@ const GridLineVertical = ({
     <div
       style={
         {
-          "--background": "#ffffff",
-          "--color": "rgba(0, 0, 0, 0.2)",
-          "--height": "5px",
-          "--width": "1px",
-          "--fade-stop": "90%",
-          "--offset": offset || "150px", //-100px if you want to keep the line inside
-          "--color-dark": "rgba(255, 255, 255, 0.2)",
-          maskComposite: "exclude",
+          '--background': '#ffffff',
+          '--color': 'rgba(0, 0, 0, 0.2)',
+          '--height': '5px',
+          '--width': '1px',
+          '--fade-stop': '90%',
+          '--offset': offset || '150px', //-100px if you want to keep the line inside
+          '--color-dark': 'rgba(255, 255, 255, 0.2)',
+          maskComposite: 'exclude',
         } as React.CSSProperties
       }
       className={cn(
-        "absolute top-[calc(var(--offset)/2*-1)] h-[calc(100%+var(--offset))] w-[var(--width)]",
-        "bg-[linear-gradient(to_bottom,var(--color),var(--color)_50%,transparent_0,transparent)]",
-        "[background-size:var(--width)_var(--height)]",
-        "[mask:linear-gradient(to_top,var(--background)_var(--fade-stop),transparent),_linear-gradient(to_bottom,var(--background)_var(--fade-stop),transparent),_linear-gradient(black,black)]",
-        "[mask-composite:exclude]",
-        "z-30",
-        "dark:bg-[linear-gradient(to_bottom,var(--color-dark),var(--color-dark)_50%,transparent_0,transparent)]",
-        className,
+        'absolute top-[calc(var(--offset)/2*-1)] h-[calc(100%+var(--offset))] w-[var(--width)]',
+        'bg-[linear-gradient(to_bottom,var(--color),var(--color)_50%,transparent_0,transparent)]',
+        '[background-size:var(--width)_var(--height)]',
+        '[mask:linear-gradient(to_top,var(--background)_var(--fade-stop),transparent),_linear-gradient(to_bottom,var(--background)_var(--fade-stop),transparent),_linear-gradient(black,black)]',
+        '[mask-composite:exclude]',
+        'z-30',
+        'dark:bg-[linear-gradient(to_bottom,var(--color-dark),var(--color-dark)_50%,transparent_0,transparent)]',
+        className
       )}
     ></div>
   );

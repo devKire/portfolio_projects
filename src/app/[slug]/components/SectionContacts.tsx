@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { ContactInfo, LandingPage } from "@prisma/client";
-import { motion } from "framer-motion";
+import { ContactInfo, LandingPage } from '@prisma/client';
+import { motion } from 'framer-motion';
 import {
   ArrowRight,
   Calendar,
@@ -14,8 +14,8 @@ import {
   Phone,
   Sparkles,
   UserRound,
-} from "lucide-react";
-import { useState } from "react";
+} from 'lucide-react';
+import { useState } from 'react';
 
 interface SectionContactsProps {
   contact: ContactInfo;
@@ -35,39 +35,39 @@ const SectionContacts = ({ contact }: SectionContactsProps) => {
   const contactMethods = [
     {
       icon: MessageCircle,
-      title: "WhatsApp",
-      description: "Resposta rápida e direta",
-      action: "Enviar mensagem",
-      href: contact.whatsappLink || "#",
+      title: 'WhatsApp',
+      description: 'Resposta rápida e direta',
+      action: 'Enviar mensagem',
+      href: contact.whatsappLink || '#',
       primary: true,
-      color: "text-green-500",
-      bgColor: "bg-green-500/10",
-      borderColor: "border-green-500/30",
+      color: 'text-green-500',
+      bgColor: 'bg-green-500/10',
+      borderColor: 'border-green-500/30',
     },
     {
       icon: Mail,
-      title: "Email",
+      title: 'Email',
       description: contact.email,
-      action: copiedEmail ? "Copiado! ✓" : "Copiar email",
+      action: copiedEmail ? 'Copiado! ✓' : 'Copiar email',
       href: `mailto:${contact.email}`,
       primary: false,
-      color: "text-blue-500",
-      bgColor: "bg-blue-500/10",
-      borderColor: "border-blue-500/30",
+      color: 'text-blue-500',
+      bgColor: 'bg-blue-500/10',
+      borderColor: 'border-blue-500/30',
       onClick: copyEmailToClipboard,
     },
     ...(contact.phone
       ? [
           {
             icon: Phone,
-            title: "Telefone",
+            title: 'Telefone',
             description: contact.phone,
-            action: "Ligar agora",
+            action: 'Ligar agora',
             href: `tel:${contact.phone}`,
             primary: false,
-            color: "text-purple-500",
-            bgColor: "bg-purple-500/10",
-            borderColor: "border-purple-500/30",
+            color: 'text-purple-500',
+            bgColor: 'bg-purple-500/10',
+            borderColor: 'border-purple-500/30',
           },
         ]
       : []),
@@ -75,14 +75,14 @@ const SectionContacts = ({ contact }: SectionContactsProps) => {
       ? [
           {
             icon: Linkedin,
-            title: "LinkedIn",
-            description: "Conecte-se profissionalmente",
-            action: "Conectar",
+            title: 'LinkedIn',
+            description: 'Conecte-se profissionalmente',
+            action: 'Conectar',
             href: contact.linkedinLink,
             primary: false,
-            color: "text-blue-400",
-            bgColor: "bg-blue-500/10",
-            borderColor: "border-blue-500/30",
+            color: 'text-blue-400',
+            bgColor: 'bg-blue-500/10',
+            borderColor: 'border-blue-500/30',
           },
         ]
       : []),
@@ -90,14 +90,14 @@ const SectionContacts = ({ contact }: SectionContactsProps) => {
       ? [
           {
             icon: Instagram,
-            title: "Instagram",
-            description: "Meu dia a dia e trabalhos",
-            action: "Seguir",
+            title: 'Instagram',
+            description: 'Meu dia a dia e trabalhos',
+            action: 'Seguir',
             href: contact.instagramLink,
             primary: false,
-            color: "text-pink-500",
-            bgColor: "bg-pink-500/10",
-            borderColor: "border-pink-500/30",
+            color: 'text-pink-500',
+            bgColor: 'bg-pink-500/10',
+            borderColor: 'border-pink-500/30',
           },
         ]
       : []),
@@ -105,23 +105,23 @@ const SectionContacts = ({ contact }: SectionContactsProps) => {
       ? [
           {
             icon: Facebook,
-            title: "Facebook",
-            description: "Me acompanhe no Facebook",
-            action: "Seguir",
+            title: 'Facebook',
+            description: 'Me acompanhe no Facebook',
+            action: 'Seguir',
             href: contact.facebookLink,
             primary: false,
-            color: "text-blue-500",
-            bgColor: "bg-blue-500/10",
-            borderColor: "border-blue-500/30",
+            color: 'text-blue-500',
+            bgColor: 'bg-blue-500/10',
+            borderColor: 'border-blue-500/30',
           },
         ]
       : []),
-  ].filter((method) => method.href !== "#");
+  ].filter((method) => method.href !== '#');
 
   const availability = [
-    { icon: Clock, text: "Resposta em até 24h" },
-    { icon: Calendar, text: "Disponível para novos projetos" },
-    { icon: Sparkles, text: "Consulta inicial gratuita" },
+    { icon: Clock, text: 'Resposta em até 24h' },
+    { icon: Calendar, text: 'Disponível para novos projetos' },
+    { icon: Sparkles, text: 'Consulta inicial gratuita' },
   ];
 
   return (
@@ -169,7 +169,7 @@ const SectionContacts = ({ contact }: SectionContactsProps) => {
             initial={{ opacity: 0, scale: 0 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            transition={{ delay: 0.2, type: "spring" }}
+            transition={{ delay: 0.2, type: 'spring' }}
             className="mb-6 inline-flex items-center gap-2 rounded-full border border-gray-700 bg-gray-800/50 px-6 py-3 backdrop-blur-sm"
           >
             <UserRound size={20} className="text-electric-500" />
@@ -198,10 +198,10 @@ const SectionContacts = ({ contact }: SectionContactsProps) => {
             <motion.div
               animate={{
                 background: [
-                  "radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 50%)",
-                  "radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.1) 0%, transparent 50%)",
-                  "radial-gradient(circle at 40% 80%, rgba(16, 185, 129, 0.1) 0%, transparent 50%)",
-                  "radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 50%)",
+                  'radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 50%)',
+                  'radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.1) 0%, transparent 50%)',
+                  'radial-gradient(circle at 40% 80%, rgba(16, 185, 129, 0.1) 0%, transparent 50%)',
+                  'radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 50%)',
                 ],
               }}
               transition={{ duration: 8, repeat: Infinity }}
@@ -239,12 +239,12 @@ const SectionContacts = ({ contact }: SectionContactsProps) => {
                 className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center"
               >
                 <motion.a
-                  href={contact.whatsappLink || "#"}
+                  href={contact.whatsappLink || '#'}
                   target="_blank"
                   rel="noopener noreferrer"
                   whileHover={{
                     scale: 1.05,
-                    boxShadow: "0 0 50px rgba(34, 197, 94, 0.5)",
+                    boxShadow: '0 0 50px rgba(34, 197, 94, 0.5)',
                   }}
                   whileTap={{ scale: 0.95 }}
                   className="group font-inter relative flex items-center gap-3 overflow-hidden rounded-full bg-gradient-to-r from-green-500 to-green-600 px-8 py-4 font-semibold text-white shadow-2xl shadow-green-500/25 transition-all duration-300 hover:from-green-600 hover:to-green-700"
@@ -265,7 +265,7 @@ const SectionContacts = ({ contact }: SectionContactsProps) => {
                   className="font-inter hover:border-electric-500 hover:shadow-electric-500/20 flex items-center gap-3 rounded-full border-2 border-gray-600 px-8 py-4 font-semibold text-gray-300 backdrop-blur-sm transition-all duration-300 hover:text-white hover:shadow-lg"
                 >
                   <Mail size={20} />
-                  {copiedEmail ? "Email Copiado! ✓" : "Copiar Email"}
+                  {copiedEmail ? 'Email Copiado! ✓' : 'Copiar Email'}
                 </motion.button>
               </motion.div>
             </div>
@@ -310,7 +310,7 @@ const SectionContacts = ({ contact }: SectionContactsProps) => {
                     <div
                       className={`rounded-xl p-3 transition-all duration-300 ${
                         method.primary
-                          ? "bg-green-500 text-white"
+                          ? 'bg-green-500 text-white'
                           : `${method.bgColor} ${method.color} group-hover:scale-110`
                       }`}
                     >
@@ -320,7 +320,7 @@ const SectionContacts = ({ contact }: SectionContactsProps) => {
                     <div className="flex-1">
                       <h4
                         className={`font-space mb-2 text-lg font-semibold ${
-                          method.primary ? "text-white" : "text-white"
+                          method.primary ? 'text-white' : 'text-white'
                         }`}
                       >
                         {method.title}
@@ -333,7 +333,7 @@ const SectionContacts = ({ contact }: SectionContactsProps) => {
                     <span
                       className={`font-inter text-sm font-medium transition-colors duration-300 ${
                         method.primary
-                          ? "text-green-400"
+                          ? 'text-green-400'
                           : `${method.color} group-hover:text-electric-500`
                       }`}
                     >

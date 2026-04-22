@@ -1,8 +1,8 @@
-"use server";
+'use server';
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath } from 'next/cache';
 
-import { db } from "@/lib/prisma";
+import { db } from '@/lib/prisma';
 
 export type ProjectFormData = {
   title: string;
@@ -14,7 +14,7 @@ export type ProjectFormData = {
   liveUrl?: string;
   githubUrl?: string;
   featured: boolean;
-  status: "completed" | "in-progress" | "planned";
+  status: 'completed' | 'in-progress' | 'planned';
   accentColor?: string;
   landingpageId: string;
 };
@@ -30,12 +30,12 @@ export async function getProjects(landingpageId: string) {
   try {
     const projects = await db.project.findMany({
       where: { landingpageId },
-      orderBy: { position: "asc" },
+      orderBy: { position: 'asc' },
     });
     return projects;
   } catch (error) {
-    console.error("Error fetching projects:", error);
-    throw new Error("Failed to fetch projects");
+    console.error('Error fetching projects:', error);
+    throw new Error('Failed to fetch projects');
   }
 }
 
@@ -47,8 +47,8 @@ export async function getProjectById(id: string) {
     });
     return project;
   } catch (error) {
-    console.error("Error fetching project:", error);
-    throw new Error("Failed to fetch project");
+    console.error('Error fetching project:', error);
+    throw new Error('Failed to fetch project');
   }
 }
 
@@ -58,7 +58,7 @@ export async function createProject(data: ProjectFormData) {
     // Encontrar a última posição
     const lastProject = await db.project.findFirst({
       where: { landingpageId: data.landingpageId },
-      orderBy: { position: "desc" },
+      orderBy: { position: 'desc' },
     });
 
     const position = lastProject ? lastProject.position + 1 : 0;
@@ -70,20 +70,20 @@ export async function createProject(data: ProjectFormData) {
       },
     });
 
-    revalidatePath("/admin/projects");
-    revalidatePath("/"); // Revalida a página principal onde os projetos são exibidos
+    revalidatePath('/admin/projects');
+    revalidatePath('/'); // Revalida a página principal onde os projetos são exibidos
     revalidatePath(`/portfolio/${data.landingpageId}`); // Se tiver página específica
     return project;
   } catch (error) {
-    console.error("Error creating project:", error);
-    throw new Error("Failed to create project");
+    console.error('Error creating project:', error);
+    throw new Error('Failed to create project');
   }
 }
 
 // Atualizar projeto
 export async function updateProject(
   id: string,
-  data: Partial<ProjectFormData>,
+  data: Partial<ProjectFormData>
 ) {
   try {
     const project = await db.project.update({
@@ -91,13 +91,13 @@ export async function updateProject(
       data,
     });
 
-    revalidatePath("/admin/projects");
-    revalidatePath("/");
+    revalidatePath('/admin/projects');
+    revalidatePath('/');
     revalidatePath(`/portfolio/${project.landingpageId}`);
     return project;
   } catch (error) {
-    console.error("Error updating project:", error);
-    throw new Error("Failed to update project");
+    console.error('Error updating project:', error);
+    throw new Error('Failed to update project');
   }
 }
 
@@ -111,7 +111,7 @@ export async function deleteProject(id: string) {
     });
 
     if (!project) {
-      throw new Error("Project not found");
+      throw new Error('Project not found');
     }
 
     // Deletar o projeto
@@ -130,13 +130,13 @@ export async function deleteProject(id: string) {
       },
     });
 
-    revalidatePath("/admin/projects");
-    revalidatePath("/");
+    revalidatePath('/admin/projects');
+    revalidatePath('/');
     revalidatePath(`/portfolio/${project.landingpageId}`);
     return { success: true };
   } catch (error) {
-    console.error("Error deleting project:", error);
-    throw new Error("Failed to delete project");
+    console.error('Error deleting project:', error);
+    throw new Error('Failed to delete project');
   }
 }
 
@@ -160,14 +160,14 @@ export async function reorderProjects(projectsData: ReorderProjectData[]) {
     });
 
     if (firstProject) {
-      revalidatePath("/admin/projects");
-      revalidatePath("/");
+      revalidatePath('/admin/projects');
+      revalidatePath('/');
       revalidatePath(`/portfolio/${firstProject.landingpageId}`);
     }
 
     return { success: true };
   } catch (error) {
-    console.error("Error reordering projects:", error);
-    throw new Error("Failed to reorder projects");
+    console.error('Error reordering projects:', error);
+    throw new Error('Failed to reorder projects');
   }
 }

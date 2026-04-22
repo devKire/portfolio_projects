@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-"use client";
+'use client';
 
 import {
   BarChart3,
@@ -16,15 +16,15 @@ import {
   TrendingUp,
   Twitter,
   Users,
-} from "lucide-react";
-import Link from "next/link";
-import { useEffect, useState } from "react";
+} from 'lucide-react';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
 import {
   DashboardStats as DashboardStatsType,
   getDashboardStats,
   getDetailedStats,
-} from "@/app/actions/dashboard";
+} from '@/app/actions/dashboard';
 
 // Interface estendida para incluir pageViewsByDay e recentActivities
 type EnhancedDashboardStats = DashboardStatsType & {
@@ -32,7 +32,7 @@ type EnhancedDashboardStats = DashboardStatsType & {
   recentActivities?: {
     title: string;
     time: string;
-    type: "view" | "comment" | "follower" | "update";
+    type: 'view' | 'comment' | 'follower' | 'update';
   }[];
 };
 
@@ -42,11 +42,11 @@ interface DashboardProps {
 
 export default function Dashboard({ stats: initialStats }: DashboardProps) {
   const [stats, setStats] = useState<EnhancedDashboardStats | null>(
-    initialStats || null,
+    initialStats || null
   );
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [timeRange, setTimeRange] = useState<"7d" | "30d" | "90d">("30d");
+  const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d'>('30d');
   const [detailedStats, setDetailedStats] = useState<any>(null);
 
   useEffect(() => {
@@ -57,7 +57,7 @@ export default function Dashboard({ stats: initialStats }: DashboardProps) {
 
   useEffect(() => {
     loadDetailedStats();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeRange]);
 
   const loadStats = async () => {
@@ -66,7 +66,7 @@ export default function Dashboard({ stats: initialStats }: DashboardProps) {
       const data = await getDashboardStats();
       setStats(data);
     } catch (error) {
-      console.error("Error loading dashboard stats:", error);
+      console.error('Error loading dashboard stats:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -78,7 +78,7 @@ export default function Dashboard({ stats: initialStats }: DashboardProps) {
       const data = await getDetailedStats(timeRange);
       setDetailedStats(data);
     } catch (error) {
-      console.error("Error loading detailed stats:", error);
+      console.error('Error loading detailed stats:', error);
     }
   };
 
@@ -121,46 +121,46 @@ export default function Dashboard({ stats: initialStats }: DashboardProps) {
 
   const statCards = [
     {
-      title: "Visualizações do Portfólio",
-      value: stats.portfolioViews.toLocaleString("pt-BR"),
+      title: 'Visualizações do Portfólio',
+      value: stats.portfolioViews.toLocaleString('pt-BR'),
       change: calculateChange(stats.portfolioViews, 1000),
       icon: Eye,
-      color: "from-blue-500 to-blue-600",
+      color: 'from-blue-500 to-blue-600',
       description: `Últimos 30 dias`,
     },
     {
-      title: "Seguidores LinkedIn",
-      value: stats.linkedinFollowers.toLocaleString("pt-BR"),
+      title: 'Seguidores LinkedIn',
+      value: stats.linkedinFollowers.toLocaleString('pt-BR'),
       change: calculateChange(stats.linkedinFollowers, 500),
       icon: Linkedin,
-      color: "from-blue-400 to-blue-500",
-      description: "Perfil profissional",
-      link: "#",
+      color: 'from-blue-400 to-blue-500',
+      description: 'Perfil profissional',
+      link: '#',
     },
     {
-      title: "Seguidores GitHub",
-      value: stats.githubFollowers.toLocaleString("pt-BR"),
+      title: 'Seguidores GitHub',
+      value: stats.githubFollowers.toLocaleString('pt-BR'),
       change: calculateChange(stats.githubFollowers, 250),
       icon: Github,
-      color: "from-gray-500 to-gray-600",
-      description: "Repositórios públicos",
-      link: "#",
+      color: 'from-gray-500 to-gray-600',
+      description: 'Repositórios públicos',
+      link: '#',
     },
     {
-      title: "Comentários Redes Sociais",
-      value: stats.socialMediaComments.toLocaleString("pt-BR"),
+      title: 'Comentários Redes Sociais',
+      value: stats.socialMediaComments.toLocaleString('pt-BR'),
       change: calculateChange(stats.socialMediaComments, 50),
       icon: MessageSquare,
-      color: "from-purple-500 to-purple-600",
-      description: "Interações sociais",
+      color: 'from-purple-500 to-purple-600',
+      description: 'Interações sociais',
     },
     {
-      title: "Projetos Ativos",
+      title: 'Projetos Ativos',
       value: stats.projectsCount.toString(),
-      change: "+2",
+      change: '+2',
       icon: Folder,
-      color: "from-green-500 to-green-600",
-      description: "No portfólio",
+      color: 'from-green-500 to-green-600',
+      description: 'No portfólio',
     },
   ];
 
@@ -180,14 +180,14 @@ export default function Dashboard({ stats: initialStats }: DashboardProps) {
 
         <div className="flex items-center gap-3">
           <div className="flex rounded-lg border border-gray-700 bg-gray-900/50 p-1">
-            {(["7d", "30d", "90d"] as const).map((range) => (
+            {(['7d', '30d', '90d'] as const).map((range) => (
               <button
                 key={range}
                 onClick={() => setTimeRange(range)}
                 className={`rounded-md px-3 py-1 text-sm transition-colors ${
                   timeRange === range
-                    ? "bg-blue-500 text-white"
-                    : "text-gray-400 hover:text-white"
+                    ? 'bg-blue-500 text-white'
+                    : 'text-gray-400 hover:text-white'
                 }`}
               >
                 {range}
@@ -201,9 +201,9 @@ export default function Dashboard({ stats: initialStats }: DashboardProps) {
             className="flex items-center gap-2 rounded-lg border border-gray-700 bg-gray-900/50 px-3 py-2 text-sm text-gray-400 transition-colors hover:bg-gray-800 hover:text-white disabled:opacity-50"
           >
             <RefreshCw
-              className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+              className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`}
             />
-            {refreshing ? "Atualizando..." : "Atualizar"}
+            {refreshing ? 'Atualizando...' : 'Atualizar'}
           </button>
         </div>
       </div>
@@ -271,7 +271,7 @@ export default function Dashboard({ stats: initialStats }: DashboardProps) {
               <div className="flex h-full items-end justify-between gap-1">
                 {pageViewsByDay.map((day, index) => {
                   const maxViews = Math.max(
-                    ...pageViewsByDay.map((d) => d.views),
+                    ...pageViewsByDay.map((d) => d.views)
                   );
                   const height =
                     maxViews > 0 ? (day.views / maxViews) * 100 : 0;
@@ -319,7 +319,7 @@ export default function Dashboard({ stats: initialStats }: DashboardProps) {
                 e.preventDefault();
                 // Aqui você precisaria de uma forma de mudar a aba para 'projects'
                 // Como não temos acesso ao contexto, vamos redirecionar?
-                window.location.href = "/admin#projects";
+                window.location.href = '/admin#projects';
               }}
             >
               Ver todos os projetos →
@@ -347,25 +347,25 @@ export default function Dashboard({ stats: initialStats }: DashboardProps) {
                   <div className="flex items-start gap-3">
                     <div
                       className={`mt-1 rounded-full p-2 ${
-                        activity.type === "comment"
-                          ? "bg-blue-500/20"
-                          : activity.type === "view"
-                            ? "bg-purple-500/20"
-                            : activity.type === "follower"
-                              ? "bg-green-500/20"
-                              : "bg-yellow-500/20"
+                        activity.type === 'comment'
+                          ? 'bg-blue-500/20'
+                          : activity.type === 'view'
+                            ? 'bg-purple-500/20'
+                            : activity.type === 'follower'
+                              ? 'bg-green-500/20'
+                              : 'bg-yellow-500/20'
                       }`}
                     >
-                      {activity.type === "comment" && (
+                      {activity.type === 'comment' && (
                         <MessageSquare className="h-4 w-4 text-blue-400" />
                       )}
-                      {activity.type === "view" && (
+                      {activity.type === 'view' && (
                         <Eye className="h-4 w-4 text-purple-400" />
                       )}
-                      {activity.type === "follower" && (
+                      {activity.type === 'follower' && (
                         <Users className="h-4 w-4 text-green-400" />
                       )}
-                      {activity.type === "update" && (
+                      {activity.type === 'update' && (
                         <Folder className="h-4 w-4 text-yellow-400" />
                       )}
                     </div>
@@ -424,7 +424,7 @@ export default function Dashboard({ stats: initialStats }: DashboardProps) {
                     </div>
                     <div className="text-sm text-gray-400">
                       {((page.views / detailedStats.totalViews) * 100).toFixed(
-                        1,
+                        1
                       )}
                       %
                     </div>
@@ -472,7 +472,7 @@ export default function Dashboard({ stats: initialStats }: DashboardProps) {
                         </div>
                       </div>
                     );
-                  },
+                  }
                 )
               ) : (
                 <div className="py-8 text-center">
@@ -495,22 +495,22 @@ export default function Dashboard({ stats: initialStats }: DashboardProps) {
 
 // Função auxiliar para calcular mudança percentual
 function calculateChange(current: number, previous: number): string {
-  if (previous === 0) return current > 0 ? "+100%" : "0%";
+  if (previous === 0) return current > 0 ? '+100%' : '0%';
 
   const change = ((current - previous) / previous) * 100;
-  return `${change >= 0 ? "+" : ""}${Math.round(change)}%`;
+  return `${change >= 0 ? '+' : ''}${Math.round(change)}%`;
 }
 
 // Função para obter ícone de rede social
 function getSocialIcon(platform: string) {
   switch (platform.toLowerCase()) {
-    case "github":
+    case 'github':
       return Github;
-    case "linkedin":
+    case 'linkedin':
       return Linkedin;
-    case "twitter":
+    case 'twitter':
       return Twitter;
-    case "instagram":
+    case 'instagram':
       return Instagram;
     default:
       return Globe;

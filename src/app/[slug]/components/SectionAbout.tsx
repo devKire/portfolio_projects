@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { ContactInfo, LandingPage } from "@prisma/client";
-import { motion } from "framer-motion";
+import { ContactInfo, LandingPage } from '@prisma/client';
+import { motion } from 'framer-motion';
 import {
   ArrowUpRight,
   BarChart3,
@@ -14,9 +14,9 @@ import {
   ShoppingCart,
   Star,
   Users,
-} from "lucide-react";
-import Image from "next/image";
-import React from "react";
+} from 'lucide-react';
+import Image from 'next/image';
+import React from 'react';
 interface SectionAboutProps {
   contact: ContactInfo;
   landingpage: LandingPage;
@@ -25,61 +25,61 @@ interface SectionAboutProps {
 // Serviços substituindo as habilidades
 const services = [
   {
-    name: "Desenvolvimento Web",
+    name: 'Desenvolvimento Web',
     icon: Code,
     description:
-      "Criação de sites modernos e otimizados com React, Next.js e TypeScript.",
-    features: ["Responsivo", "Otimizado para SEO", "Alta Performance"],
+      'Criação de sites modernos e otimizados com React, Next.js e TypeScript.',
+    features: ['Responsivo', 'Otimizado para SEO', 'Alta Performance'],
   },
   {
-    name: "UI/UX Design",
+    name: 'UI/UX Design',
     icon: Palette,
     description:
-      "Designs intuitivos e atraentes que aumentam a conversão e melhoram a experiência do usuário.",
-    features: ["Prototipagem", "Design System", "User Testing"],
+      'Designs intuitivos e atraentes que aumentam a conversão e melhoram a experiência do usuário.',
+    features: ['Prototipagem', 'Design System', 'User Testing'],
   },
   {
-    name: "E-commerce",
+    name: 'E-commerce',
     icon: ShoppingCart,
     description:
-      "Lojas virtuais completas e seguras com integração de pagamentos e gestão fácil.",
-    features: ["Pagamentos Online", "Gestão de Estoque", "Dashboard"],
+      'Lojas virtuais completas e seguras com integração de pagamentos e gestão fácil.',
+    features: ['Pagamentos Online', 'Gestão de Estoque', 'Dashboard'],
   },
   {
-    name: "Landing Pages",
+    name: 'Landing Pages',
     icon: Globe,
     description:
-      "Páginas de alta conversão para divulgar produtos, serviços ou campanhas.",
-    features: ["Copy Otimizado", "A/B Testing", "Analytics"],
+      'Páginas de alta conversão para divulgar produtos, serviços ou campanhas.',
+    features: ['Copy Otimizado', 'A/B Testing', 'Analytics'],
   },
   {
-    name: "Consultoria Tech",
+    name: 'Consultoria Tech',
     icon: BarChart3,
     description:
-      "Análise e estratégia para otimizar a presença digital do seu negócio.",
-    features: ["Análise Técnica", "Roadmap", "Mentoria"],
+      'Análise e estratégia para otimizar a presença digital do seu negócio.',
+    features: ['Análise Técnica', 'Roadmap', 'Mentoria'],
   },
 ];
 
 const stats = [
-  { number: "10+", label: "Projetos Desenvolvidos", icon: Rocket },
-  { number: "100%", label: "Capacitado", icon: Users },
-  { number: "100%", label: "Dedicação em Cada Projeto", icon: Star },
-  { number: "∞", label: "Cafés & Criatividade", icon: Coffee },
+  { number: '10+', label: 'Projetos Desenvolvidos', icon: Rocket },
+  { number: '100%', label: 'Capacitado', icon: Users },
+  { number: '100%', label: 'Dedicação em Cada Projeto', icon: Star },
+  { number: '∞', label: 'Cafés & Criatividade', icon: Coffee },
 ];
 
 const technologies = [
-  { name: "Next.js", color: "text-white" },
-  { name: "React", color: "text-cyan-400" },
-  { name: "TypeScript", color: "text-blue-500" },
-  { name: "Tailwind CSS", color: "text-teal-400" },
-  { name: "Node.js", color: "text-green-500" },
-  { name: "Prisma", color: "text-white" },
-  { name: "MySQL", color: "text-blue-400" },
-  { name: "Firebase", color: "text-yellow-400" },
-  { name: "ShadCN", color: "text-white" },
-  { name: "Stripe", color: "text-purple-500" },
-  { name: "Vite", color: "text-purple-400" },
+  { name: 'Next.js', color: 'text-white' },
+  { name: 'React', color: 'text-cyan-400' },
+  { name: 'TypeScript', color: 'text-blue-500' },
+  { name: 'Tailwind CSS', color: 'text-teal-400' },
+  { name: 'Node.js', color: 'text-green-500' },
+  { name: 'Prisma', color: 'text-white' },
+  { name: 'MySQL', color: 'text-blue-400' },
+  { name: 'Firebase', color: 'text-yellow-400' },
+  { name: 'ShadCN', color: 'text-white' },
+  { name: 'Stripe', color: 'text-purple-500' },
+  { name: 'Vite', color: 'text-purple-400' },
 ];
 
 const SectionAbout = ({ contact, landingpage }: SectionAboutProps) => {
@@ -151,7 +151,7 @@ const SectionAbout = ({ contact, landingpage }: SectionAboutProps) => {
                     initial={{ scale: 0 }}
                     whileInView={{ scale: 1 }}
                     viewport={{ once: true }}
-                    transition={{ delay: 0.5, type: "spring" }}
+                    transition={{ delay: 0.5, type: 'spring' }}
                     className="font-inter absolute -top-3 -right-3 rounded-full bg-gradient-to-r from-green-500 to-green-600 px-4 py-2 text-sm font-semibold text-white shadow-lg"
                   >
                     🚀 Disponível para projetos
@@ -235,12 +235,12 @@ const SectionAbout = ({ contact, landingpage }: SectionAboutProps) => {
                 <p>
                   Sou <strong className="text-white">{landingpage.name}</strong>
                   , um desenvolvedor full-stack apaixonado por criar soluções
-                  digitais que fazem a diferença. Com mais de {experienceYears}{" "}
+                  digitais que fazem a diferença. Com mais de {experienceYears}{' '}
                   anos de experiência, especializo-me em transformar ideias
                   complexas em experiências intuitivas e performáticas.
                 </p>
                 <p>
-                  Minha stack principal inclui{" "}
+                  Minha stack principal inclui{' '}
                   <strong className="text-electric-500">Next.js</strong>,
                   <strong className="text-blue-500"> TypeScript</strong>, e
                   <strong className="text-teal-400"> Tailwind CSS</strong>,
@@ -303,8 +303,8 @@ const SectionAbout = ({ contact, landingpage }: SectionAboutProps) => {
                         whileTap={{ scale: 0.95 }}
                         onClick={() =>
                           document
-                            .getElementById("contato")
-                            ?.scrollIntoView({ behavior: "smooth" })
+                            .getElementById('contato')
+                            ?.scrollIntoView({ behavior: 'smooth' })
                         }
                         className="font-inter text-electric-500 flex gap-2 text-sm font-semibold"
                       >

@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { Eye, EyeOff, Loader2, Lock, LogIn } from "lucide-react";
-import { useState } from "react";
+import { Eye, EyeOff, Loader2, Lock, LogIn } from 'lucide-react';
+import { useState } from 'react';
 
-import { loginAdmin } from "@/app/actions/auth";
+import { loginAdmin } from '@/app/actions/auth';
 
 interface LoginModalProps {
   onLoginSuccess: () => void;
@@ -12,12 +12,12 @@ interface LoginModalProps {
 export default function LoginModal({ onLoginSuccess }: LoginModalProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError("");
+    setError('');
 
     try {
       const formData = new FormData(e.target as HTMLFormElement);
@@ -26,11 +26,11 @@ export default function LoginModal({ onLoginSuccess }: LoginModalProps) {
       if (result.success) {
         onLoginSuccess();
       } else {
-        setError(result.error || "Credenciais inválidas");
+        setError(result.error || 'Credenciais inválidas');
       }
     } catch (err) {
-      console.error("Login error:", err);
-      setError("Erro ao conectar com o servidor");
+      console.error('Login error:', err);
+      setError('Erro ao conectar com o servidor');
     } finally {
       setLoading(false);
     }
@@ -78,7 +78,7 @@ export default function LoginModal({ onLoginSuccess }: LoginModalProps) {
               </label>
               <div className="relative">
                 <input
-                  type={showPassword ? "text" : "password"}
+                  type={showPassword ? 'text' : 'password'}
                   name="password"
                   defaultValue="admin123"
                   className="w-full rounded-lg border border-gray-700 bg-gray-900/50 px-4 py-3 pr-12 text-white placeholder-gray-500 focus:border-transparent focus:ring-2 focus:ring-blue-500 focus:outline-none"
