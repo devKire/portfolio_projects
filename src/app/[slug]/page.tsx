@@ -8,6 +8,7 @@ import Header from './components/Header';
 import SectionAbout from './components/SectionAbout';
 import SectionContacts from './components/SectionContacts';
 import SectionHero from './components/SectionHero';
+
 import SectionProjects from './components/SectionProjects';
 
 interface LandingPageProps {
@@ -19,6 +20,7 @@ const Page = async ({ params }: LandingPageProps) => {
 
   const landingpage = await db.landingPage.findUnique({
     where: { slug },
+
     include: {
       contactInfo: true,
       projects: true,
@@ -38,6 +40,7 @@ const Page = async ({ params }: LandingPageProps) => {
       {/* Seção com imagem de fundo */}
       <div className="bg-dark-950 min-h-screen overflow-x-hidden text-white">
         <Header contact={landingpage.contactInfo} landingpage={landingpage} />
+
         <section id="hero">
           <SectionHero
             contact={landingpage.contactInfo}

@@ -37,20 +37,20 @@ type EnhancedDashboardStats = DashboardStatsType & {
 };
 
 interface DashboardProps {
-  stats: EnhancedDashboardStats;
+  stats?: EnhancedDashboardStats;
 }
 
 export default function Dashboard({ stats: initialStats }: DashboardProps) {
   const [stats, setStats] = useState<EnhancedDashboardStats | null>(
     initialStats || null
   );
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(!initialStats);
   const [refreshing, setRefreshing] = useState(false);
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d'>('30d');
   const [detailedStats, setDetailedStats] = useState<any>(null);
 
   useEffect(() => {
-    if (!initialStats.portfolioViews) {
+    if (!initialStats || !initialStats.portfolioViews) {
       loadStats();
     }
   }, [initialStats]);

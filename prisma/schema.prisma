@@ -19,9 +19,9 @@ model LandingPage {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  contactInfo ContactInfo?
-  projects    Project[]
-  pageViews  PageView[]
+  contactInfo        ContactInfo?
+  projects           Project[]
+  pageViews          PageView[]
   socialInteractions SocialInteraction[]
 }
 
@@ -39,33 +39,40 @@ model ContactInfo {
   landingpageId String      @unique
 }
 
+// Adicione o relacionamento no modelo Project existente
 model Project {
-  id               String   @id @default(uuid())
-  title            String
-  category         String
-  description      String
-  fullDescription  String
-  image            String
-  technologies     String[] // Array de strings
-  liveUrl          String?
-  githubUrl        String?
-  featured         Boolean  @default(false)
-  status           String   @default("completed") // "completed" | "in-progress" | "planned"
-  accentColor      String?  @default("from-gray-500/20 to-gray-600/20")
-  position         Int      @default(0) // Para ordenação
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id              String   @id @default(uuid())
+  title           String
+  category        String
+  description     String
+  fullDescription String
+  image           String
+  technologies    String[]
+  liveUrl         String?
+  githubUrl       String?
+  featured        Boolean  @default(false)
+  status          String   @default("completed")
+  accentColor     String?  @default("from-gray-500/20 to-gray-600/20")
+  position        Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   // Relations
   landingpage   LandingPage @relation(fields: [landingpageId], references: [id], onDelete: Cascade)
   landingpageId String
+  
+  // Adicione esta relação para tasks
+  tasks         Task[]      // Relacionamento com tasks
+  features Feature[]
+  sprints  Sprint[]
 }
+
 
 // Modelo para administrador
 model Admin {
   id        String   @id @default(uuid())
   username  String   @unique
-  password  String   // Armazenaremos hash da senha
+  password  String // Armazenaremos hash da senha
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -75,8 +82,8 @@ model Admin {
 // Modelo para rastreamento de visualizações
 model PageView {
   id        String   @id @default(uuid())
-  page      String   // Ex: 'home', 'projects', 'about'
-  path      String   // URL completa
+  page      String // Ex: 'home', 'projects', 'about'
+  path      String // URL completa
   ip        String?
   userAgent String?
   country   String?
@@ -92,9 +99,9 @@ model PageView {
 // Modelo para interações sociais
 model SocialInteraction {
   id        String   @id @default(uuid())
-  platform  String   // 'linkedin', 'github', 'instagram', etc
-  type      String   // 'follow', 'like', 'comment', 'share'
-  content   String?  // Conteúdo do comentário, etc
+  platform  String // 'linkedin', 'github', 'instagram', etc
+  type      String // 'follow', 'like', 'comment', 'share'
+  content   String? // Conteúdo do comentário, etc
   count     Int      @default(1)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -104,4 +111,120 @@ model SocialInteraction {
   landingpageId String
 
   @@unique([platform, type, landingpageId, createdAt])
+}
+
+// Modelo para Features
+model Feature {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  status      String   @default("planning") // planning, in-progress, completed, cancelled
+  priority    String   @default("medium") // low, medium, high, urgent
+  projectId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project        Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks          Task[]
+}
+
+// Modelo para Sprints
+model Sprint {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  startDate   DateTime
+  endDate     DateTime
+  status      String   @default("planning") // planning, active, completed
+  projectId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project        Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks          Task[]
+}
+
+
+// Template de Tarefas
+model TaskTemplate {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  status      String   @default("pending")
+  priority    String   @default("medium")
+  estimatedHours Int?  @default(0)
+  tags        String[] // Array de tags
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  tasks       Task[]
+}
+
+// Time Tracking
+model TimeEntry {
+  id          String   @id @default(uuid())
+  taskId      String
+  userId      String?
+  description String?
+  hours       Float
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+  
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+}
+
+// Task Dependency
+model TaskDependency {
+  id              String @id @default(uuid())
+  taskId          String
+  dependsOnId     String
+  dependencyType  String @default("blocks") // blocks, relates_to
+  
+  task            Task   @relation("TaskDependencies", fields: [taskId], references: [id])
+  dependsOn       Task   @relation("DependsOnTasks", fields: [dependsOnId], references: [id])
+  
+  @@unique([taskId, dependsOnId])
+}
+model Task {
+  id             String    @id @default(uuid())
+  title          String
+  description    String?
+  status         String    @default("pending")
+  priority       String    @default("medium")
+  dueDate        DateTime?
+  estimatedHours Int?      @default(0)
+  actualHours    Int?      @default(0)
+  position       Int       @default(0)
+
+  tags            String[] @default([])
+  recurrence      String?
+  recurrenceEnd   DateTime?
+  completedAt     DateTime?
+
+  // Novas relações
+  templateId      String?
+  template        TaskTemplate? @relation(fields: [templateId], references: [id])
+  timeEntries     TimeEntry[]
+  dependencies    TaskDependency[] @relation("TaskDependencies")
+  dependedOnBy    TaskDependency[] @relation("DependsOnTasks")
+
+  // Relacionamentos
+  projectId String?
+  featureId String?
+  sprintId  String?
+  parentId  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relações
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  feature   Feature? @relation(fields: [featureId], references: [id], onDelete: SetNull)
+  sprint    Sprint?  @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  parent    Task?    @relation("TaskToSubtask", fields: [parentId], references: [id])
+  subtasks  Task[]   @relation("TaskToSubtask")
+
+  @@index([status])
+  @@index([projectId])
+  @@index([sprintId])
 }
