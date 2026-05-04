@@ -3,12 +3,15 @@
 import { ContactInfo, LandingPage } from '@prisma/client';
 import { motion } from 'framer-motion';
 import {
-  Code,
-  Instagram,
-  Linkedin,
-  Mail,
+  ArrowRight,
+  Clock,
+  Heart,
   MessageCircle,
+  Shield,
   Sparkles,
+  Star,
+  TrendingUp,
+  Users,
   Zap,
 } from 'lucide-react';
 import Image from 'next/image';
@@ -72,54 +75,12 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
     'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_marivaldo.png',
   ];
 
-  // Social links baseadas nos dados do banco
-  const socialLinks = [
-    ...(contact.whatsappLink
-      ? [
-          {
-            icon: MessageCircle,
-            href: contact.whatsappLink,
-            label: 'WhatsApp',
-          },
-        ]
-      : []),
-    ...(contact.instagramLink
-      ? [
-          {
-            icon: Instagram,
-            href: contact.instagramLink,
-            label: 'Instagram',
-          },
-        ]
-      : []),
-    ...(contact.linkedinLink
-      ? [
-          {
-            icon: Linkedin,
-            href: contact.linkedinLink,
-            label: 'LinkedIn',
-          },
-        ]
-      : []),
-    {
-      icon: Mail,
-      href: `mailto:${contact.email}`,
-      label: 'Email',
-    },
-  ];
-
-  const highlights = [
-    { icon: Code, text: 'Código Limpo' },
-    { icon: Zap, text: 'Alta Performance' },
-    { icon: Sparkles, text: 'Design Moderno' },
-  ];
-
   return (
     <section
       id="inicio"
       className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-gray-900 via-gray-950 to-black"
     >
-      {/* Background Animated Gradient */}
+      {/* Background Elements - Mantidos como estavam */}
       <div className="absolute inset-0">
         <motion.div
           animate={{
@@ -135,211 +96,236 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
         />
       </div>
 
-      {/* Animated Grid */}
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,black,transparent)] bg-[size:64px_64px] md:bg-[size:64px_64px]" />
-
-      {/* Floating Elements */}
-      <div className="absolute inset-0">
-        {[...Array(10)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-            }}
-            animate={{
-              y: [0, -40, 0],
-              rotate: [0, 180, 360],
-              opacity: [0.3, 0.8, 0.3],
-            }}
-            transition={{
-              duration: 5 + Math.random() * 3,
-              repeat: Infinity,
-              delay: Math.random() * 2,
-            }}
-          >
-            {i % 3 === 0 ? (
-              <Code className="text-electric-500/40 h-3 w-3 md:h-4 md:w-4" />
-            ) : i % 3 === 1 ? (
-              <Sparkles className="h-2 w-2 text-purple-500/40 md:h-3 md:w-3" />
-            ) : (
-              <Zap className="h-2 w-2 text-blue-500/40 md:h-3 md:w-3" />
-            )}
-          </motion.div>
-        ))}
-      </div>
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,black,transparent)] bg-[size:64px_64px]" />
 
       {/* Main Content */}
       <div className="relative z-10 mx-auto mt-20 w-full max-w-7xl px-4 text-center sm:px-6 lg:px-8">
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="space-y-6 md:space-y-8"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6 }}
+          className="space-y-8 md:space-y-10"
         >
-          {/* Avatar & Badge */}
+          {/* 🔥 INDICADOR DE DISPONIBILIDADE - Gatilho de Urgência */}
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="flex justify-center"
+          >
+            <div className="inline-flex items-center gap-2 rounded-full border border-green-500/30 bg-green-500/10 px-4 py-2 backdrop-blur-sm">
+              <div className="h-2 w-2 animate-pulse rounded-full bg-green-500" />
+              <span className="text-sm font-medium text-green-400">
+                Disponível para novos projetos
+              </span>
+              <Sparkles size={14} className="text-green-400" />
+            </div>
+          </motion.div>
+
+          {/* 🔥 AVATAR COM PROVA SOCIAL - Mais impacto visual */}
           <motion.div
             initial={{ opacity: 0, scale: 0 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.2, type: 'spring' }}
-            className="mb-6 flex justify-center md:mb-8"
+            className="flex justify-center"
           >
             <div className="relative">
               {landingpage.avatarImageUrl ? (
                 <Image
                   src={landingpage.avatarImageUrl}
                   alt={landingpage.name}
-                  width={80}
-                  height={80}
-                  className="border-electric-500 shadow-electric-500/25 h-16 w-16 rounded-full border-4 object-cover shadow-2xl md:h-24 md:w-24"
+                  width={96}
+                  height={96}
+                  className="border-electric-500/50 shadow-electric-500/25 h-20 w-20 rounded-full border-4 object-cover shadow-2xl md:h-24 md:w-24"
                 />
               ) : (
-                <div className="from-electric-500 border-electric-500 shadow-electric-500/25 flex h-16 w-16 items-center justify-center rounded-full border-4 bg-gradient-to-r to-blue-600 shadow-2xl md:h-24 md:w-24">
-                  <span className="text-xl font-bold text-white md:text-2xl">
+                <div className="border-electric-500/50 from-electric-500 shadow-electric-500/25 flex h-20 w-20 items-center justify-center rounded-full border-4 bg-gradient-to-r to-blue-600 shadow-2xl md:h-24 md:w-24">
+                  <span className="text-2xl font-bold text-white md:text-3xl">
                     {landingpage.name.charAt(0)}
                   </span>
                 </div>
               )}
+              {/* Badge de credibilidade */}
               <motion.div
-                className="font-inter absolute -right-1 -bottom-1 rounded-full bg-gradient-to-r from-green-500 to-green-600 px-2 py-1 text-[10px] font-semibold text-white shadow-lg md:-right-2 md:-bottom-2 md:px-3 md:text-xs"
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
-                transition={{ delay: 0.8, type: 'spring' }}
+                transition={{ delay: 0.6, type: 'spring' }}
+                className="absolute -right-1 -bottom-1 rounded-full bg-gradient-to-r from-green-500 to-green-600 px-3 py-1 text-xs font-semibold text-white shadow-lg"
               >
-                Disponível
+                ✓ Verificado
               </motion.div>
             </div>
           </motion.div>
 
-          {/* Main Heading */}
-          <div className="space-y-4 md:space-y-6">
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.8 }}
-              className="font-space text-3xl leading-tight font-bold sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl"
-            >
-              Olá, sou{' '}
-              <span className="bg-gradient-to-r from-sky-400 via-purple-400 to-purple-500 bg-clip-text text-transparent">
-                {landingpage.name}
-              </span>
-            </motion.h1>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5, duration: 0.8 }}
-              className="space-y-3 md:space-y-4"
-            >
-              <h2 className="font-space text-xl text-gray-300 sm:text-2xl md:text-3xl lg:text-4xl">
-                Desenvolvedor{' '}
-                <span className="text-electric-500">Full-Stack</span>
-              </h2>
-
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.7, duration: 0.8 }}
-                className="font-inter mx-auto max-w-3xl px-4 text-base leading-relaxed text-gray-400 sm:px-6 sm:text-lg md:text-xl"
-              >
-                {landingpage.description}
-              </motion.p>
-            </motion.div>
-          </div>
-
-          {/* Highlights */}
+          {/* 🔥 HEADLINE PRINCIPAL - Foco no resultado do cliente */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.9, duration: 0.8 }}
-            className="flex flex-wrap justify-center gap-3 py-4 sm:gap-4 md:gap-6"
+            transition={{ delay: 0.3, duration: 0.8 }}
+            className="space-y-4"
           >
-            {highlights.map((item, index) => (
-              <motion.div
-                key={item.text}
-                initial={{ opacity: 0, scale: 0 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 1 + index * 0.1 }}
-                className="flex items-center gap-2 rounded-full border border-gray-700 bg-gray-800/50 px-3 py-1.5 backdrop-blur-sm sm:px-4 sm:py-2"
-              >
-                <item.icon size={14} className="text-electric-500 sm:size-4" />
-                <span className="font-inter text-xs text-gray-300 sm:text-sm">
-                  {item.text}
-                </span>
-              </motion.div>
-            ))}
+            <h1 className="font-space text-3xl leading-tight font-bold sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl">
+              Transformo Ideias em{' '}
+              <span className="bg-gradient-to-r from-sky-400 via-purple-400 to-purple-500 bg-clip-text text-transparent">
+                Negócios Digitais
+              </span>{' '}
+              Que Geram Resultado
+            </h1>
+
+            <p className="mx-auto max-w-3xl text-base text-gray-300 sm:text-lg md:text-xl lg:text-2xl">
+              Crio sites, landing pages e sistemas web que convertem visitantes
+              em clientes para empreendedores e empresas que querem crescer
+            </p>
           </motion.div>
 
-          {/* CTA Buttons */}
+          {/* 🔥 SUBHEADLINE COM PROMESSA - Remove objeções */}
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 0.8 }}
+            className="mx-auto max-w-2xl text-sm text-gray-400 sm:text-base md:text-lg"
+          >
+            Sem dores de cabeça com tecnologia. Sem resultados medíocres. Apenas
+            soluções digitais que realmente funcionam para o seu negócio.
+          </motion.p>
+
+          {/* 🔥 CTA PRINCIPAL - Único, claro e irresistível */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.1, duration: 0.8 }}
-            className="flex flex-col items-center justify-center gap-3 pt-6 sm:flex-row sm:gap-4 md:pt-8"
+            transition={{ delay: 1.0, duration: 0.8 }}
+            className="flex flex-col items-center gap-4"
           >
-            <motion.button
+            {/* CTA PRIMÁRIO - WhatsApp (principal conversor) */}
+            <motion.a
+              href={
+                contact.whatsappLink ||
+                'https://api.whatsapp.com/send/?phone=554797086965&text=Olá! Gostaria de saber mais sobre seus serviços'
+              }
+              target="_blank"
+              rel="noopener noreferrer"
               whileHover={{
                 scale: 1.05,
-                boxShadow: '0 0 40px rgba(59, 130, 246, 0.5)',
+                boxShadow: '0 0 60px rgba(34, 197, 94, 0.6)',
               }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => scrollToSection('projetos')}
-              className="group from-electric-500 hover:from-electric-600 font-inter shadow-electric-500/25 relative w-full overflow-hidden rounded-full bg-gradient-to-r to-blue-600 px-6 py-3 font-semibold text-white shadow-2xl transition-all duration-300 hover:to-blue-700 sm:w-auto sm:px-8 sm:py-4"
+              className="group relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-full bg-gradient-to-r from-green-500 to-green-600 px-8 py-4 text-lg font-semibold text-white shadow-2xl shadow-green-500/30 transition-all duration-300 hover:from-green-600 hover:to-green-700 sm:w-auto sm:text-xl"
             >
-              <span className="relative z-10">Ver Projetos</span>
+              <MessageCircle size={24} />
+              <span>Quero Um Orçamento Agora</span>
+              <ArrowRight
+                size={20}
+                className="transition-transform duration-300 group-hover:translate-x-1"
+              />
               <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-            </motion.button>
+            </motion.a>
 
+            {/* CTA SECUNDÁRIO - Ver projetos (menor destaque) */}
             <motion.button
-              whileHover={{ scale: 1.05 }}
+              whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => scrollToSection('contato')}
-              className="group font-inter hover:border-electric-500 hover:shadow-electric-500/20 w-full rounded-full border-2 border-gray-600 px-6 py-3 font-semibold text-gray-300 backdrop-blur-sm transition-all duration-300 hover:text-white hover:shadow-lg sm:w-auto sm:px-8 sm:py-4"
+              onClick={() => scrollToSection('projetos')}
+              className="group flex items-center gap-2 rounded-full border border-gray-600/50 px-6 py-3 text-sm text-gray-400 backdrop-blur-sm transition-all duration-300 hover:border-gray-500 hover:text-white sm:text-base"
             >
-              <span className="group-hover:from-electric-400 bg-gradient-to-r from-gray-300 to-white bg-clip-text text-transparent group-hover:to-blue-400">
-                Entrar em Contato
-              </span>
+              <Eye size={18} />
+              <span>Ver Projetos Anteriores</span>
+              <ArrowRight
+                size={16}
+                className="transition-transform duration-300 group-hover:translate-x-1"
+              />
             </motion.button>
-          </motion.div>
 
-          {/* Social Links */}
+            {/* Micro-compromisso - Remove atrito */}
+            <p className="flex items-center gap-2 text-sm text-gray-500">
+              <Clock size={14} />
+              Resposta em até 2 horas • Orçamento sem compromisso
+            </p>
+          </motion.div>
+          {/* 🔥 ÍCONE DE SCROLL - Indica mais conteúdo */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.3, duration: 0.8 }}
-            className="flex justify-center space-x-3 pt-8 md:space-x-4 md:pt-12"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1, y: [0, 10, 0] }}
+            transition={{
+              delay: 1.8,
+              duration: 2,
+              repeat: Infinity,
+            }}
+            className="pt-4"
           >
-            {socialLinks.map(({ icon: Icon, href, label }, index) => (
-              <motion.a
-                key={label}
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                initial={{ opacity: 0, scale: 0 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 1.5 + index * 0.1 }}
-                whileHover={{
-                  scale: 1.2,
-                  y: -5,
-                  color: '#3B82F6',
-                }}
-                className="hover:text-electric-500 hover:border-electric-500/50 rounded-xl border border-gray-700 bg-gray-800/50 p-2 text-gray-400 shadow-lg backdrop-blur-sm transition-all duration-300 sm:p-3"
-                aria-label={label}
-              >
-                <Icon size={18} className="sm:size-5" />
-              </motion.a>
-            ))}
+            <button
+              onClick={() => scrollToSection('projetos')}
+              className="text-gray-500 transition-colors hover:text-gray-300"
+              aria-label="Ver mais conteúdo"
+            >
+              <ChevronDown size={32} />
+            </button>
           </motion.div>
         </motion.div>
 
-        {/* Marquee Section */}
-        <div className="mx-auto my-8 max-w-7xl rounded-2xl bg-gray-950/5 p-2 ring-1 ring-neutral-700/10 sm:my-10 sm:rounded-3xl sm:p-4 dark:bg-neutral-800">
+        {/* Marquee Section - Mantida como prova visual */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.6, duration: 0.8 }}
+          className="mx-auto my-8 max-w-7xl rounded-2xl bg-gray-950/5 p-2 ring-1 ring-neutral-700/10 sm:my-10 sm:rounded-3xl sm:p-4 dark:bg-neutral-800"
+        >
+          <p className="mb-3 text-center text-xs text-gray-500">
+            Empresas que confiam no meu trabalho
+          </p>
           <ThreeDMarquee images={images} />
-        </div>
+        </motion.div>
       </div>
     </section>
   );
 };
+
+// Componente Eye (se não existir no lucide-react)
+const Eye = ({ size, className }: { size?: number; className?: string }) => (
+  <svg
+    width={size || 24}
+    height={size || 24}
+    className={className}
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+    />
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+    />
+  </svg>
+);
+
+const ChevronDown = ({
+  size,
+  className,
+}: {
+  size?: number;
+  className?: string;
+}) => (
+  <svg
+    width={size || 24}
+    height={size || 24}
+    className={className}
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M19 9l-7 7-7-7"
+    />
+  </svg>
+);
 
 export default SectionHero;

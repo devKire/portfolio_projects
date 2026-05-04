@@ -1,422 +1,406 @@
 'use client';
 
 import { ContactInfo, LandingPage } from '@prisma/client';
-import { motion } from 'framer-motion';
 import {
-  ArrowUpRight,
-  BarChart3,
+  motion,
+  useMotionTemplate,
+  useMotionValue,
+  useSpring,
+} from 'framer-motion';
+import {
+  ArrowRight,
+  CheckCircle,
   Code,
-  Coffee,
-  Globe,
   Heart,
-  Palette,
-  Rocket,
-  ShoppingCart,
+  Mail,
+  MessageCircle,
+  Phone,
+  Shield,
+  Sparkles,
   Star,
+  TrendingUp,
   Users,
+  Zap,
 } from 'lucide-react';
 import Image from 'next/image';
-import React from 'react';
+import React, { useRef, useState } from 'react';
+
+/* ================================================================
+   SPOTLIGHT CARD — Hover com luz seguindo o mouse
+   ================================================================ */
+const SpotlightCard = ({
+  children,
+  className,
+  spotlightColor = 'rgba(59, 130, 246, 0.08)',
+}: {
+  children: React.ReactNode;
+  className?: string;
+  spotlightColor?: string;
+}) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+  const springX = useSpring(mouseX, { stiffness: 150, damping: 20 });
+  const springY = useSpring(mouseY, { stiffness: 150, damping: 20 });
+  const background = useMotionTemplate`radial-gradient(500px circle at ${springX}px ${springY}px, ${spotlightColor}, transparent 80%)`;
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    mouseX.set(e.clientX - rect.left);
+    mouseY.set(e.clientY - rect.top);
+  };
+
+  const handleMouseLeave = () => {
+    mouseX.set(0);
+    mouseY.set(0);
+  };
+
+  return (
+    <div
+      ref={ref}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      className={`relative overflow-hidden rounded-3xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-xl transition-all duration-300 hover:border-white/[0.12] ${className || ''}`}
+    >
+      {children}
+    </div>
+  );
+};
+
+/* ================================================================
+   BENTO GRID (simplificado)
+   ================================================================ */
+const BentoGrid = ({
+  className,
+  children,
+}: {
+  className?: string;
+  children?: React.ReactNode;
+}) => (
+  <div
+    className={`mx-auto grid grid-cols-1 gap-4 md:grid-cols-6 lg:gap-5 ${className || ''}`}
+  >
+    {children}
+  </div>
+);
+
+const BentoGridItem = ({
+  className,
+  children,
+  colSpan,
+  rowSpan,
+}: {
+  className?: string;
+  children: React.ReactNode;
+  colSpan?: number;
+  rowSpan?: number;
+}) => {
+  const colClass = colSpan ? `md:col-span-${colSpan}` : '';
+  const rowClass = rowSpan ? `md:row-span-${rowSpan}` : '';
+  return (
+    <div className={`${colClass} ${rowClass} ${className || ''}`}>
+      {children}
+    </div>
+  );
+};
+
+/* ================================================================
+   INTERFACES
+   ================================================================ */
 interface SectionAboutProps {
   contact: ContactInfo;
   landingpage: LandingPage;
 }
 
-// Serviços substituindo as habilidades
-const services = [
-  {
-    name: 'Desenvolvimento Web',
-    icon: Code,
-    description:
-      'Criação de sites modernos e otimizados com React, Next.js e TypeScript.',
-    features: ['Responsivo', 'Otimizado para SEO', 'Alta Performance'],
-  },
-  {
-    name: 'UI/UX Design',
-    icon: Palette,
-    description:
-      'Designs intuitivos e atraentes que aumentam a conversão e melhoram a experiência do usuário.',
-    features: ['Prototipagem', 'Design System', 'User Testing'],
-  },
-  {
-    name: 'E-commerce',
-    icon: ShoppingCart,
-    description:
-      'Lojas virtuais completas e seguras com integração de pagamentos e gestão fácil.',
-    features: ['Pagamentos Online', 'Gestão de Estoque', 'Dashboard'],
-  },
-  {
-    name: 'Landing Pages',
-    icon: Globe,
-    description:
-      'Páginas de alta conversão para divulgar produtos, serviços ou campanhas.',
-    features: ['Copy Otimizado', 'A/B Testing', 'Analytics'],
-  },
-  {
-    name: 'Consultoria Tech',
-    icon: BarChart3,
-    description:
-      'Análise e estratégia para otimizar a presença digital do seu negócio.',
-    features: ['Análise Técnica', 'Roadmap', 'Mentoria'],
-  },
-];
-
-const stats = [
-  { number: '10+', label: 'Projetos Desenvolvidos', icon: Rocket },
-  { number: '100%', label: 'Capacitado', icon: Users },
-  { number: '100%', label: 'Dedicação em Cada Projeto', icon: Star },
-  { number: '∞', label: 'Cafés & Criatividade', icon: Coffee },
-];
-
 const technologies = [
-  { name: 'Next.js', color: 'text-white' },
-  { name: 'React', color: 'text-cyan-400' },
-  { name: 'TypeScript', color: 'text-blue-500' },
-  { name: 'Tailwind CSS', color: 'text-teal-400' },
-  { name: 'Node.js', color: 'text-green-500' },
-  { name: 'Prisma', color: 'text-white' },
-  { name: 'MySQL', color: 'text-blue-400' },
-  { name: 'Firebase', color: 'text-yellow-400' },
-  { name: 'ShadCN', color: 'text-white' },
-  { name: 'Stripe', color: 'text-purple-500' },
-  { name: 'Vite', color: 'text-purple-400' },
+  'Next.js',
+  'React',
+  'TypeScript',
+  'Tailwind CSS',
+  'Node.js',
+  'Prisma',
+  'PostgreSQL',
+  'Firebase',
+  'Stripe',
+  'ShadCN UI',
+  'Framer Motion',
+  'Docker',
 ];
 
+/* ================================================================
+   COMPONENTE PRINCIPAL
+   ================================================================ */
 const SectionAbout = ({ contact, landingpage }: SectionAboutProps) => {
+  const [copied, setCopied] = useState(false);
   const experienceYears = new Date().getFullYear() - 2021;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(contact.email);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <section
       id="sobre"
-      className="relative overflow-hidden bg-gradient-to-b from-gray-900 to-gray-950 py-24"
+      className="relative overflow-hidden bg-black py-20 md:py-28"
     >
-      {/* Background Elements */}
+      {/* ============================================ */}
+      {/* BACKGROUND MINIMALISTA */}
+      {/* ============================================ */}
       <div className="absolute inset-0">
-        <div className="bg-electric-500/10 absolute top-1/4 left-1/4 h-72 w-72 animate-pulse rounded-full blur-3xl"></div>
-        <div className="absolute right-1/4 bottom-1/4 h-96 w-96 animate-pulse rounded-full bg-purple-500/10 blur-3xl delay-1000"></div>
+        {/* Luz suave no topo */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(59,130,246,0.06),transparent_70%)]" />
+        {/* Grid sutil */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.015)_1px,transparent_1px)] [mask-image:radial-gradient(ellipse_80%_60%_at_50%_0%,black,transparent)] bg-[size:80px_80px]" />
       </div>
 
-      <div className="relative mx-auto max-w-7xl px-6 lg:px-8">
-        {/* Section Header */}
+      <div className="relative z-10 mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+        {/* ============================================ */}
+        {/* HEADER */}
+        {/* ============================================ */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
-          className="mb-16 text-center"
+          className="mb-16 text-center md:mb-20"
         >
-          <h2 className="font-space mb-6 text-4xl font-bold md:text-6xl">
-            Sobre <span className="text-electric-500">Mim</span>
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-4 py-1.5 backdrop-blur-sm">
+            <Sparkles size={14} className="text-blue-400" />
+            <span className="text-xs font-medium text-gray-400">
+              Quem está por trás do código
+            </span>
+          </div>
+
+          <h2 className="font-space text-4xl leading-tight font-bold tracking-tight sm:text-5xl md:text-6xl">
+            Não é só código.
+            <span className="mt-2 block bg-gradient-to-r from-blue-400 via-purple-400 to-purple-500 bg-clip-text text-transparent">
+              É resultado.
+            </span>
           </h2>
-          <p className="font-inter mx-auto max-w-3xl text-xl text-gray-300">
-            Conheça a paixão e expertise por trás de cada linha de código
+
+          <p className="mx-auto mt-5 max-w-xl text-sm text-gray-500 sm:text-base">
+            {experienceYears}+ anos transformando ideias em soluções digitais
+            que geram valor real.
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 items-center gap-16 lg:grid-cols-2">
-          {/* Left Side - Image & Personal Info */}
-          <motion.div
-            initial={{ opacity: 0, x: -50 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
-            className="relative"
-          >
-            <div className="relative">
-              {/* Background Glow */}
-              <div className="from-electric-500/20 absolute -inset-4 rounded-3xl bg-gradient-to-r to-purple-500/20 blur-3xl" />
-
-              {/* Profile Card */}
-              <div className="relative rounded-2xl border border-gray-700 bg-gray-800/50 p-8 shadow-2xl backdrop-blur-sm">
-                {/* Profile Image */}
-                <div className="relative mb-6">
-                  {landingpage.coverImageUrl ? (
-                    <Image
-                      src={landingpage.coverImageUrl}
-                      alt={landingpage.name}
-                      width={1000}
-                      height={500}
-                      className="border-electric-500/50 shadow-electric-500/20 h-64 w-full rounded-xl border-2 object-cover shadow-lg"
-                    />
-                  ) : (
-                    <div className="from-electric-500 flex h-64 w-full items-center justify-center rounded-xl bg-gradient-to-br to-purple-600">
-                      <span className="text-4xl font-bold text-white">
-                        {landingpage.name.charAt(0)}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Status Badge */}
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    whileInView={{ scale: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.5, type: 'spring' }}
-                    className="font-inter absolute -top-3 -right-3 rounded-full bg-gradient-to-r from-green-500 to-green-600 px-4 py-2 text-sm font-semibold text-white shadow-lg"
-                  >
-                    🚀 Disponível para projetos
-                  </motion.div>
-                </div>
-
-                {/* Personal Info */}
-                <div className="space-y-4">
-                  <h3 className="font-space text-2xl font-bold text-white">
-                    {landingpage.name}
-                  </h3>
-                  <p className="font-inter leading-relaxed text-gray-300">
-                    {landingpage.description}
-                  </p>
-
-                  {/* Contact Quick Info */}
-                  <div className="flex flex-wrap gap-4 pt-4">
-                    {contact.email && (
-                      <div className="flex items-center gap-2 text-sm text-gray-400">
-                        <Mail size={16} />
-                        <span>{contact.email}</span>
-                      </div>
-                    )}
-                    {contact.phone && (
-                      <div className="flex items-center gap-2 text-sm text-gray-400">
-                        <Phone size={16} />
-                        <span>{contact.phone}</span>
-                      </div>
-                    )}
+        {/* ============================================ */}
+        {/* BENTO GRID — 5 CARDS COM HIERARQUIA */}
+        {/* ============================================ */}
+        <BentoGrid>
+          {/* 
+            CARD 1 — HERO (colspan 4, rowspan 2)
+            Foto + Bio + Contato 
+          */}
+          <BentoGridItem colSpan={4} rowSpan={2}>
+            <SpotlightCard
+              spotlightColor="rgba(59, 130, 246, 0.06)"
+              className="flex h-full flex-col p-6 sm:p-8"
+            >
+              {/* Foto */}
+              <div className="-mx-6 -mt-6 mb-5 overflow-hidden sm:-mx-8 sm:-mt-8">
+                {landingpage.coverImageUrl ? (
+                  <Image
+                    src={landingpage.coverImageUrl}
+                    alt={landingpage.name}
+                    width={700}
+                    height={400}
+                    className="h-52 w-full object-cover sm:h-64"
+                  />
+                ) : (
+                  <div className="flex h-52 items-center justify-center bg-gradient-to-br from-blue-600/30 to-purple-600/30 sm:h-64">
+                    <span className="text-7xl font-bold text-white/20">
+                      {landingpage.name.charAt(0)}
+                    </span>
                   </div>
-
-                  {/* Botão Mais Sobre Mim */}
-                  <motion.a
-                    href="https://eriksantos.vercel.app"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    whileHover={{ scale: 1.05, y: -2 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="font-inter mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-gray-700/50 px-6 py-3 font-semibold text-gray-300 transition-all duration-300 hover:bg-gray-600 hover:text-white"
-                  >
-                    <Heart size={18} />
-                    Mais sobre mim
-                    <ArrowUpRight size={16} />
-                  </motion.a>
+                )}
+                {/* Badge disponível */}
+                <div className="absolute top-0 right-0 left-0 flex justify-between p-4">
+                  <div />
+                  <div className="flex items-center gap-2 rounded-full border border-green-500/20 bg-green-500/10 px-3 py-1 backdrop-blur-sm">
+                    <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-500" />
+                    <span className="text-xs font-medium text-green-400">
+                      Disponível
+                    </span>
+                  </div>
                 </div>
-
-                {/* Floating Elements */}
-                <motion.div
-                  animate={{ y: [0, -10, 0], rotate: [0, 5, -5, 0] }}
-                  transition={{ duration: 4, repeat: Infinity }}
-                  className="bg-electric-500 absolute -top-2 -right-2 rounded-xl p-3 shadow-lg"
-                >
-                  <Code size={20} className="text-white" />
-                </motion.div>
-
-                <motion.div
-                  animate={{ y: [0, 10, 0], rotate: [0, -5, 5, 0] }}
-                  transition={{ duration: 4, repeat: Infinity, delay: 2 }}
-                  className="absolute -bottom-2 -left-2 rounded-xl bg-purple-500 p-3 shadow-lg"
-                >
-                  <Palette size={20} className="text-white" />
-                </motion.div>
               </div>
-            </div>
-          </motion.div>
 
-          {/* Right Side - Content */}
-          <motion.div
-            initial={{ opacity: 0, x: 50 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="space-y-8"
-          >
-            {/* Introduction */}
-            <div className="space-y-6">
-              <h3 className="font-space text-3xl font-bold text-white">
-                Minha <span className="text-electric-500">Jornada</span>
+              {/* Nome + Bio */}
+              <h3 className="font-space text-2xl font-bold sm:text-3xl">
+                {landingpage.name}
               </h3>
-              <div className="font-inter space-y-4 leading-relaxed text-gray-300">
-                <p>
-                  Sou <strong className="text-white">{landingpage.name}</strong>
-                  , um desenvolvedor full-stack apaixonado por criar soluções
-                  digitais que fazem a diferença. Com mais de {experienceYears}{' '}
-                  anos de experiência, especializo-me em transformar ideias
-                  complexas em experiências intuitivas e performáticas.
-                </p>
-                <p>
-                  Minha stack principal inclui{' '}
-                  <strong className="text-electric-500">Next.js</strong>,
-                  <strong className="text-blue-500"> TypeScript</strong>, e
-                  <strong className="text-teal-400"> Tailwind CSS</strong>,
-                  sempre priorizando as melhores práticas de desenvolvimento e
-                  UX.
-                </p>
-                <p>
-                  Acredito que o código vai além da funcionalidade - é sobre
-                  criar experiências memoráveis que resolvem problemas reais e
-                  geram valor para os usuários.
-                </p>
-              </div>
-            </div>
+              <p className="mt-2 text-sm leading-relaxed text-gray-400 sm:text-base">
+                {landingpage.description}
+              </p>
 
-            {/* Services Grid */}
-            <div>
-              <h3 className="font-space mb-6 text-2xl font-semibold text-white">
-                Serviços que <span className="text-electric-500">Ofereço</span>
-              </h3>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {services.map((service, index) => (
-                  <motion.div
-                    key={service.name}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.6, delay: index * 0.1 }}
-                    className="group hover:border-electric-500/50 hover:shadow-electric-500/10 rounded-xl border border-gray-700 bg-gray-800/50 p-4 backdrop-blur-sm transition-all duration-300 hover:shadow-lg"
+              {/* Contato rápido */}
+              <div className="mt-auto flex flex-wrap gap-2 pt-5">
+                {contact.email && (
+                  <a
+                    href={`mailto:${contact.email}`}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-xs text-gray-400 transition-colors hover:border-white/[0.15] hover:text-white"
                   >
-                    <div className="mb-3 flex items-start gap-3">
-                      <div className="bg-electric-500/20 rounded-lg p-2 transition-transform duration-300 group-hover:scale-110">
-                        <service.icon size={20} className="text-electric-500" />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-inter text-sm font-semibold text-white">
-                          {service.name}
-                        </h4>
-                        <p className="font-inter mt-1 text-xs text-gray-400">
-                          {service.description}
-                        </p>
-                      </div>
-                    </div>
+                    <Mail size={12} />
+                    {contact.email}
+                  </a>
+                )}
+                {contact.phone && (
+                  <a
+                    href={`tel:${contact.phone}`}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-xs text-gray-400 transition-colors hover:border-white/[0.15] hover:text-white"
+                  >
+                    <Phone size={12} />
+                    {contact.phone}
+                  </a>
+                )}
+              </div>
+            </SpotlightCard>
+          </BentoGridItem>
 
-                    {/* Features */}
-                    <div className="mb-3 flex flex-wrap gap-1">
-                      {service.features.map((feature, idx) => (
-                        <span
-                          key={idx}
-                          className="rounded-full bg-gray-700/50 px-2 py-1 text-xs text-gray-300"
-                        >
-                          {feature}
-                        </span>
-                      ))}
-                    </div>
+          {/* 
+            CARD 2 — Satisfação (colspan 2)
+            Destaque com ícone grande 
+          */}
+          <BentoGridItem colSpan={2}>
+            <SpotlightCard
+              spotlightColor="rgba(236, 72, 153, 0.06)"
+              className="flex h-full flex-col items-center justify-center p-6 text-center"
+            >
+              <div className="mb-3 inline-flex rounded-2xl bg-pink-500/10 p-3">
+                <Heart size={28} className="text-pink-400" />
+              </div>
+              <p className="font-space text-4xl font-bold text-white">98%</p>
+              <p className="mt-1 text-sm text-gray-400">Clientes satisfeitos</p>
+              <p className="mt-2 flex items-center gap-1 text-xs text-gray-500">
+                <Star size={12} className="text-yellow-500" />
+                Recorrentes
+              </p>
+            </SpotlightCard>
+          </BentoGridItem>
 
-                    {/* Price */}
-                    <div className="flex items-center justify-between">
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() =>
-                          document
-                            .getElementById('contato')
-                            ?.scrollIntoView({ behavior: 'smooth' })
-                        }
-                        className="font-inter text-electric-500 flex gap-2 text-sm font-semibold"
-                      >
-                        Solicitar Orçamento
-                        <ArrowUpRight size={16} />
-                      </motion.button>
-                    </div>
-                  </motion.div>
+          {/* 
+            CARD 3 — Stack Tecnológica (colspan 4) 
+          */}
+          <BentoGridItem colSpan={4}>
+            <SpotlightCard
+              spotlightColor="rgba(6, 182, 212, 0.05)"
+              className="p-6 sm:p-7"
+            >
+              <div className="mb-4 flex items-center gap-3">
+                <div className="rounded-xl bg-cyan-500/10 p-2">
+                  <Code size={20} className="text-cyan-400" />
+                </div>
+                <h4 className="font-space text-lg font-semibold">
+                  Stack Tecnológica
+                </h4>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {technologies.map((tech) => (
+                  <span
+                    key={tech}
+                    className="rounded-lg border border-white/[0.05] bg-white/[0.02] px-3 py-1.5 text-xs text-gray-400 transition-colors hover:border-white/[0.12] hover:text-white"
+                  >
+                    {tech}
+                  </span>
                 ))}
               </div>
-            </div>
+            </SpotlightCard>
+          </BentoGridItem>
 
-            {/* Stats */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.8, delay: 0.4 }}
-              className="grid grid-cols-2 gap-6 pt-8 lg:grid-cols-4"
+          {/* 
+            CARD 4 — Diferenciais (colspan 3) 
+          */}
+          <BentoGridItem colSpan={3}>
+            <SpotlightCard
+              spotlightColor="rgba(16, 185, 129, 0.05)"
+              className="p-6 sm:p-7"
             >
-              {stats.map((stat, index) => (
-                <motion.div
-                  key={stat.label}
-                  initial={{ opacity: 0, scale: 0 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.1 + 0.6 }}
-                  className="group text-center transition-all duration-300 hover:scale-105"
-                >
-                  <div className="group-hover:border-electric-500/50 rounded-xl border border-gray-700 bg-gray-800/50 p-4 backdrop-blur-sm">
-                    <div className="mb-2 flex justify-center">
-                      <stat.icon size={24} className="text-electric-500" />
-                    </div>
-                    <div className="font-space text-electric-500 mb-1 text-2xl font-bold">
-                      {stat.number}
-                    </div>
-                    <div className="font-inter text-xs text-gray-400">
-                      {stat.label}
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </motion.div>
-
-            {/* Technologies */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.8, delay: 0.6 }}
-              className="pt-8"
-            >
-              <h4 className="font-inter mb-4 text-center text-sm font-semibold text-gray-400">
-                Tecnologias que domino:
-              </h4>
-              <div className="flex flex-wrap justify-center gap-3">
-                {technologies.map((tech, index) => (
-                  <motion.span
-                    key={tech.name}
-                    initial={{ opacity: 0, scale: 0 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: index * 0.1 }}
-                    className={`font-inter rounded-full border border-gray-700 bg-gray-800 px-3 py-1 text-xs ${tech.color} hover:border-electric-500 transition-colors duration-300`}
+              <div className="mb-4 flex items-center gap-3">
+                <div className="rounded-xl bg-green-500/10 p-2">
+                  <TrendingUp size={20} className="text-green-400" />
+                </div>
+                <h4 className="font-space text-lg font-semibold">
+                  Foco em Resultados
+                </h4>
+              </div>
+              <p className="mb-4 text-sm text-gray-400">
+                Não entrego apenas código. Entrego soluções que impactam seu
+                negócio.
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { icon: Shield, text: 'Código Seguro' },
+                  { icon: Zap, text: 'Performance' },
+                  { icon: Users, text: 'Comunicação' },
+                  { icon: CheckCircle, text: 'Qualidade' },
+                ].map((item) => (
+                  <div
+                    key={item.text}
+                    className="flex items-center gap-2 rounded-lg bg-white/[0.03] px-3 py-2"
                   >
-                    {tech.name}
-                  </motion.span>
+                    <item.icon size={14} className="text-blue-400" />
+                    <span className="text-xs text-gray-300">{item.text}</span>
+                  </div>
                 ))}
               </div>
-            </motion.div>
-          </motion.div>
-        </div>
+            </SpotlightCard>
+          </BentoGridItem>
+
+          {/* 
+            CARD 5 — CTA (colspan 3)
+            Único card com cor chamativa — hierarquia máxima 
+          */}
+          <BentoGridItem colSpan={3}>
+            <div className="flex h-full flex-col justify-between rounded-3xl border border-green-500/20 bg-green-500/[0.03] p-6 backdrop-blur-xl transition-all hover:border-green-500/30 sm:p-7">
+              <div>
+                <div className="mb-4 inline-flex rounded-xl bg-green-500/10 p-2">
+                  <MessageCircle size={20} className="text-green-400" />
+                </div>
+                <h4 className="font-space text-xl font-semibold">
+                  Vamos conversar?
+                </h4>
+                <p className="mt-2 text-sm text-gray-400">
+                  Me conta sobre o seu projeto. Resposta em até 2 horas.
+                </p>
+              </div>
+
+              <div className="mt-5 space-y-3">
+                {/* CTA Principal */}
+                <motion.a
+                  href={
+                    contact.whatsappLink ||
+                    'https://api.whatsapp.com/send/?phone=554797086965&text=Olá! Gostaria de conversar sobre um projeto'
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-green-500/20 transition-all hover:bg-green-600"
+                >
+                  <MessageCircle size={18} />
+                  Falar no WhatsApp
+                  <ArrowRight size={16} />
+                </motion.a>
+
+                {/* Secundário */}
+                <button
+                  onClick={handleCopy}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-2.5 text-xs text-gray-400 transition-colors hover:border-white/[0.15] hover:text-white"
+                >
+                  <Mail size={14} />
+                  {copied ? 'Email copiado!' : 'Copiar email'}
+                </button>
+              </div>
+            </div>
+          </BentoGridItem>
+        </BentoGrid>
       </div>
     </section>
   );
 };
-
-// Adicionando ícones que faltavam
-const Mail = ({ size, className }: { size: number; className?: string }) => (
-  <svg
-    width={size}
-    height={size}
-    className={className}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-    />
-  </svg>
-);
-
-const Phone = ({ size, className }: { size: number; className?: string }) => (
-  <svg
-    width={size}
-    height={size}
-    className={className}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-    />
-  </svg>
-);
 
 export default SectionAbout;
