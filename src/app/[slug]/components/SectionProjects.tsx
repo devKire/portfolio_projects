@@ -490,13 +490,6 @@ const SectionProjects = ({
             viewport={{ once: true }}
             className="mb-12 text-center md:mb-20"
           >
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-gray-700/50 bg-gray-800/30 px-4 py-2 backdrop-blur-sm md:px-6 md:py-3">
-              <Sparkles size={16} className="text-electric-500" />
-              <span className="text-sm font-medium text-gray-300">
-                Portfólio de Projetos
-              </span>
-            </div>
-
             <h2 className="font-space mb-6 text-3xl font-bold md:text-5xl lg:text-6xl">
               Projetos Que{' '}
               <span className="bg-gradient-to-r from-sky-400 via-purple-400 to-purple-500 bg-clip-text text-transparent">

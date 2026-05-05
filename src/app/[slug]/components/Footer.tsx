@@ -3,6 +3,7 @@
 import { ContactInfo, LandingPage } from '@prisma/client';
 import { motion } from 'framer-motion';
 import {
+  ArrowRight,
   Coffee,
   Facebook,
   Heart,
@@ -11,8 +12,10 @@ import {
   Mail,
   MessageCircle,
   Phone,
+  Star,
 } from 'lucide-react';
 import Image from 'next/image';
+
 interface FooterProps {
   contact: ContactInfo;
   landingpage: LandingPage;
@@ -21,6 +24,9 @@ interface FooterProps {
 const currentYear = new Date().getFullYear();
 
 const Footer = ({ contact, landingpage }: FooterProps) => {
+  // ✅ Extração segura do nome
+  const [firstName, lastName] = landingpage.name.split(' ');
+
   // Links sociais baseados nos dados do banco
   const socialLinks = [
     {
@@ -48,7 +54,16 @@ const Footer = ({ contact, landingpage }: FooterProps) => {
       href: `mailto:${contact.email}`,
       label: 'Email',
     },
-  ].filter((link) => link.href !== '#'); // Filtra links não preenchidos
+  ].filter((link) => link.href && link.href !== '#'); // ✅ Filtro mais seguro
+
+  // ✅ IDs corrigidos e expandidos
+  const navigationLinks = [
+    { name: 'Início', id: 'inicio' },
+    { name: 'Sobre', id: 'sobre' },
+    { name: 'Processo', id: 'processo' },
+    { name: 'Projetos', id: 'projetos' },
+    { name: 'Contato', id: 'contato' },
+  ];
 
   const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId);
@@ -87,10 +102,11 @@ const Footer = ({ contact, landingpage }: FooterProps) => {
                 </div>
               )}
               <div className="font-space text-2xl font-bold text-white">
-                {landingpage.name.split(' ')[0]}
-                <span className="text-electric-500">
-                  {landingpage.name.split(' ')[1]}
-                </span>
+                {/* ✅ Nome seguro - não quebra sem sobrenome */}
+                {firstName}
+                {lastName && (
+                  <span className="text-electric-500"> {lastName}</span>
+                )}
               </div>
             </div>
             <p className="font-inter max-w-md text-lg leading-relaxed text-gray-300">
@@ -122,7 +138,7 @@ const Footer = ({ contact, landingpage }: FooterProps) => {
             </div>
           </motion.div>
 
-          {/* Quick Links */}
+          {/* ✅ Navegação Expandida */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -132,17 +148,12 @@ const Footer = ({ contact, landingpage }: FooterProps) => {
             <h3 className="font-space mb-6 text-lg font-semibold text-white">
               Navegação
             </h3>
-            <nav className="space-y-4">
-              {[
-                { name: 'Inicio', id: 'hero' },
-                { name: 'Sobre', id: 'sobre' },
-                { name: 'Projetos', id: 'Projetos' },
-                { name: 'Contato', id: 'contato' },
-              ].map((item) => (
+            <nav className="space-y-2">
+              {navigationLinks.map((item) => (
                 <button
                   key={item.id}
                   onClick={() => scrollToSection(item.id)}
-                  className="font-inter hover:text-electric-500 block w-full py-2 text-left text-gray-400 transition-colors duration-300"
+                  className="font-inter hover:text-electric-500 block w-full rounded-lg px-2 py-2 text-left text-gray-400 transition-colors duration-300 hover:bg-white/5"
                 >
                   {item.name}
                 </button>
@@ -150,7 +161,7 @@ const Footer = ({ contact, landingpage }: FooterProps) => {
             </nav>
           </motion.div>
 
-          {/* Connect */}
+          {/* Connect + Social */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -164,28 +175,77 @@ const Footer = ({ contact, landingpage }: FooterProps) => {
               Pronto para transformar sua ideia em realidade? Entre em contato!
             </p>
 
-            {/* Social Links Grid */}
+            {/* ✅ Social com Tooltips */}
             <div className="grid grid-cols-3 gap-3">
               {socialLinks.map(({ icon: Icon, href, label }) => (
                 <motion.a
                   key={label}
                   href={href}
                   target="_blank"
-                  rel="noopener noreferrer"
+                  rel="noopener noreferrer nofollow"
                   whileHover={{ scale: 1.05, y: -2 }}
                   whileTap={{ scale: 0.95 }}
-                  className="hover:bg-electric-500 group flex items-center justify-center rounded-lg bg-gray-800 p-3 transition-all duration-300"
+                  className="hover:bg-electric-500 group relative flex items-center justify-center rounded-lg bg-gray-800 p-3 transition-all duration-300"
                   aria-label={label}
                 >
                   <Icon
                     size={20}
                     className="text-gray-400 transition-colors group-hover:text-white"
                   />
+                  {/* ✅ Tooltip */}
+                  <span className="absolute -top-8 left-1/2 -translate-x-1/2 rounded-md bg-gray-700 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100">
+                    {label}
+                  </span>
                 </motion.a>
               ))}
             </div>
           </motion.div>
         </div>
+
+        {/* 🔥 CTA DE CONVERSÃO - ÚLTIMO EMPURRÃO */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, delay: 0.25 }}
+          className="mt-12 overflow-hidden rounded-2xl border border-gray-700/50 bg-gradient-to-br from-gray-800/50 to-gray-800/30 p-6 backdrop-blur-sm sm:p-8"
+        >
+          <div className="flex flex-col items-center text-center sm:flex-row sm:justify-between sm:text-left">
+            <div className="mb-6 sm:mb-0">
+              <h3 className="font-space text-xl font-semibold text-white sm:text-2xl">
+                Pronto para tirar seu projeto do papel?
+              </h3>
+              <p className="mt-2 text-sm text-gray-400 sm:text-base">
+                Fale comigo agora e receba um plano personalizado em até 2 horas
+              </p>
+              {/* ✅ Prova social no CTA */}
+              <div className="mt-3 flex items-center justify-center gap-4 text-xs text-gray-500 sm:justify-start">
+                <span className="flex items-center gap-1">
+                  <Star size={12} className="text-yellow-500" />
+                  98% satisfação
+                </span>
+                <span>•</span>
+                <span>+30 projetos entregues</span>
+              </div>
+            </div>
+
+            <motion.a
+              href={
+                contact.whatsappLink ||
+                'https://api.whatsapp.com/send/?phone=554797086965&text=Olá! Gostaria de conversar sobre um projeto'
+              }
+              target="_blank"
+              rel="noopener noreferrer nofollow"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="inline-flex items-center gap-2 rounded-xl bg-green-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-green-500/20 transition-all hover:bg-green-600 sm:px-8 sm:py-4"
+            >
+              <MessageCircle size={18} />
+              Falar no WhatsApp
+              <ArrowRight size={16} />
+            </motion.a>
+          </div>
+        </motion.div>
 
         {/* Bottom Bar */}
         <motion.div
@@ -196,7 +256,7 @@ const Footer = ({ contact, landingpage }: FooterProps) => {
           className="mt-12 border-t border-gray-800 pt-8"
         >
           <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-            {/* Copyright */}
+            {/* Copyright + Prova Social */}
             <div className="text-center sm:text-left">
               <p className="font-inter text-sm text-gray-400">
                 © {currentYear} {landingpage.name}. Todos os direitos
@@ -243,7 +303,7 @@ const Footer = ({ contact, landingpage }: FooterProps) => {
               >
                 <Coffee size={16} className="fill-current text-white" />
               </motion.div>
-              <span>por {landingpage.name}</span>
+              <span>por {firstName}</span>
             </motion.div>
           </div>
         </motion.div>

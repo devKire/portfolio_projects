@@ -106,22 +106,6 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
           transition={{ duration: 0.6 }}
           className="space-y-8 md:space-y-10"
         >
-          {/* 🔥 INDICADOR DE DISPONIBILIDADE - Gatilho de Urgência */}
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="flex justify-center"
-          >
-            <div className="inline-flex items-center gap-2 rounded-full border border-green-500/30 bg-green-500/10 px-4 py-2 backdrop-blur-sm">
-              <div className="h-2 w-2 animate-pulse rounded-full bg-green-500" />
-              <span className="text-sm font-medium text-green-400">
-                Disponível para novos projetos
-              </span>
-              <Sparkles size={14} className="text-green-400" />
-            </div>
-          </motion.div>
-
           {/* 🔥 AVATAR COM PROVA SOCIAL - Mais impacto visual */}
           <motion.div
             initial={{ opacity: 0, scale: 0 }}

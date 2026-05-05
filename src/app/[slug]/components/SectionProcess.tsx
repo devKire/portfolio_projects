@@ -317,32 +317,6 @@ const SectionProcess = ({ contact }: SectionProcessProps) => {
         </div>
 
         {/* ============================================ */}
-        {/* GARANTIAS — Layout horizontal ultra-limpo */}
-        {/* ============================================ */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8, delay: 0.3 }}
-          className="mt-20 border-t border-white/[0.04] pt-10"
-        >
-          <p className="mb-6 text-center text-xs font-medium tracking-wider text-gray-600 uppercase">
-            Garantias do processo
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
-            {guarantees.map((g) => (
-              <div
-                key={g.label}
-                className="flex items-center gap-2 text-sm text-gray-400"
-              >
-                <g.icon size={15} className="text-green-400" />
-                {g.label}
-              </div>
-            ))}
-          </div>
-        </motion.div>
-
-        {/* ============================================ */}
         {/* CTA FINAL — Único, sem competição */}
         {/* ============================================ */}
         <motion.div

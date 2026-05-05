@@ -102,21 +102,6 @@ const SectionContacts = ({ contact, landingpage }: SectionContactsProps) => {
       {/* CONTEÚDO PRINCIPAL */}
       {/* ============================================ */}
       <div className="relative z-10 mx-auto w-full max-w-2xl text-center">
-        {/* Badge de disponibilidade */}
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="mb-8 flex justify-center"
-        >
-          <div className="inline-flex items-center gap-2 rounded-full border border-green-500/20 bg-green-500/5 px-4 py-1.5 backdrop-blur-sm">
-            <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-500" />
-            <span className="text-xs font-medium text-green-400">
-              Disponível para novos projetos
-            </span>
-          </div>
-        </motion.div>
-
         {/* Título */}
         <motion.h2
           initial={{ opacity: 0, y: 20 }}
