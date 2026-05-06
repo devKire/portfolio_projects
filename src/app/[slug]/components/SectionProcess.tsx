@@ -1,6 +1,8 @@
 'use client';
 
 import { GravityStarsBackground } from '@/components/animate-ui/components/backgrounds/gravity-stars';
+import { Spotlight } from '@/components/ui/spotlight-new';
+import { cn } from '@/lib/utils';
 import { ContactInfo, LandingPage } from '@prisma/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -126,14 +128,10 @@ const SectionProcess = ({ contact }: SectionProcessProps) => {
       id="processo"
       className="relative isolate overflow-hidden bg-black py-20 md:py-28"
     >
+      <Spotlight />
       <GravityStarsBackground className="absolute inset-0 flex items-center justify-center rounded-xl" />
-
-      {/* ============================================ */}
-      {/* BACKGROUND — Glow estilo Linear.app */}
-      {/* ============================================ */}
-      <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-transparent blur-3xl" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(59,130,246,0.04),transparent_70%)]" />
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.01)_1px,transparent_1px)] [mask-image:radial-gradient(ellipse_80%_60%_at_50%_0%,black,transparent)] bg-[size:80px_80px]" />
+      {/* Grid Pattern */}
+      <div className="pattern-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.01)_1px,transparent_1px)] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,black,transparent)] bg-[size:64px_64px]" />
 
       <div className="relative z-10 mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         {/* ============================================ */}
@@ -147,13 +145,10 @@ const SectionProcess = ({ contact }: SectionProcessProps) => {
           className="mb-16 text-center md:mb-20"
         >
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-4 py-1.5 backdrop-blur-sm">
-            <Sparkles size={14} className="text-blue-400" />
-            <span className="text-xs font-medium text-gray-400">
-              Como funciona
-            </span>
+            <span className="text-xs text-gray-400">Como funciona</span>
           </div>
 
-          <h2 className="font-space text-4xl leading-tight font-bold tracking-tight sm:text-5xl md:text-6xl">
+          <h2 className="text-4xl leading-tight tracking-tight sm:text-5xl md:text-6xl">
             Da ideia ao{' '}
             <span className="bg-gradient-to-r from-sky-400 via-purple-400 to-purple-500 bg-clip-text text-transparent">
               lançamento
@@ -211,7 +206,7 @@ const SectionProcess = ({ contact }: SectionProcessProps) => {
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
                       {/* Badges */}
                       <div
-                        className={`absolute top-4 left-4 rounded-xl bg-gradient-to-r ${step.color} px-4 py-2 text-lg font-bold text-white shadow-lg`}
+                        className={`absolute top-4 left-4 rounded-xl bg-gradient-to-r ${step.color} px-4 py-2 text-lg text-white shadow-lg`}
                       >
                         {step.step}
                       </div>
@@ -269,7 +264,7 @@ const SectionProcess = ({ contact }: SectionProcessProps) => {
                 </div>
 
                 {/* Título */}
-                <h3 className="font-space text-3xl font-bold sm:text-4xl">
+                <h3 className="text-3xl sm:text-4xl">
                   {processSteps[active].title}
                 </h3>
 
@@ -280,7 +275,7 @@ const SectionProcess = ({ contact }: SectionProcessProps) => {
 
                 {/* Detalhes */}
                 <div className="space-y-2 rounded-2xl border border-white/[0.05] bg-white/[0.01] p-5 backdrop-blur-sm">
-                  <p className="mb-3 flex items-center gap-2 text-xs font-medium text-gray-500">
+                  <p className="mb-3 flex items-center gap-2 text-xs text-gray-500">
                     <CheckCircle size={14} className="text-green-500" />O que
                     está incluído:
                   </p>
@@ -330,9 +325,7 @@ const SectionProcess = ({ contact }: SectionProcessProps) => {
         >
           <div className="mx-auto max-w-lg rounded-2xl border border-white/[0.06] bg-white/[0.01] p-8 backdrop-blur-xl sm:p-10">
             <Rocket size={32} className="mx-auto mb-4 text-blue-400" />
-            <h3 className="font-space text-xl font-bold sm:text-2xl">
-              Vamos começar?
-            </h3>
+            <h3 className="text-xl sm:text-2xl">Vamos começar?</h3>
             <p className="mt-2 text-sm text-gray-400">
               Me conta sua ideia. Em até 2 horas você recebe um plano claro.
             </p>
@@ -345,7 +338,7 @@ const SectionProcess = ({ contact }: SectionProcessProps) => {
               rel="noopener noreferrer"
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
-              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-green-500 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-green-500/20 transition-all hover:bg-green-600 sm:w-auto sm:px-8"
+              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-green-500 px-6 py-3.5 text-sm text-white shadow-lg shadow-green-500/20 transition-all hover:bg-green-600 sm:w-auto sm:px-8"
             >
               <MessageCircle size={18} />
               Falar no WhatsApp

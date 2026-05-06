@@ -12,6 +12,9 @@ import SectionProcess from './components/SectionProcess';
 import SectionServices from './components/SectionServices';
 import { AuroraBackground } from '@/components/ui/aurora-background';
 import { Vortex } from '@/components/ui/vortex';
+import { WavyBackground } from '@/components/ui/wavy-background';
+import { StarsBackground } from '@/components/animate-ui/components/backgrounds/stars';
+import { cn } from '@/lib/utils';
 interface LandingPageProps {
   params: Promise<{ slug: string }>;
 }
@@ -49,17 +52,9 @@ const Page = async ({ params }: LandingPageProps) => {
           landingpage={landingpage}
           projects={landingpage.projects}
         />
-
-        <SectionServices
-          contact={landingpage.contactInfo}
-          landingpage={landingpage}
-        />
-        <SectionProcess
-          contact={landingpage.contactInfo}
-          landingpage={landingpage}
-        />
-        <Vortex
-          backgroundColor="black"
+        <WavyBackground
+          backgroundFill="black"
+          containerClassName="relative h-full w-full min-h-screen" // Adicione estas classes
           className="flex h-full w-full flex-col items-center justify-center px-2 py-4 md:px-10"
         >
           <div className="absolute inset-0">
@@ -68,11 +63,29 @@ const Page = async ({ params }: LandingPageProps) => {
             {/* Grid sutil */}
             <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.015)_1px,transparent_1px)] [mask-image:radial-gradient(ellipse_80%_60%_at_50%_0%,black,transparent)] bg-[size:80px_80px]" />
           </div>
+          <SectionServices
+            contact={landingpage.contactInfo}
+            landingpage={landingpage}
+          />
+        </WavyBackground>
+
+        <SectionProcess
+          contact={landingpage.contactInfo}
+          landingpage={landingpage}
+        />
+        <SectionAbout
+          contact={landingpage.contactInfo}
+          landingpage={landingpage}
+        />
+        {/* <Vortex
+          backgroundColor="black"
+          className="flex h-full w-full flex-col items-center justify-center px-2 py-4 md:px-10"
+        >
           <SectionAbout
             contact={landingpage.contactInfo}
             landingpage={landingpage}
           />
-        </Vortex>
+        </Vortex> */}
         <SectionContacts
           contact={landingpage.contactInfo}
           landingpage={landingpage}

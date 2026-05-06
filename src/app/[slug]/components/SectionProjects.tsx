@@ -320,17 +320,17 @@ const SectionProjects = ({
 
                   {/* Badges na imagem */}
                   <div className="absolute top-4 left-4 flex flex-wrap gap-2">
-                    <span className="bg-electric-500/20 text-electric-400 rounded-full px-3 py-1 text-xs font-semibold backdrop-blur-sm">
+                    <span className="bg-electric-500/20 text-electric-400 rounded-full px-3 py-1 text-xs backdrop-blur-sm">
                       {active.category}
                     </span>
                     <span
-                      className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium backdrop-blur-sm ${getStatusColor(active.status)}`}
+                      className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs backdrop-blur-sm ${getStatusColor(active.status)}`}
                     >
                       <CheckCircle size={12} />
                       {getStatusText(active.status)}
                     </span>
                     {active.featured && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 px-3 py-1 text-xs font-bold text-black">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 px-3 py-1 text-xs text-black">
                         <Sparkles size={12} />
                         Destaque
                       </span>
@@ -354,7 +354,7 @@ const SectionProjects = ({
                   <div>
                     <motion.h3
                       layoutId={`title-${active.title}-${id}`}
-                      className="font-space text-2xl font-bold md:text-3xl"
+                      className="text-2xl md:text-3xl"
                     >
                       {active.title}
                     </motion.h3>
@@ -378,7 +378,7 @@ const SectionProjects = ({
                     }
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex flex-shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-green-500 to-green-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-green-500/25 transition-all hover:from-green-600 hover:to-green-700"
+                    className="flex flex-shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-green-500 to-green-600 px-6 py-3 text-sm text-white shadow-lg shadow-green-500/25 transition-all hover:from-green-600 hover:to-green-700"
                   >
                     <MessageCircle size={18} />
                     Quero Um Projeto Assim
@@ -396,7 +396,7 @@ const SectionProjects = ({
                 >
                   {/* Descrição Completa */}
                   <div>
-                    <h4 className="font-space mb-3 flex items-center gap-2 text-lg font-semibold">
+                    <h4 className="mb-3 flex items-center gap-2 text-lg">
                       <Rocket size={20} className="text-electric-500" />
                       Sobre o Projeto
                     </h4>
@@ -408,7 +408,7 @@ const SectionProjects = ({
                   {/* Resultados */}
                   {active.results && (
                     <div>
-                      <h4 className="font-space mb-3 flex items-center gap-2 text-lg font-semibold">
+                      <h4 className="mb-3 flex items-center gap-2 text-lg">
                         <TrendingUp size={20} className="text-green-500" />
                         Resultados Alcançados
                       </h4>
@@ -418,7 +418,7 @@ const SectionProjects = ({
                             key={index}
                             className="rounded-xl border border-gray-700/50 bg-gray-800/30 p-4"
                           >
-                            <div className="font-space text-2xl font-bold text-green-400">
+                            <div className="text-2xl text-green-400">
                               {result.metric}
                             </div>
                             <div className="mt-1 text-sm text-gray-400">
@@ -446,11 +446,11 @@ const SectionProjects = ({
                         &ldquo;{active.testimonial.quote}&rdquo;
                       </p>
                       <div className="flex items-center gap-2">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-700 text-sm font-bold">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-700 text-sm">
                           {active.testimonial.author.charAt(0)}
                         </div>
                         <div>
-                          <div className="text-sm font-medium">
+                          <div className="text-sm">
                             {active.testimonial.author}
                           </div>
                           <div className="text-xs text-gray-500">
@@ -463,7 +463,7 @@ const SectionProjects = ({
 
                   {/* Tecnologias */}
                   <div>
-                    <h4 className="font-space mb-3 flex items-center gap-2 text-sm font-semibold text-gray-400">
+                    <h4 className="mb-3 flex items-center gap-2 text-sm text-gray-400">
                       <Code size={16} />
                       Tecnologias Utilizadas
                     </h4>
@@ -471,7 +471,7 @@ const SectionProjects = ({
                       {active.technologies.map((tech) => (
                         <span
                           key={tech}
-                          className="rounded-lg border border-gray-600/50 bg-gray-700/30 px-3 py-1.5 text-xs font-medium text-gray-300"
+                          className="rounded-lg border border-gray-600/50 bg-gray-700/30 px-3 py-1.5 text-xs text-gray-300"
                         >
                           {tech}
                         </span>
@@ -482,7 +482,7 @@ const SectionProjects = ({
                   {/* Info Adicional + Link */}
                   <div className="flex flex-col gap-3 rounded-xl border border-gray-700/50 bg-gray-800/20 p-5 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <h4 className="font-space mb-1 flex items-center gap-2 text-sm font-semibold text-gray-400">
+                      <h4 className="mb-1 flex items-center gap-2 text-sm text-gray-400">
                         <Clock size={16} />
                         Prazo e Investimento
                       </h4>
@@ -501,7 +501,7 @@ const SectionProjects = ({
                         rel="noopener noreferrer"
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
-                        className="flex flex-shrink-0 items-center justify-center gap-2 rounded-xl border border-gray-600/50 bg-gray-700/30 px-4 py-2.5 text-sm font-medium text-gray-300 transition-all hover:border-gray-500 hover:text-white"
+                        className="flex flex-shrink-0 items-center justify-center gap-2 rounded-xl border border-gray-600/50 bg-gray-700/30 px-4 py-2.5 text-sm text-gray-300 transition-all hover:border-gray-500 hover:text-white"
                       >
                         <ExternalLink size={16} />
                         Visitar Site
@@ -522,16 +522,21 @@ const SectionProjects = ({
         id="projetos"
         className="relative isolate overflow-hidden py-20 md:py-28"
       >
-        {/* Background com o ThreeDMarquee ocupando tudo */}
-        <div className="absolute inset-0 z-0">
+        {/* Background com o ThreeDMarquee - agora com opacidade controlada */}
+        <div className="absolute inset-0 z-0 opacity-20">
           <ThreeDMarquee
             images={images}
             className="h-full w-full [&>*]:h-full [&>*]:w-full"
           />
         </div>
 
-        {/* Overlay escuro para garantir legibilidade do conteúdo */}
-        <div className="absolute inset-0 z-[1] bg-gray-950/80 backdrop-blur-sm" />
+        {/* Gradiente de overlay melhorado para legibilidade */}
+        <div className="absolute inset-0 z-[1] bg-gradient-to-b from-gray-950/95 via-gray-950/80 to-gray-950/95" />
+
+        {/* Grid Pattern sutil */}
+        <div className="absolute inset-0 z-[1] bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,black,transparent)] bg-[size:64px_64px]" />
+
+        {/* Removido o backdrop-blur que estava muito agressivo */}
 
         <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           {/* Header */}
@@ -541,7 +546,7 @@ const SectionProjects = ({
             viewport={{ once: true }}
             className="mb-12 text-center md:mb-20"
           >
-            <h2 className="font-space mb-6 text-3xl font-bold md:text-5xl lg:text-6xl">
+            <h2 className="mb-6 text-3xl text-white md:text-5xl lg:text-6xl">
               Projetos Que{' '}
               <span className="bg-gradient-to-r from-sky-400 via-purple-400 to-purple-500 bg-clip-text text-transparent">
                 Geram Resultados
@@ -549,13 +554,13 @@ const SectionProjects = ({
               Reais
             </h2>
 
-            <p className="mx-auto max-w-2xl text-sm text-gray-400 sm:text-base md:text-lg">
+            <p className="mx-auto max-w-2xl text-base text-gray-300 sm:text-lg md:text-xl">
               Cada projeto é desenvolvido com foco em performance, conversão e
               experiência do usuário.
             </p>
           </motion.div>
 
-          {/* Filtros */}
+          {/* Filtros - com fundo semitransparente para melhor contraste */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -563,13 +568,13 @@ const SectionProjects = ({
             className="mb-10 space-y-4"
           >
             <div className="relative mx-auto max-w-md">
-              <Search className="absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-gray-500" />
+              <Search className="absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
                 placeholder="Buscar projetos..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="focus:border-electric-500/50 focus:ring-electric-500/50 w-full rounded-xl border border-gray-700/50 bg-gray-800/30 py-3 pr-4 pl-12 text-sm backdrop-blur-sm transition-all placeholder:text-gray-500 focus:ring-1 focus:outline-none"
+                className="focus:border-electric-500/50 focus:ring-electric-500/50 w-full rounded-xl border border-gray-600/50 bg-gray-800/80 py-3 pr-4 pl-12 text-sm text-white backdrop-blur-sm transition-all placeholder:text-gray-400 focus:ring-1 focus:outline-none"
               />
             </div>
 
@@ -578,10 +583,10 @@ const SectionProjects = ({
                 <button
                   key={category}
                   onClick={() => handleFilterChange(category)}
-                  className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${
+                  className={`rounded-lg px-4 py-2 text-sm transition-all ${
                     filter === category
                       ? 'bg-electric-500 shadow-electric-500/25 text-white shadow-lg'
-                      : 'bg-gray-800/30 text-gray-400 hover:bg-gray-700/50 hover:text-white'
+                      : 'bg-gray-800/80 text-gray-300 hover:bg-gray-700/80 hover:text-white'
                   }`}
                 >
                   {category}
@@ -592,13 +597,13 @@ const SectionProjects = ({
               ))}
             </div>
 
-            <div className="text-center text-sm text-gray-500">
+            <div className="text-center text-sm text-gray-400">
               Mostrando {Math.min(visibleProjects, filteredProjects.length)} de{' '}
               {filteredProjects.length} projetos
             </div>
           </motion.div>
 
-          {/* 🔥 Grid de Projetos com CometCard + ExpandableCard */}
+          {/* Grid de Projetos */}
           <motion.div
             layout
             className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
@@ -616,15 +621,19 @@ const SectionProjects = ({
                   onClick={() => setActive(project)}
                   className="cursor-pointer"
                 >
-                  <CometCard rotateDepth={10} translateDepth={12}>
+                  <CometCard
+                    rotateDepth={10}
+                    translateDepth={12}
+                    glareOpacity={0.2}
+                  >
                     <div
                       className={`overflow-hidden rounded-2xl border transition-colors duration-300 ${
                         project.featured
-                          ? 'border-yellow-500/30 bg-gradient-to-b from-yellow-500/5 to-gray-800/30'
-                          : 'border-gray-700/50 bg-gray-800/30'
+                          ? 'border-yellow-500/30 bg-gradient-to-b from-yellow-500/10 to-gray-800/90'
+                          : 'border-gray-600/50 bg-gray-800/90'
                       } hover:border-electric-500/50`}
                     >
-                      {/* Imagem com layoutId para animação compartilhada */}
+                      {/* Imagem */}
                       <motion.div
                         layoutId={`image-${project.title}-${id}`}
                         className="relative aspect-video overflow-hidden"
@@ -640,13 +649,13 @@ const SectionProjects = ({
 
                         <div className="absolute top-3 right-3 left-3 flex items-start justify-between">
                           {project.featured && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 px-2.5 py-1 text-xs font-bold text-black shadow-lg">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 px-2.5 py-1 text-xs text-black shadow-lg">
                               <Sparkles size={10} />
                               Destaque
                             </span>
                           )}
                           <span
-                            className={`ml-auto inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${getStatusColor(project.status)}`}
+                            className={`ml-auto inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs ${getStatusColor(project.status)}`}
                           >
                             {getStatusText(project.status)}
                           </span>
@@ -656,7 +665,7 @@ const SectionProjects = ({
                       {/* Conteúdo */}
                       <div className="p-5">
                         <div className="mb-2 flex items-center justify-between">
-                          <span className="text-electric-500 text-xs font-semibold">
+                          <span className="text-electric-400 text-xs">
                             {project.category}
                           </span>
                           {project.liveUrl && (
@@ -669,14 +678,14 @@ const SectionProjects = ({
 
                         <motion.h3
                           layoutId={`title-${project.title}-${id}`}
-                          className="font-space group-hover:text-electric-500 mb-2 text-lg font-bold transition-colors"
+                          className="group-hover:text-electric-400 mb-2 text-lg text-white transition-colors"
                         >
                           {project.title}
                         </motion.h3>
 
                         <motion.p
                           layoutId={`description-${project.description}-${id}`}
-                          className="mb-4 line-clamp-2 text-sm leading-relaxed text-gray-400"
+                          className="mb-4 line-clamp-2 text-sm leading-relaxed text-gray-300"
                         >
                           {project.description}
                         </motion.p>
@@ -685,25 +694,25 @@ const SectionProjects = ({
                           {project.technologies.slice(0, 3).map((tech) => (
                             <span
                               key={tech}
-                              className="rounded-md border border-gray-600/30 bg-gray-700/20 px-2 py-1 text-xs text-gray-400"
+                              className="rounded-md border border-gray-500/30 bg-gray-700/50 px-2 py-1 text-xs text-gray-300"
                             >
                               {tech}
                             </span>
                           ))}
                           {project.technologies.length > 3 && (
-                            <span className="rounded-md border border-gray-600/30 bg-gray-700/20 px-2 py-1 text-xs text-gray-500">
+                            <span className="rounded-md border border-gray-500/30 bg-gray-700/50 px-2 py-1 text-xs text-gray-400">
                               +{project.technologies.length - 3}
                             </span>
                           )}
                         </div>
 
-                        <div className="flex items-center justify-between border-t border-gray-700/30 pt-4">
-                          <span className="text-sm text-gray-500">
+                        <div className="flex items-center justify-between border-t border-gray-600/30 pt-4">
+                          <span className="text-sm text-gray-400">
                             Clique para expandir
                           </span>
                           <ArrowRight
                             size={18}
-                            className="group-hover:text-electric-500 text-gray-500 transition-all group-hover:translate-x-0.5"
+                            className="group-hover:text-electric-400 text-gray-400 transition-all group-hover:translate-x-0.5"
                           />
                         </div>
                       </div>
@@ -722,12 +731,10 @@ const SectionProjects = ({
               viewport={{ once: true }}
               className="mt-16 text-center"
             >
-              <div className="mx-auto max-w-2xl rounded-2xl border border-gray-700/50 bg-gradient-to-br from-gray-800/50 to-gray-900/50 p-8 backdrop-blur-sm md:p-12">
-                <Rocket size={40} className="text-electric-500 mx-auto mb-4" />
-                <h3 className="font-space mb-3 text-2xl font-bold">
-                  Gostou do que viu?
-                </h3>
-                <p className="mb-6 text-gray-400">
+              <div className="mx-auto max-w-2xl rounded-2xl border border-gray-600/50 bg-gradient-to-br from-gray-800/90 to-gray-900/90 p-8 backdrop-blur-sm md:p-12">
+                <Rocket size={40} className="text-electric-400 mx-auto mb-4" />
+                <h3 className="mb-3 text-2xl text-white">Gostou do que viu?</h3>
+                <p className="mb-6 text-gray-300">
                   Vamos criar algo incrível juntos. Conte-me sobre seu projeto.
                 </p>
                 <motion.a
@@ -739,7 +746,7 @@ const SectionProjects = ({
                   rel="noopener noreferrer"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="inline-flex items-center gap-3 rounded-full bg-gradient-to-r from-green-500 to-green-600 px-8 py-4 text-lg font-semibold text-white shadow-2xl shadow-green-500/25 transition-all hover:from-green-600 hover:to-green-700"
+                  className="inline-flex items-center gap-3 rounded-full bg-gradient-to-r from-green-500 to-green-600 px-8 py-4 text-lg text-white shadow-2xl shadow-green-500/25 transition-all hover:from-green-600 hover:to-green-700"
                 >
                   <MessageCircle size={24} />
                   Solicitar Orçamento
@@ -759,7 +766,7 @@ const SectionProjects = ({
               <button
                 onClick={loadMoreProjects}
                 disabled={isLoading}
-                className="group flex items-center gap-2 rounded-xl border border-gray-700/50 bg-gray-800/30 px-8 py-4 font-medium text-gray-300 transition-all hover:border-gray-600 hover:bg-gray-700/50 disabled:opacity-50"
+                className="group flex items-center gap-2 rounded-xl border border-gray-600/50 bg-gray-800/80 px-8 py-4 text-gray-300 transition-all hover:border-gray-500 hover:bg-gray-700/80 disabled:opacity-50"
               >
                 {isLoading ? 'Carregando...' : 'Ver Mais Projetos'}
                 <ChevronDown size={20} />
@@ -774,8 +781,8 @@ const SectionProjects = ({
               animate={{ opacity: 1 }}
               className="py-16 text-center"
             >
-              <Search size={48} className="mx-auto mb-4 text-gray-600" />
-              <h3 className="font-space mb-2 text-xl font-bold text-gray-400">
+              <Search size={48} className="mx-auto mb-4 text-gray-500" />
+              <h3 className="mb-2 text-xl text-gray-300">
                 Nenhum projeto encontrado
               </h3>
               <button

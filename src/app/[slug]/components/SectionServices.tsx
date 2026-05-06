@@ -232,26 +232,7 @@ const SectionServices = ({ contact, landingpage }: SectionServicesProps) => {
   }, [api]);
 
   return (
-    <section
-      id="servicos"
-      className="relative isolate overflow-hidden py-20 md:py-28"
-    >
-      <StarsBackground
-        starColor="#FFF"
-        className={cn(
-          'absolute inset-0 flex items-center justify-center rounded-xl',
-          'bg-[radial-gradient(ellipse_at_bottom,_#1a1a1a_0%,_#000_100%)]'
-        )}
-      />
-      {/* Background Elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/4 -right-24 h-96 w-96 rounded-full bg-emerald-500/5 blur-3xl" />
-        <div className="absolute bottom-1/4 -left-24 h-80 w-80 rounded-full bg-blue-500/5 blur-3xl" />
-      </div>
-
-      {/* Grid Pattern */}
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.01)_1px,transparent_1px)] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,black,transparent)] bg-[size:64px_64px]" />
-
+    <section id="servicos" className="relative w-full py-16 sm:py-20 md:py-28">
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <motion.div
@@ -261,7 +242,7 @@ const SectionServices = ({ contact, landingpage }: SectionServicesProps) => {
           transition={{ duration: 0.8 }}
           className="mb-16 text-center md:mb-24"
         >
-          <h2 className="font-space mb-6 text-3xl font-bold md:text-5xl lg:text-6xl">
+          <h2 className="mb-6 text-3xl md:text-5xl lg:text-6xl">
             Serviços e{' '}
             <span className="bg-gradient-to-r from-sky-400 via-purple-400 to-purple-500 bg-clip-text text-transparent">
               Investimento
@@ -300,14 +281,14 @@ const SectionServices = ({ contact, landingpage }: SectionServicesProps) => {
                   >
                     {/* Badge */}
                     {service.popular && (
-                      <div className="absolute top-4 -right-0.5 rounded-l-full bg-gradient-to-r from-emerald-500 to-emerald-600 px-4 py-1.5 text-xs font-bold text-white shadow-lg">
+                      <div className="absolute top-4 -right-0.5 rounded-l-full bg-gradient-to-r from-emerald-500 to-emerald-600 px-4 py-1.5 text-xs text-white shadow-lg">
                         <Sparkles size={12} className="mr-1 inline" />
                         {service.badge}
                       </div>
                     )}
                     {!service.popular && (
                       <div
-                        className={`absolute top-4 -right-0.5 rounded-l-full ${service.badgeBg} px-4 py-1.5 text-xs font-bold text-white shadow-lg`}
+                        className={`absolute top-4 -right-0.5 rounded-l-full ${service.badgeBg} px-4 py-1.5 text-xs text-white shadow-lg`}
                       >
                         {service.badge}
                       </div>
@@ -321,7 +302,7 @@ const SectionServices = ({ contact, landingpage }: SectionServicesProps) => {
                     </div>
 
                     {/* Título e Descrição */}
-                    <h3 className="font-space mb-3 text-xl font-bold text-gray-900">
+                    <h3 className="mb-3 text-xl text-gray-900">
                       {service.name}
                     </h3>
                     <p className="mb-5 flex-1 text-sm leading-relaxed text-gray-600">
@@ -331,7 +312,7 @@ const SectionServices = ({ contact, landingpage }: SectionServicesProps) => {
                     {/* Métrica de Resultado */}
                     <div className="mb-4 flex items-center gap-2 rounded-lg bg-white/60 px-3 py-1.5 backdrop-blur-sm">
                       <TrendingUp size={14} className="text-emerald-600" />
-                      <span className="text-xs font-semibold text-emerald-700">
+                      <span className="text-xs text-emerald-700">
                         {service.results}
                       </span>
                     </div>
@@ -354,9 +335,7 @@ const SectionServices = ({ contact, landingpage }: SectionServicesProps) => {
 
                     {/* Preço e Prazo */}
                     <div className="mb-4 border-t border-gray-300/50 pt-4">
-                      <div
-                        className={`font-space text-2xl font-bold ${service.priceColor}`}
-                      >
+                      <div className={`text-2xl ${service.priceColor}`}>
                         {service.price}
                       </div>
                       <div className="mt-1 flex items-center gap-1 text-xs text-gray-500">
@@ -366,7 +345,7 @@ const SectionServices = ({ contact, landingpage }: SectionServicesProps) => {
                     </div>
 
                     {/* Garantia */}
-                    <div className="mb-4 flex items-center gap-2 rounded-lg bg-white/50 px-3 py-1.5 text-xs font-medium text-gray-700">
+                    <div className="mb-4 flex items-center gap-2 rounded-lg bg-white/50 px-3 py-1.5 text-xs text-gray-700">
                       <Shield size={12} className="text-yellow-600" />
                       {service.guarantee}
                     </div>
@@ -381,7 +360,7 @@ const SectionServices = ({ contact, landingpage }: SectionServicesProps) => {
                       rel="noopener noreferrer"
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:shadow-xl ${service.badgeBg}`}
+                      className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm text-white shadow-lg transition-all hover:shadow-xl ${service.badgeBg}`}
                     >
                       {service.cta}
                       <ArrowRight size={16} />
@@ -424,7 +403,7 @@ const SectionServices = ({ contact, landingpage }: SectionServicesProps) => {
         >
           <div className="mx-auto max-w-3xl rounded-2xl border border-gray-700/50 bg-gradient-to-br from-gray-800/50 to-gray-900/50 p-8 backdrop-blur-sm md:p-12">
             <Rocket size={48} className="text-electric-500 mx-auto mb-6" />
-            <h3 className="font-space mb-4 text-2xl font-bold md:text-3xl">
+            <h3 className="mb-4 text-2xl md:text-3xl">
               Não Encontrou o Que Precisava?
             </h3>
             <p className="mb-6 text-gray-400">
@@ -440,7 +419,7 @@ const SectionServices = ({ contact, landingpage }: SectionServicesProps) => {
               rel="noopener noreferrer"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="inline-flex items-center gap-3 rounded-full bg-gradient-to-r from-green-500 to-green-600 px-8 py-4 text-lg font-semibold text-white shadow-2xl shadow-green-500/25 transition-all hover:from-green-600 hover:to-green-700"
+              className="inline-flex items-center gap-3 rounded-full bg-gradient-to-r from-green-500 to-green-600 px-8 py-4 text-lg text-white shadow-2xl shadow-green-500/25 transition-all hover:from-green-600 hover:to-green-700"
             >
               <MessageCircle size={24} />
               Solicitar Proposta Personalizada

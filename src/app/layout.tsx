@@ -1,13 +1,13 @@
 import './globals.css';
 
 import type { Metadata } from 'next';
-import { Poppins } from 'next/font/google';
-
+import { Inter } from 'next/font/google';
 import { Toaster } from '@/components/ui/sonner';
 
-const poppins = Poppins({
-  weight: ['100', '200', '300', '400', '500', '600', '700', '800', '900'],
+const inter = Inter({
   subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-inter',
 });
 
 export const metadata: Metadata = {
@@ -43,7 +43,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
-      <body className={`${poppins.className} antialiased`}>
+      <body className={`${inter.className} antialiased`}>
         {children}
         <Toaster />
       </body>

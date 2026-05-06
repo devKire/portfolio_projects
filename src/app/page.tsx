@@ -9,6 +9,7 @@ import {
   ChevronRightIcon,
 } from 'lucide-react';
 import { HexagonBackground } from '@/components/animate-ui/components/backgrounds/hexagon';
+import Image from 'next/image';
 
 export default function WelcomePage() {
   const [isVisible, setIsVisible] = useState(false);
@@ -72,12 +73,16 @@ export default function WelcomePage() {
         <div className="rounded-3xl border border-neutral-200/60 bg-white/80 p-8 shadow-xl shadow-neutral-200/20 backdrop-blur-sm dark:border-neutral-800/60 dark:bg-neutral-900/80 dark:shadow-neutral-950/30">
           {/* Header com Logo e Nome */}
           <div className="space-y-6">
-            {/* Logo */}
+            {/* Logo - Ajustada */}
             <div className="flex justify-center">
-              <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-neutral-800 to-neutral-950 shadow-lg ring-1 shadow-neutral-300/20 ring-neutral-200 dark:from-white dark:to-neutral-200 dark:shadow-neutral-950/50 dark:ring-neutral-700">
-                <span className="text-xl font-bold tracking-tighter text-white dark:text-neutral-900">
-                  ES
-                </span>
+              <div className="relative flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-neutral-800 to-neutral-950 shadow-lg ring-1 shadow-neutral-300/20 ring-neutral-200 dark:from-white dark:to-neutral-200 dark:shadow-neutral-950/50 dark:ring-neutral-700">
+                <Image
+                  src="https://1hcgs7spbatxhpzg.public.blob.vercel-storage.com/me.png"
+                  alt="Logo de Erik Santos"
+                  width={80}
+                  height={80}
+                  className="relative h-full w-full rounded-xl border-2 object-cover p-0.5"
+                />
               </div>
             </div>
 

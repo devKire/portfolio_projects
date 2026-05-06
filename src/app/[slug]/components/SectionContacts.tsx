@@ -114,7 +114,7 @@ const SectionContacts = ({ contact, landingpage }: SectionContactsProps) => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
-          className="font-space text-4xl leading-tight font-bold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl"
+          className="text-4xl leading-tight tracking-tight sm:text-5xl md:text-6xl lg:text-7xl"
         >
           Vamos construir algo{' '}
           <span className="bg-gradient-to-r from-green-400 via-emerald-400 to-green-500 bg-clip-text text-transparent">
@@ -159,7 +159,7 @@ const SectionContacts = ({ contact, landingpage }: SectionContactsProps) => {
             rel="noopener noreferrer"
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
-            className="group relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-xl bg-green-500 px-6 py-4 text-lg font-semibold text-white shadow-lg shadow-green-500/20 transition-all hover:bg-green-600 hover:shadow-green-500/30"
+            className="group relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-xl bg-green-500 px-6 py-4 text-lg text-white shadow-lg shadow-green-500/20 transition-all hover:bg-green-600 hover:shadow-green-500/30"
           >
             <MessageCircle size={22} />
             <span>Falar no WhatsApp</span>

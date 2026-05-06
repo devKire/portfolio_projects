@@ -3,16 +3,12 @@
 import { ContactInfo, LandingPage } from '@prisma/client';
 import { motion } from 'framer-motion';
 import {
-  ArrowRight,
-  Coffee,
-  Facebook,
-  Heart,
+  ArrowUpRight,
+  Github,
   Instagram,
   Linkedin,
   Mail,
   MessageCircle,
-  Phone,
-  Star,
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -24,46 +20,31 @@ interface FooterProps {
 const currentYear = new Date().getFullYear();
 
 const Footer = ({ contact, landingpage }: FooterProps) => {
-  // ✅ Extração segura do nome
   const [firstName, lastName] = landingpage.name.split(' ');
 
-  // Links sociais baseados nos dados do banco
+  // Apenas links essenciais
   const socialLinks = [
     {
       icon: MessageCircle,
-      href: contact.whatsappLink || '#',
+      href: contact.whatsappLink ?? undefined,
       label: 'WhatsApp',
     },
     {
       icon: Instagram,
-      href: contact.instagramLink || '#',
+      href: contact.instagramLink ?? undefined,
       label: 'Instagram',
     },
     {
-      icon: Facebook,
-      href: contact.facebookLink || '#',
-      label: 'Facebook',
-    },
-    {
       icon: Linkedin,
-      href: contact.linkedinLink || '#',
+      href: contact.linkedinLink ?? undefined,
       label: 'LinkedIn',
     },
     {
       icon: Mail,
-      href: `mailto:${contact.email}`,
+      href: contact.email ? `mailto:${contact.email}` : undefined,
       label: 'Email',
     },
-  ].filter((link) => link.href && link.href !== '#'); // ✅ Filtro mais seguro
-
-  // ✅ IDs corrigidos e expandidos
-  const navigationLinks = [
-    { name: 'Início', id: 'inicio' },
-    { name: 'Sobre', id: 'sobre' },
-    { name: 'Processo', id: 'processo' },
-    { name: 'Projetos', id: 'projetos' },
-    { name: 'Contato', id: 'contato' },
-  ];
+  ].filter((link) => link.href);
 
   const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId);
@@ -73,239 +54,154 @@ const Footer = ({ contact, landingpage }: FooterProps) => {
   };
 
   return (
-    <footer className="border-t border-gray-800 bg-gradient-to-b from-gray-900 to-gray-950">
-      <div className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
-        {/* Main Footer Content */}
-        <div className="grid grid-cols-1 gap-12 lg:grid-cols-4">
-          {/* Brand Section */}
+    <footer className="relative border-t border-white/5 bg-black">
+      <div className="pointer-events-none absolute inset-0">
+        {/* Luz suave no topo */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(59,130,246,0.06),transparent_70%)]" />
+        {/* Grid sutil */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.015)_1px,transparent_1px)] [mask-image:radial-gradient(ellipse_80%_60%_at_50%_0%,black,transparent)] bg-[size:80px_80px]" />
+      </div>
+      <div className="mx-auto max-w-7xl px-6 py-12 lg:px-8">
+        {/* Linha Principal - Apenas 3 colunas clean */}
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Marca */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="lg:col-span-2"
+            transition={{ duration: 0.5 }}
+            className="space-y-4"
           >
-            <div className="mb-4 flex items-center gap-3">
+            <div className="flex items-center gap-3">
               {landingpage.avatarImageUrl ? (
                 <Image
-                  src={landingpage.avatarImageUrl}
+                  src="https://1hcgs7spbatxhpzg.public.blob.vercel-storage.com/me.png"
                   alt={landingpage.name}
-                  width={80}
-                  height={80}
-                  className="border-electric-500 h-12 w-12 rounded-full border-2 object-cover"
+                  width={40}
+                  height={40}
+                  className="h-10 w-10 rounded-full object-cover ring-1 ring-white/10"
                 />
               ) : (
-                <div className="from-electric-500 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r to-blue-600">
-                  <span className="text-lg font-bold text-white">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5">
+                  <span className="text-sm text-white/60">
                     {landingpage.name.charAt(0)}
                   </span>
                 </div>
               )}
-              <div className="font-space text-2xl font-bold text-white">
-                {/* ✅ Nome seguro - não quebra sem sobrenome */}
+              <div className="text-lg text-white">
                 {firstName}
-                {lastName && (
-                  <span className="text-electric-500"> {lastName}</span>
-                )}
+                {lastName && <span className="text-white/40"> {lastName}</span>}
               </div>
             </div>
-            <p className="font-inter max-w-md text-lg leading-relaxed text-gray-300">
+            <p className="max-w-xs text-sm leading-relaxed text-white/40">
               {landingpage.description}
             </p>
-
-            {/* Contact Info */}
-            <div className="mt-6 space-y-2">
-              <div className="flex items-center gap-3 text-gray-400">
-                <Mail size={16} />
-                <a
-                  href={`mailto:${contact.email}`}
-                  className="hover:text-electric-500 transition-colors"
-                >
-                  {contact.email}
-                </a>
-              </div>
-              {contact.phone && (
-                <div className="flex items-center gap-3 text-gray-400">
-                  <Phone size={16} />
-                  <a
-                    href={`tel:${contact.phone}`}
-                    className="hover:text-electric-500 transition-colors"
-                  >
-                    {contact.phone}
-                  </a>
-                </div>
-              )}
-            </div>
           </motion.div>
 
-          {/* ✅ Navegação Expandida */}
+          {/* Links Rápidos - Minimalista */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.1 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="space-y-4"
           >
-            <h3 className="font-space mb-6 text-lg font-semibold text-white">
-              Navegação
-            </h3>
+            <h3 className="text-sm font-medium text-white/60">Navegação</h3>
             <nav className="space-y-2">
-              {navigationLinks.map((item) => (
+              {['Início', 'Sobre', 'Projetos', 'Contato'].map((item) => (
                 <button
-                  key={item.id}
-                  onClick={() => scrollToSection(item.id)}
-                  className="font-inter hover:text-electric-500 block w-full rounded-lg px-2 py-2 text-left text-gray-400 transition-colors duration-300 hover:bg-white/5"
+                  key={item}
+                  onClick={() =>
+                    scrollToSection(
+                      item
+                        .toLowerCase()
+                        .normalize('NFD')
+                        .replace(/[\u0300-\u036f]/g, '')
+                    )
+                  }
+                  className="group flex items-center gap-2 text-sm text-white/30 transition-colors hover:text-white/70"
                 >
-                  {item.name}
+                  <span className="h-px w-0 bg-white/30 transition-all group-hover:w-3" />
+                  {item}
                 </button>
               ))}
             </nav>
           </motion.div>
 
-          {/* Connect + Social */}
+          {/* Contato + Social - Unificado */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.2 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="space-y-4"
           >
-            <h3 className="font-space mb-6 text-lg font-semibold text-white">
-              Vamos Conversar
-            </h3>
-            <p className="font-inter mb-6 text-gray-400">
-              Pronto para transformar sua ideia em realidade? Entre em contato!
-            </p>
+            <h3 className="text-sm font-medium text-white/60">Contato</h3>
 
-            {/* ✅ Social com Tooltips */}
-            <div className="grid grid-cols-3 gap-3">
+            {/* Email */}
+            <a
+              href={`mailto:${contact.email}`}
+              className="group flex items-center gap-2 text-sm text-white/30 transition-colors hover:text-white/70"
+            >
+              <Mail size={14} className="text-white/20" />
+              {contact.email}
+              <ArrowUpRight
+                size={12}
+                className="opacity-0 transition-all group-hover:opacity-100"
+              />
+            </a>
+
+            {/* WhatsApp CTA - Único botão */}
+            <motion.a
+              href={
+                contact.whatsappLink ||
+                'https://api.whatsapp.com/send/?phone=554797086965'
+              }
+              target="_blank"
+              rel="noopener noreferrer"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="inline-flex items-center gap-2 rounded-lg bg-white/5 px-4 py-2 text-sm text-white/70 transition-all hover:bg-white/10 hover:text-white"
+            >
+              <MessageCircle size={14} />
+              Vamos conversar
+              <ArrowUpRight size={12} />
+            </motion.a>
+
+            {/* Social Icons - Minimalista */}
+            <div className="flex items-center gap-3 pt-2">
               {socialLinks.map(({ icon: Icon, href, label }) => (
                 <motion.a
                   key={label}
                   href={href}
                   target="_blank"
-                  rel="noopener noreferrer nofollow"
-                  whileHover={{ scale: 1.05, y: -2 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="hover:bg-electric-500 group relative flex items-center justify-center rounded-lg bg-gray-800 p-3 transition-all duration-300"
+                  rel="noopener noreferrer"
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  className="text-white/20 transition-colors hover:text-white/60"
                   aria-label={label}
                 >
-                  <Icon
-                    size={20}
-                    className="text-gray-400 transition-colors group-hover:text-white"
-                  />
-                  {/* ✅ Tooltip */}
-                  <span className="absolute -top-8 left-1/2 -translate-x-1/2 rounded-md bg-gray-700 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100">
-                    {label}
-                  </span>
+                  <Icon size={16} />
                 </motion.a>
               ))}
             </div>
           </motion.div>
         </div>
 
-        {/* 🔥 CTA DE CONVERSÃO - ÚLTIMO EMPURRÃO */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6, delay: 0.25 }}
-          className="mt-12 overflow-hidden rounded-2xl border border-gray-700/50 bg-gradient-to-br from-gray-800/50 to-gray-800/30 p-6 backdrop-blur-sm sm:p-8"
-        >
-          <div className="flex flex-col items-center text-center sm:flex-row sm:justify-between sm:text-left">
-            <div className="mb-6 sm:mb-0">
-              <h3 className="font-space text-xl font-semibold text-white sm:text-2xl">
-                Pronto para tirar seu projeto do papel?
-              </h3>
-              <p className="mt-2 text-sm text-gray-400 sm:text-base">
-                Fale comigo agora e receba um plano personalizado em até 2 horas
-              </p>
-              {/* ✅ Prova social no CTA */}
-              <div className="mt-3 flex items-center justify-center gap-4 text-xs text-gray-500 sm:justify-start">
-                <span className="flex items-center gap-1">
-                  <Star size={12} className="text-yellow-500" />
-                  98% satisfação
-                </span>
-                <span>•</span>
-                <span>+30 projetos entregues</span>
-              </div>
-            </div>
-
-            <motion.a
-              href={
-                contact.whatsappLink ||
-                'https://api.whatsapp.com/send/?phone=554797086965&text=Olá! Gostaria de conversar sobre um projeto'
-              }
-              target="_blank"
-              rel="noopener noreferrer nofollow"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="inline-flex items-center gap-2 rounded-xl bg-green-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-green-500/20 transition-all hover:bg-green-600 sm:px-8 sm:py-4"
-            >
-              <MessageCircle size={18} />
-              Falar no WhatsApp
-              <ArrowRight size={16} />
-            </motion.a>
-          </div>
-        </motion.div>
-
-        {/* Bottom Bar */}
+        {/* Linha Final - Ultra minimalista */}
         <motion.div
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.6, delay: 0.3 }}
-          className="mt-12 border-t border-gray-800 pt-8"
+          transition={{ duration: 0.5, delay: 0.3 }}
+          className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-white/5 pt-8 sm:flex-row"
         >
-          <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-            {/* Copyright + Prova Social */}
-            <div className="text-center sm:text-left">
-              <p className="font-inter text-sm text-gray-400">
-                © {currentYear} {landingpage.name}. Todos os direitos
-                reservados.
-              </p>
-              <p className="font-inter mt-1 text-xs text-gray-500">
-                Desenvolvido com as melhores tecnologias do mercado
-              </p>
-            </div>
-
-            {/* Made with love */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-              className="font-inter flex items-center gap-2 text-sm text-gray-400"
-            >
-              <span>Feito com</span>
-              <motion.div
-                animate={{
-                  scale: [1, 1.3, 1],
-                  rotate: [0, 10, -10, 0],
-                }}
-                transition={{
-                  duration: 1.5,
-                  repeat: Infinity,
-                  repeatDelay: 3,
-                }}
-              >
-                <Heart size={16} className="fill-current text-red-500" />
-              </motion.div>
-              <span>e MUITO</span>
-              <motion.div
-                animate={{
-                  scale: [1, 1.3, 1],
-                  rotate: [0, 10, -10, 0],
-                }}
-                transition={{
-                  duration: 1.5,
-                  repeat: Infinity,
-                  repeatDelay: 3,
-                }}
-              >
-                <Coffee size={16} className="fill-current text-white" />
-              </motion.div>
-              <span>por {firstName}</span>
-            </motion.div>
-          </div>
+          <p className="text-xs text-white/20">
+            © {currentYear} {firstName}. Todos os direitos reservados.
+          </p>
+          <p className="text-xs text-white/15">
+            Design & Desenvolvimento por {firstName}
+          </p>
         </motion.div>
       </div>
     </footer>
