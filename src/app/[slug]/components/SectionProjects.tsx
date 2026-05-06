@@ -34,6 +34,8 @@ import React, {
 
 import { CometCard } from '@/components/ui/comet-card';
 import { useOutsideClick } from '@/hooks/use-outside-click';
+import { FireworksBackground } from '@/components/animate-ui/components/backgrounds/fireworks';
+import { ThreeDMarquee } from '@/components/ui/3d-marquee';
 
 interface SectionProjectsProps {
   contact: ContactInfo;
@@ -222,6 +224,50 @@ const SectionProjects = ({
     setFilter(category);
     setVisibleProjects(6);
   };
+
+  const images = [
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_cantinhogourmet.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_eriksantos.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_francostaacademy.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_nazariocicles.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_gilshinaider.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_insertion.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_itajubacasamar.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_joaogarcia.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_marivaldo.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_metanoiamentebiblico.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_episystem.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_neodoxa.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_projetocafarnaum.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_rafamanicure.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_rdseletrecista.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_tarefando.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_cantinhogourmet.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_eriksantos.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_francostaacademy.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_nazariocicles.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_gilshinaider.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_insertion.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_itajubacasamar.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_joaogarcia.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_marivaldo.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_metanoiamentebiblico.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_episystem.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_neodoxa.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_projetocafarnaum.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_rafamanicure.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_rdseletrecista.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_tarefando.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_cantinhogourmet.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_eriksantos.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_francostaacademy.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_nazariocicles.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_gilshinaider.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_insertion.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_itajubacasamar.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_joaogarcia.png',
+    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_marivaldo.png',
+  ];
 
   return (
     <>
@@ -474,13 +520,18 @@ const SectionProjects = ({
       {/* ============================================ */}
       <section
         id="projetos"
-        className="relative overflow-hidden bg-gradient-to-b from-gray-900 to-black py-16 md:py-24"
+        className="relative isolate overflow-hidden py-20 md:py-28"
       >
-        {/* Background Elements */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="bg-electric-500/10 absolute -top-24 -right-24 h-96 w-96 rounded-full blur-3xl" />
-          <div className="absolute -bottom-24 -left-24 h-80 w-80 rounded-full bg-purple-500/10 blur-3xl" />
+        {/* Background com o ThreeDMarquee ocupando tudo */}
+        <div className="absolute inset-0 z-0">
+          <ThreeDMarquee
+            images={images}
+            className="h-full w-full [&>*]:h-full [&>*]:w-full"
+          />
         </div>
+
+        {/* Overlay escuro para garantir legibilidade do conteúdo */}
+        <div className="absolute inset-0 z-[1] bg-gray-950/80 backdrop-blur-sm" />
 
         <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           {/* Header */}
@@ -502,21 +553,6 @@ const SectionProjects = ({
               Cada projeto é desenvolvido com foco em performance, conversão e
               experiência do usuário.
             </p>
-
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-6 text-sm text-gray-400">
-              <div className="flex items-center gap-2">
-                <Users size={16} className="text-electric-500" />
-                <span>{projects.length}+ Clientes</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Star size={16} className="text-yellow-500" />
-                <span>98% Satisfação</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Rocket size={16} className="text-green-500" />
-                <span>100% No Prazo</span>
-              </div>
-            </div>
           </motion.div>
 
           {/* Filtros */}

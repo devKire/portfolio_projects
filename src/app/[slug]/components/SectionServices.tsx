@@ -28,6 +28,8 @@ import {
   CarouselPrevious,
   type CarouselApi,
 } from '@/components/ui/carousel';
+import { StarsBackground } from '@/components/animate-ui/components/backgrounds/stars';
+import { cn } from '@/lib/utils';
 
 interface SectionServicesProps {
   contact: ContactInfo;
@@ -213,30 +215,6 @@ const services = [
   },
 ];
 
-// Benefícios gerais
-const benefits = [
-  {
-    icon: Shield,
-    title: 'Satisfação Garantida',
-    description: 'Não ficou satisfeito? Refaço sem custo adicional.',
-  },
-  {
-    icon: Clock,
-    title: 'Entrega no Prazo',
-    description: 'Compromisso com deadlines. Atrasou? Você ganha bônus.',
-  },
-  {
-    icon: MessageCircle,
-    title: 'Suporte Contínuo',
-    description: '30 dias de suporte gratuito após a entrega do projeto.',
-  },
-  {
-    icon: Star,
-    title: 'Qualidade Premium',
-    description: 'Código limpo, testado e seguindo as melhores práticas.',
-  },
-];
-
 const SectionServices = ({ contact, landingpage }: SectionServicesProps) => {
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
@@ -256,8 +234,15 @@ const SectionServices = ({ contact, landingpage }: SectionServicesProps) => {
   return (
     <section
       id="servicos"
-      className="relative overflow-hidden bg-gradient-to-b from-gray-950 to-black py-16 md:py-24"
+      className="relative isolate overflow-hidden py-20 md:py-28"
     >
+      <StarsBackground
+        starColor="#FFF"
+        className={cn(
+          'absolute inset-0 flex items-center justify-center rounded-xl',
+          'bg-[radial-gradient(ellipse_at_bottom,_#1a1a1a_0%,_#000_100%)]'
+        )}
+      />
       {/* Background Elements */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute top-1/4 -right-24 h-96 w-96 rounded-full bg-emerald-500/5 blur-3xl" />
@@ -288,25 +273,6 @@ const SectionServices = ({ contact, landingpage }: SectionServicesProps) => {
             serviço ideal para seu negócio ou solicite uma proposta
             personalizada.
           </p>
-
-          {/* Benefícios Rápidos */}
-          <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
-            {benefits.map((benefit, index) => (
-              <motion.div
-                key={benefit.title}
-                initial={{ opacity: 0, y: 10 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.3 + index * 0.1 }}
-                className="flex flex-col items-center gap-2 rounded-xl border border-gray-700/30 bg-gray-800/10 p-3 backdrop-blur-sm"
-              >
-                <benefit.icon size={18} className="text-electric-500" />
-                <span className="text-xs font-medium text-gray-300">
-                  {benefit.title}
-                </span>
-              </motion.div>
-            ))}
-          </div>
         </motion.div>
 
         {/* 🔥 Carousel de Serviços com Cores Pastel */}

@@ -8,6 +8,7 @@ import {
   LinkedinIcon,
   ChevronRightIcon,
 } from 'lucide-react';
+import { HexagonBackground } from '@/components/animate-ui/components/backgrounds/hexagon';
 
 export default function WelcomePage() {
   const [isVisible, setIsVisible] = useState(false);
@@ -60,6 +61,8 @@ export default function WelcomePage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-neutral-50 to-neutral-100 p-4 sm:p-6 dark:from-neutral-950 dark:to-neutral-900">
+      <HexagonBackground className="absolute inset-0 flex items-center justify-center rounded-xl" />
+
       <div
         className={`w-full max-w-md transition-[transform,opacity] duration-700 ease-out ${
           isVisible ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'

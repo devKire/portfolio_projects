@@ -69,7 +69,7 @@ const SpotlightCard = ({
 };
 
 /* ================================================================
-   BENTO GRID (simplificado)
+   BENTO GRID — Layout vertical no desktop
    ================================================================ */
 const BentoGrid = ({
   className,
@@ -79,7 +79,7 @@ const BentoGrid = ({
   children?: React.ReactNode;
 }) => (
   <div
-    className={`mx-auto grid grid-cols-1 gap-4 md:grid-cols-6 lg:gap-5 ${className || ''}`}
+    className={`mx-auto grid grid-cols-1 gap-4 md:grid-cols-2 lg:gap-5 ${className || ''}`}
   >
     {children}
   </div>
@@ -88,21 +88,13 @@ const BentoGrid = ({
 const BentoGridItem = ({
   className,
   children,
-  colSpan,
-  rowSpan,
 }: {
   className?: string;
   children: React.ReactNode;
   colSpan?: number;
   rowSpan?: number;
 }) => {
-  const colClass = colSpan ? `md:col-span-${colSpan}` : '';
-  const rowClass = rowSpan ? `md:row-span-${rowSpan}` : '';
-  return (
-    <div className={`${colClass} ${rowClass} ${className || ''}`}>
-      {children}
-    </div>
-  );
+  return <div className={`${className || ''}`}>{children}</div>;
 };
 
 /* ================================================================
@@ -142,21 +134,8 @@ const SectionAbout = ({ contact, landingpage }: SectionAboutProps) => {
   };
 
   return (
-    <section
-      id="sobre"
-      className="relative overflow-hidden bg-black py-20 md:py-28"
-    >
-      {/* ============================================ */}
-      {/* BACKGROUND MINIMALISTA */}
-      {/* ============================================ */}
-      <div className="absolute inset-0">
-        {/* Luz suave no topo */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(59,130,246,0.06),transparent_70%)]" />
-        {/* Grid sutil */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.015)_1px,transparent_1px)] [mask-image:radial-gradient(ellipse_80%_60%_at_50%_0%,black,transparent)] bg-[size:80px_80px]" />
-      </div>
-
-      <div className="relative z-10 mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+    <section id="sobre" className="overflow-hiddenpy-20 relative md:py-28">
+      <div className="relative z-10 mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         {/* ============================================ */}
         {/* HEADER */}
         {/* ============================================ */}
@@ -188,17 +167,15 @@ const SectionAbout = ({ contact, landingpage }: SectionAboutProps) => {
         </motion.div>
 
         {/* ============================================ */}
-        {/* BENTO GRID — 5 CARDS COM HIERARQUIA */}
+        {/* BENTO GRID — 2 COLUNAS NO DESKTOP */}
         {/* ============================================ */}
-        <BentoGrid>
-          {/* 
-            CARD 1 — HERO (colspan 4, rowspan 2)
-            Foto + Bio + Contato 
-          */}
-          <BentoGridItem colSpan={4} rowSpan={2}>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:gap-5">
+          {/* COLUNA ESQUERDA */}
+          <div className="flex flex-col gap-4 lg:gap-5">
+            {/* CARD HERO — Foto + Bio + Contato */}
             <SpotlightCard
               spotlightColor="rgba(59, 130, 246, 0.06)"
-              className="flex h-full flex-col p-6 sm:p-8"
+              className="flex flex-col p-6 sm:p-8"
             >
               {/* Foto */}
               <div className="-mx-6 -mt-6 mb-5 overflow-hidden sm:-mx-8 sm:-mt-8">
@@ -259,33 +236,8 @@ const SectionAbout = ({ contact, landingpage }: SectionAboutProps) => {
                 )}
               </div>
             </SpotlightCard>
-          </BentoGridItem>
 
-          {/* 
-            CARD 2 — Satisfação (colspan 2)
-            Destaque com ícone grande 
-          */}
-          <BentoGridItem colSpan={2}>
-            <SpotlightCard
-              spotlightColor="rgba(236, 72, 153, 0.06)"
-              className="flex h-full flex-col items-center justify-center p-6 text-center"
-            >
-              <div className="mb-3 inline-flex rounded-2xl bg-pink-500/10 p-3">
-                <Heart size={28} className="text-pink-400" />
-              </div>
-              <p className="font-space text-4xl font-bold text-white">98%</p>
-              <p className="mt-1 text-sm text-gray-400">Clientes satisfeitos</p>
-              <p className="mt-2 flex items-center gap-1 text-xs text-gray-500">
-                <Star size={12} className="text-yellow-500" />
-                Recorrentes
-              </p>
-            </SpotlightCard>
-          </BentoGridItem>
-
-          {/* 
-            CARD 3 — Stack Tecnológica (colspan 4) 
-          */}
-          <BentoGridItem colSpan={4}>
+            {/* CARD STACK TECNOLÓGICA */}
             <SpotlightCard
               spotlightColor="rgba(6, 182, 212, 0.05)"
               className="p-6 sm:p-7"
@@ -309,12 +261,27 @@ const SectionAbout = ({ contact, landingpage }: SectionAboutProps) => {
                 ))}
               </div>
             </SpotlightCard>
-          </BentoGridItem>
+          </div>
 
-          {/* 
-            CARD 4 — Diferenciais (colspan 3) 
-          */}
-          <BentoGridItem colSpan={3}>
+          {/* COLUNA DIREITA */}
+          <div className="flex flex-col gap-4 lg:gap-5">
+            {/* CARD SATISFAÇÃO */}
+            <SpotlightCard
+              spotlightColor="rgba(236, 72, 153, 0.06)"
+              className="flex flex-col items-center justify-center p-6 text-center"
+            >
+              <div className="mb-3 inline-flex rounded-2xl bg-pink-500/10 p-3">
+                <Heart size={28} className="text-pink-400" />
+              </div>
+              <p className="font-space text-4xl font-bold text-white">98%</p>
+              <p className="mt-1 text-sm text-gray-400">Clientes satisfeitos</p>
+              <p className="mt-2 flex items-center gap-1 text-xs text-gray-500">
+                <Star size={12} className="text-yellow-500" />
+                Recorrentes
+              </p>
+            </SpotlightCard>
+
+            {/* CARD DIFERENCIAIS */}
             <SpotlightCard
               spotlightColor="rgba(16, 185, 129, 0.05)"
               className="p-6 sm:p-7"
@@ -348,14 +315,9 @@ const SectionAbout = ({ contact, landingpage }: SectionAboutProps) => {
                 ))}
               </div>
             </SpotlightCard>
-          </BentoGridItem>
 
-          {/* 
-            CARD 5 — CTA (colspan 3)
-            Único card com cor chamativa — hierarquia máxima 
-          */}
-          <BentoGridItem colSpan={3}>
-            <div className="flex h-full flex-col justify-between rounded-3xl border border-green-500/20 bg-green-500/[0.03] p-6 backdrop-blur-xl transition-all hover:border-green-500/30 sm:p-7">
+            {/* CARD CTA */}
+            <div className="flex flex-col justify-between rounded-3xl border border-green-500/20 bg-green-500/[0.03] p-6 backdrop-blur-xl transition-all hover:border-green-500/30 sm:p-7">
               <div>
                 <div className="mb-4 inline-flex rounded-xl bg-green-500/10 p-2">
                   <MessageCircle size={20} className="text-green-400" />
@@ -396,8 +358,8 @@ const SectionAbout = ({ contact, landingpage }: SectionAboutProps) => {
                 </button>
               </div>
             </div>
-          </BentoGridItem>
-        </BentoGrid>
+          </div>
+        </div>
       </div>
     </section>
   );

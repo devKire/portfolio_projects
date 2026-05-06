@@ -1,5 +1,6 @@
 'use client';
 
+import { FireworksBackground } from '@/components/animate-ui/components/backgrounds/fireworks';
 import { ContactInfo, LandingPage } from '@prisma/client';
 import {
   motion,
@@ -52,6 +53,11 @@ const SectionContacts = ({ contact, landingpage }: SectionContactsProps) => {
       {/* ============================================ */}
       {/* 🔥 BACKGROUND BEAMS (estilo Aceternity) */}
       {/* ============================================ */}
+      <FireworksBackground
+        className="absolute inset-0 flex items-center justify-center rounded-xl"
+        color="white"
+        population={1}
+      />
       <div className="absolute inset-0">
         {/* Gradiente radial principal */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(34,197,94,0.06),transparent_60%)]" />

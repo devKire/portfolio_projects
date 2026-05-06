@@ -4,14 +4,14 @@ import { Separator } from '@/components/ui/separator';
 import { db } from '@/lib/prisma';
 
 import Footer from './components/Footer';
-import Header from './components/Header';
 import SectionAbout from './components/SectionAbout';
 import SectionContacts from './components/SectionContacts';
 import SectionHero from './components/SectionHero';
 import SectionProjects from './components/SectionProjects';
 import SectionProcess from './components/SectionProcess';
 import SectionServices from './components/SectionServices';
-
+import { AuroraBackground } from '@/components/ui/aurora-background';
+import { Vortex } from '@/components/ui/vortex';
 interface LandingPageProps {
   params: Promise<{ slug: string }>;
 }
@@ -36,82 +36,50 @@ const Page = async ({ params }: LandingPageProps) => {
   }
 
   return (
-    <>
-      <div className="bg-dark-950 min-h-screen overflow-x-hidden text-white">
-        {/* 
-          🔥 ORDEM ESTRATÉGICA DE CONVERSÃO (Framework AIDA)
-          
-          1. ATENÇÃO    → Hero (gancho inicial, promessa de valor)
-          2. INTERESSE  → Projetos (prova social, exemplos reais)
-          3. DESEJO     → Serviços (o que você oferece, preços)
-          4. CONFIANÇA  → Processo (como funciona, transparência)
-          5. AUTORIDADE → Sobre (quem é você, credibilidade)
-          6. AÇÃO       → Contato (CTA final, fechamento)
-        */}
-
-        {/* 1️⃣ ATENÇÃO - Hero Section */}
-        {/* Objetivo: Capturar atenção em 3 segundos com promessa clara */}
-        <section id="hero">
+    <div className="relative min-h-screen overflow-x-hidden bg-black text-white">
+      <div className="relative z-10">
+        <AuroraBackground>
           <SectionHero
             contact={landingpage.contactInfo}
             landingpage={landingpage}
           />
-        </section>
-        <Separator />
+        </AuroraBackground>
+        <SectionProjects
+          contact={landingpage.contactInfo}
+          landingpage={landingpage}
+          projects={landingpage.projects}
+        />
 
-        {/* 2️⃣ INTERESSE - Projetos (Prova Social) */}
-        {/* Objetivo: Mostrar resultados reais, gerar confiança inicial */}
-        <section id="projects">
-          <SectionProjects
-            contact={landingpage.contactInfo}
-            landingpage={landingpage}
-            projects={landingpage.projects}
-          />
-        </section>
-        <Separator />
-
-        {/* 3️⃣ DESEJO - Serviços com Preços */}
-        {/* Objetivo: Apresentar ofertas com valor claro e transparente */}
-        <section id="services">
-          <SectionServices
-            contact={landingpage.contactInfo}
-            landingpage={landingpage}
-          />
-        </section>
-        <Separator />
-
-        {/* 4️⃣ CONFIANÇA - Processo de Trabalho */}
-        {/* Objetivo: Remover ansiedade mostrando como funciona */}
-        <section id="process">
-          <SectionProcess
-            contact={landingpage.contactInfo}
-            landingpage={landingpage}
-          />
-        </section>
-        <Separator />
-
-        {/* 5️⃣ AUTORIDADE - Sobre Mim */}
-        {/* Objetivo: Construir conexão pessoal e credibilidade */}
-        <section id="about">
+        <SectionServices
+          contact={landingpage.contactInfo}
+          landingpage={landingpage}
+        />
+        <SectionProcess
+          contact={landingpage.contactInfo}
+          landingpage={landingpage}
+        />
+        <Vortex
+          backgroundColor="black"
+          className="flex h-full w-full flex-col items-center justify-center px-2 py-4 md:px-10"
+        >
+          <div className="absolute inset-0">
+            {/* Luz suave no topo */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(59,130,246,0.06),transparent_70%)]" />
+            {/* Grid sutil */}
+            <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.015)_1px,transparent_1px)] [mask-image:radial-gradient(ellipse_80%_60%_at_50%_0%,black,transparent)] bg-[size:80px_80px]" />
+          </div>
           <SectionAbout
             contact={landingpage.contactInfo}
             landingpage={landingpage}
           />
-        </section>
-        <Separator />
-
-        {/* 6️⃣ AÇÃO - Contato (Fechamento) */}
-        {/* Objetivo: Converter com CTA forte e objeções respondidas */}
-        <section id="contact">
-          <SectionContacts
-            contact={landingpage.contactInfo}
-            landingpage={landingpage}
-          />
-        </section>
-
+        </Vortex>
+        <SectionContacts
+          contact={landingpage.contactInfo}
+          landingpage={landingpage}
+        />
         <Footer contact={landingpage.contactInfo} landingpage={landingpage} />
       </div>
-    </>
+    </div>
   );
 };
 

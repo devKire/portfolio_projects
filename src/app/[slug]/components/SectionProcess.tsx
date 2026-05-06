@@ -1,5 +1,6 @@
 'use client';
 
+import { GravityStarsBackground } from '@/components/animate-ui/components/backgrounds/gravity-stars';
 import { ContactInfo, LandingPage } from '@prisma/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -125,6 +126,8 @@ const SectionProcess = ({ contact }: SectionProcessProps) => {
       id="processo"
       className="relative isolate overflow-hidden bg-black py-20 md:py-28"
     >
+      <GravityStarsBackground className="absolute inset-0 flex items-center justify-center rounded-xl" />
+
       {/* ============================================ */}
       {/* BACKGROUND — Glow estilo Linear.app */}
       {/* ============================================ */}

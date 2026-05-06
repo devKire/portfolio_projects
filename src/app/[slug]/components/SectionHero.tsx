@@ -2,21 +2,14 @@
 
 import { ContactInfo, LandingPage } from '@prisma/client';
 import { motion } from 'framer-motion';
-import {
-  ArrowRight,
-  Clock,
-  Heart,
-  MessageCircle,
-  Shield,
-  Sparkles,
-  Star,
-  TrendingUp,
-  Users,
-  Zap,
-} from 'lucide-react';
+import { ArrowRight, Clock, MessageCircle } from 'lucide-react';
 import Image from 'next/image';
 
 import { ThreeDMarquee } from '@/components/ui/3d-marquee';
+import { FireworksBackground } from '@/components/animate-ui/components/backgrounds/fireworks';
+import { HoleBackground } from '@/components/animate-ui/components/backgrounds/hole';
+import { HexagonBackground } from '@/components/animate-ui/components/backgrounds/hexagon';
+import { AuroraBackground } from '@/components/ui/aurora-background';
 
 interface SectionHeroProps {
   contact: ContactInfo;
@@ -31,73 +24,11 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
     }
   };
 
-  const images = [
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_cantinhogourmet.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_eriksantos.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_francostaacademy.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_nazariocicles.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_gilshinaider.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_insertion.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_itajubacasamar.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_joaogarcia.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_marivaldo.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_metanoiamentebiblico.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_episystem.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_neodoxa.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_projetocafarnaum.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_rafamanicure.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_rdseletrecista.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_tarefando.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_cantinhogourmet.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_eriksantos.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_francostaacademy.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_nazariocicles.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_gilshinaider.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_insertion.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_itajubacasamar.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_joaogarcia.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_marivaldo.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_metanoiamentebiblico.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_episystem.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_neodoxa.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_projetocafarnaum.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_rafamanicure.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_rdseletrecista.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_tarefando.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_cantinhogourmet.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_eriksantos.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_francostaacademy.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_nazariocicles.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_gilshinaider.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_insertion.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_itajubacasamar.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_joaogarcia.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_marivaldo.png',
-  ];
-
   return (
     <section
       id="inicio"
-      className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-gray-900 via-gray-950 to-black"
+      className="overflow-hidde relative flex min-h-screen items-center justify-center"
     >
-      {/* Background Elements - Mantidos como estavam */}
-      <div className="absolute inset-0">
-        <motion.div
-          animate={{
-            background: [
-              'radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 50%)',
-              'radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.1) 0%, transparent 50%)',
-              'radial-gradient(circle at 40% 80%, rgba(16, 185, 129, 0.1) 0%, transparent 50%)',
-              'radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 50%)',
-            ],
-          }}
-          transition={{ duration: 10, repeat: Infinity }}
-          className="absolute inset-0"
-        />
-      </div>
-
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,black,transparent)] bg-[size:64px_64px]" />
-
       {/* Main Content */}
       <div className="relative z-10 mx-auto mt-20 w-full max-w-7xl px-4 text-center sm:px-6 lg:px-8">
         <motion.div
@@ -225,6 +156,7 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
               Resposta em até 2 horas • Orçamento sem compromisso
             </p>
           </motion.div>
+
           {/* 🔥 ÍCONE DE SCROLL - Indica mais conteúdo */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -244,19 +176,6 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
               <ChevronDown size={32} />
             </button>
           </motion.div>
-        </motion.div>
-
-        {/* Marquee Section - Mantida como prova visual */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.6, duration: 0.8 }}
-          className="mx-auto my-8 max-w-7xl rounded-2xl bg-gray-950/5 p-2 ring-1 ring-neutral-700/10 sm:my-10 sm:rounded-3xl sm:p-4 dark:bg-neutral-800"
-        >
-          <p className="mb-3 text-center text-xs text-gray-500">
-            Empresas que confiam no meu trabalho
-          </p>
-          <ThreeDMarquee images={images} />
         </motion.div>
       </div>
     </section>
