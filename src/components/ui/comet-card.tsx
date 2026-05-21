@@ -25,6 +25,9 @@ export const CometCard = ({
   children: React.ReactNode;
 }) => {
   const ref = useRef<HTMLDivElement>(null);
+  const rectRef = useRef<DOMRect | null>(null);
+  const frameRef = useRef<number | null>(null);
+  const lastPointerRef = useRef<{ x: number; y: number } | null>(null);
 
   const x = useMotionValue(0);
   const y = useMotionValue(0);
@@ -59,47 +62,64 @@ export const CometCard = ({
 
   const glareBackground = useMotionTemplate`radial-gradient(circle at ${glareX}% ${glareY}%, rgba(255, 255, 255, 0.9) 10%, rgba(255, 255, 255, 0.75) 20%, rgba(255, 255, 255, 0) 80%)`;
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!ref.current) return;
-
-    const rect = ref.current.getBoundingClientRect();
-
-    const width = rect.width;
-    const height = rect.height;
-
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-
-    const xPct = mouseX / width - 0.5;
-    const yPct = mouseY / height - 0.5;
-
-    x.set(xPct);
-    y.set(yPct);
-  };
-
-  const handleMouseLeave = () => {
+  const resetCard = () => {
     x.set(0);
     y.set(0);
+    rectRef.current = null;
+    lastPointerRef.current = null;
+    if (frameRef.current !== null) {
+      cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
+    }
+  };
+
+  const updatePointer = () => {
+    frameRef.current = null;
+    const rect = rectRef.current;
+    const pointer = lastPointerRef.current;
+    if (!rect || !pointer) return;
+
+    const xPct = (pointer.x - rect.left) / rect.width - 0.5;
+    const yPct = (pointer.y - rect.top) / rect.height - 0.5;
+
+    x.set(Math.max(-0.5, Math.min(0.5, xPct)));
+    y.set(Math.max(-0.5, Math.min(0.5, yPct)));
+  };
+
+  const handlePointerEnter = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== 'mouse') return;
+    rectRef.current = ref.current?.getBoundingClientRect() ?? null;
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== 'mouse' || !rectRef.current) return;
+
+    lastPointerRef.current = { x: e.clientX, y: e.clientY };
+    // Cacheia o rect no pointer enter e limita updates a um RAF por frame.
+    if (frameRef.current === null) {
+      frameRef.current = requestAnimationFrame(updatePointer);
+    }
   };
 
   return (
     <div className={cn('perspective-distant transform-3d', className)}>
       <motion.div
         ref={ref}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
+        onPointerEnter={handlePointerEnter}
+        onPointerMove={handlePointerMove}
+        onPointerLeave={resetCard}
         style={{
           rotateX,
           rotateY,
           translateX,
           translateY,
           boxShadow:
-            'rgba(0, 0, 0, 0.01) 0px 520px 146px 0px, rgba(0, 0, 0, 0.04) 0px 333px 133px 0px, rgba(0, 0, 0, 0.26) 0px 83px 83px 0px, rgba(0, 0, 0, 0.29) 0px 21px 46px 0px',
+            'rgba(0, 0, 0, 0.01) 0px 260px 100px 0px, rgba(0, 0, 0, 0.18) 0px 64px 64px 0px, rgba(0, 0, 0, 0.24) 0px 18px 36px 0px',
         }}
         initial={{ scale: 1, z: 0 }}
         whileHover={{
-          scale: 1.05,
-          z: 50,
+          scale: 1.03,
+          z: 32,
           transition: { duration: 0.2 },
         }}
         className="relative rounded-2xl"

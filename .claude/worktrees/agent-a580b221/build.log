@@ -1,0 +1,58 @@
+
+> eriksantos@0.1.0 build
+> prisma generate && next build
+
+Environment variables loaded from .env
+Prisma schema loaded from prisma\schema.prisma
+
+✔ Generated Prisma Client (v6.12.0) to .\node_modules\@prisma\client in 157ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+Tip: Interested in query caching in just a few lines of code? Try Accelerate today! https://pris.ly/tip-3-accelerate
+
+   ▲ Next.js 15.4.8
+   - Environments: .env
+
+   Creating an optimized production build ...
+Browserslist: browsers data (caniuse-lite) is 11 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+<w> [webpack.cache.PackFileCacheStrategy] Skipped not serializable cache item 'Compilation/modules|C:\projetos\portfolio_projects\node_modules\next\dist\build\webpack\loaders\css-loader\src\index.js??ruleSet[1].rules[13].oneOf[10].use[2]!C:\projetos\portfolio_projects\node_modules\next\dist\build\webpack\loaders\postcss-loader\src\index.js??ruleSet[1].rules[13].oneOf[10].use[3]!C:\projetos\portfolio_projects\src\app\globals.css': No serializer registered for Warning
+<w> while serializing webpack/lib/cache/PackFileCacheStrategy.PackContentItems -> webpack/lib/NormalModule -> Array { 2 items } -> webpack/lib/ModuleWarning -> Warning
+ ⚠ Compiled with warnings in 3.0s
+
+./src/app/globals.css.webpack[javascript/auto]!=!./node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[13].oneOf[10].use[2]!./node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[13].oneOf[10].use[3]!./src/app/globals.css
+Warning
+
+(2:72641) autoprefixer: Gradient has outdated direction syntax. New syntax is like `closest-side at 0 0` instead of `0 0, closest-side`.
+
+Import trace for requested module:
+./src/app/globals.css.webpack[javascript/auto]!=!./node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[13].oneOf[10].use[2]!./node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[13].oneOf[10].use[3]!./src/app/globals.css
+./src/app/globals.css
+
+./src/app/globals.css.webpack[javascript/auto]!=!./node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[13].oneOf[10].use[2]!./node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[13].oneOf[10].use[3]!./src/app/globals.css
+Warning
+
+(2:72696) autoprefixer: Gradient has outdated direction syntax. New syntax is like `closest-side at 0 0` instead of `0 0, closest-side`.
+
+Import trace for requested module:
+./src/app/globals.css.webpack[javascript/auto]!=!./node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[13].oneOf[10].use[2]!./node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[13].oneOf[10].use[3]!./src/app/globals.css
+./src/app/globals.css
+
+ ✓ Compiled successfully in 6.0s
+   Linting and checking validity of types ...
+Failed to compile.
+
+./src/app/[slug]/components/SectionAbout.tsx:142:17
+Type error: Type '{ children: Element[]; spotlightColor: string; className: string; }' is not assignable to type 'IntrinsicAttributes & { children: ReactNode; className?: string | undefined; }'.
+  Property 'spotlightColor' does not exist on type 'IntrinsicAttributes & { children: ReactNode; className?: string | undefined; }'.
+
+[0m [90m 140 |[39m             [33m<[39m[33mCometCard[39m rotateDepth[33m=[39m{[35m10[39m} translateDepth[33m=[39m{[35m12[39m} glareOpacity[33m=[39m{[35m0.08[39m}[33m>[39m
+ [90m 141 |[39m               [33m<[39m[33mSpotlightCard[39m
+[31m[1m>[22m[39m[90m 142 |[39m                 spotlightColor[33m=[39m[32m"rgba(59, 130, 246, 0.06)"[39m
+ [90m     |[39m                 [31m[1m^[22m[39m
+ [90m 143 |[39m                 className[33m=[39m[32m"flex flex-col p-6 sm:p-8"[39m
+ [90m 144 |[39m               [33m>[39m
+ [90m 145 |[39m                 {[90m/* Foto */[39m}[0m
+Next.js build worker exited with code: 1 and signal: null

@@ -24,23 +24,19 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
     }
   };
 
-  // Detecção simples de mobile para otimizar delays
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
-
-  // Sequência de delays otimizada para mobile
   const delays = {
-    h1Line1: isMobile ? 0.2 : 0.3,
-    h1Line2: isMobile ? 0.8 : 2.3,
-    h1Line3: isMobile ? 1.5 : 4.2,
-    h1Line4: isMobile ? 2.0 : 5.2,
-    paragraph: isMobile ? 2.5 : 6.8,
-    subheadline: isMobile ? 2.5 : 6.8,
-    ctaPrimary: isMobile ? 3.0 : 7.5,
-    ctaSecondary: isMobile ? 3.5 : 8.8,
-    microCompromisso: isMobile ? 3.8 : 9.1,
-    scrollIcon: isMobile ? 4.2 : 10.4,
-    avatar: isMobile ? 4.5 : 11.0,
-    badge: isMobile ? 5.0 : 12.5,
+    h1Line1: 0.1,
+    h1Line2: 0.35,
+    h1Line3: 0.55,
+    h1Line4: 0.75,
+    paragraph: 1.0,
+    subheadline: 1.0,
+    ctaPrimary: 1.2,
+    ctaSecondary: 1.35,
+    microCompromisso: 1.45,
+    scrollIcon: 1.6,
+    avatar: 0.15,
+    badge: 0.55,
   };
 
   return (
@@ -61,10 +57,12 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
             <div className="relative">
               {landingpage.avatarImageUrl ? (
                 <Image
-                  src="https://1hcgs7spbatxhpzg.public.blob.vercel-storage.com/me.png"
+                  src={landingpage.avatarImageUrl}
                   alt={landingpage.name}
                   width={96}
                   height={96}
+                  priority
+                  sizes="(max-width: 640px) 64px, (max-width: 768px) 80px, 96px"
                   className="border-electric-500/50 shadow-electric-500/25 h-16 w-16 rounded-full border-4 object-cover shadow-2xl sm:h-20 sm:w-20 md:h-24 md:w-24"
                 />
               ) : (
@@ -85,11 +83,7 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
                 }}
                 className="absolute -right-1 -bottom-1 rounded-full bg-gradient-to-r from-green-500 to-green-600 px-2 py-[2px] text-[10px] whitespace-nowrap text-white shadow-lg sm:px-3 sm:py-1 sm:text-xs"
               >
-                <AnimatedText
-                  text="✓ Verificado"
-                  delay={delays.badge + 0.2}
-                  duration={0.03}
-                />
+                ✓ Verificado
               </motion.div>
             </div>
           </motion.div>
@@ -107,12 +101,14 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
                 text="Transformo Ideias em "
                 delay={delays.h1Line1 + 0.1}
                 duration={0.08}
+                mode="word"
               />
               <span className="block">
                 <AnimatedText
                   text="Negócios Digitais"
                   delay={delays.h1Line2 + 0.1}
                   duration={0.09}
+                  mode="word"
                 />
               </span>
             </motion.h1>
@@ -128,6 +124,7 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
                 text="Que Geram"
                 delay={delays.h1Line3 + 0.1}
                 duration={0.08}
+                mode="word"
               />
 
               <motion.div
@@ -152,11 +149,8 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
             transition={{ delay: delays.subheadline, duration: 0.4 }}
             className="mx-auto max-w-2xl text-sm text-gray-400 sm:text-base md:text-lg"
           >
-            <AnimatedText
-              text="Sem dores de cabeça com tecnologia. Sem resultados medíocres. Apenas soluções digitais que realmente funcionam para o seu negócio."
-              delay={delays.subheadline + 0.1}
-              duration={0.015}
-            />
+            Sem dores de cabeça com tecnologia. Sem resultados medíocres. Apenas
+            soluções digitais que realmente funcionam para o seu negócio.
           </motion.p>
 
           {/* CTAs */}
@@ -184,11 +178,7 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
               >
                 <MessageCircle size={20} className="sm:hidden" />
                 <MessageCircle size={24} className="hidden sm:block" />
-                <AnimatedText
-                  text="Quero Um Orçamento Agora"
-                  delay={delays.ctaPrimary + 0.1}
-                  duration={0.02}
-                />
+                Quero Um Orçamento Agora
                 <ArrowRight
                   size={18}
                   className="transition-transform duration-300 group-hover:translate-x-1 sm:hidden"
@@ -214,11 +204,7 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
                 className="group flex items-center gap-2 rounded-full border border-gray-600/50 px-6 py-3 text-sm text-gray-400 backdrop-blur-sm transition-all duration-300 hover:border-gray-500 hover:text-white sm:text-base"
               >
                 <Eye size={18} />
-                <AnimatedText
-                  text="Ver Projetos Anteriores"
-                  delay={delays.ctaSecondary + 0.1}
-                  duration={0.02}
-                />
+                Ver Projetos Anteriores
                 <ArrowRight
                   size={16}
                   className="transition-transform duration-300 group-hover:translate-x-1"
@@ -234,11 +220,7 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
               className="flex items-center gap-1.5 text-xs text-gray-500 sm:text-sm"
             >
               <Clock size={14} />
-              <AnimatedText
-                text="Resposta em até 2 horas • Orçamento sem compromisso"
-                delay={delays.microCompromisso + 0.1}
-                duration={0.015}
-              />
+              Resposta em até 2 horas • Orçamento sem compromisso
             </motion.p>
           </motion.div>
 

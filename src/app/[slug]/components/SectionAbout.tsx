@@ -1,17 +1,10 @@
 'use client';
 
 import { GravityStarsBackground } from '@/components/animate-ui/components/backgrounds/gravity-stars';
-import { StarsBackground } from '@/components/animate-ui/components/backgrounds/stars';
 import { CometCard } from '@/components/ui/comet-card';
 import { Spotlight } from '@/components/ui/spotlight-new';
-import { cn } from '@/lib/utils';
 import { ContactInfo, LandingPage } from '@prisma/client';
-import {
-  motion,
-  useMotionTemplate,
-  useMotionValue,
-  useSpring,
-} from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   ArrowRight,
   CheckCircle,
@@ -21,50 +14,26 @@ import {
   MessageCircle,
   Phone,
   Shield,
-  Sparkles,
   Star,
   TrendingUp,
   Users,
   Zap,
 } from 'lucide-react';
 import Image from 'next/image';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 /* ================================================================
-   SPOTLIGHT CARD — Hover com luz seguindo o mouse
+   SPOTLIGHT CARD — card visual sem tracking de mouse invisível
    ================================================================ */
 const SpotlightCard = ({
   children,
   className,
-  spotlightColor = 'rgba(59, 130, 246, 0.08)',
 }: {
   children: React.ReactNode;
   className?: string;
-  spotlightColor?: string;
 }) => {
-  const ref = useRef<HTMLDivElement>(null);
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-  const springX = useSpring(mouseX, { stiffness: 150, damping: 20 });
-  const springY = useSpring(mouseY, { stiffness: 150, damping: 20 });
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!ref.current) return;
-    const rect = ref.current.getBoundingClientRect();
-    mouseX.set(e.clientX - rect.left);
-    mouseY.set(e.clientY - rect.top);
-  };
-
-  const handleMouseLeave = () => {
-    mouseX.set(0);
-    mouseY.set(0);
-  };
-
   return (
     <div
-      ref={ref}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
       className={`relative overflow-hidden rounded-3xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-xl transition-all duration-300 hover:border-white/[0.12] ${className || ''}`}
     >
       {children}
@@ -99,16 +68,24 @@ const technologies = [
    ================================================================ */
 const SectionAbout = ({ contact, landingpage }: SectionAboutProps) => {
   const [copied, setCopied] = useState(false);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const experienceYears = new Date().getFullYear() - 2021;
+
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    };
+  }, []);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(contact.email);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <section id="sobre" className="overflow-hiddenpy-20 relative md:py-28">
+    <section id="sobre" className="relative overflow-hidden py-20 md:py-28">
       <Spotlight />
 
       <GravityStarsBackground className="absolute inset-0 flex items-center justify-center rounded-xl" />
@@ -161,10 +138,7 @@ const SectionAbout = ({ contact, landingpage }: SectionAboutProps) => {
             {/* CARD HERO — Foto + Bio + Contato */}
 
             <CometCard rotateDepth={10} translateDepth={12} glareOpacity={0.08}>
-              <SpotlightCard
-                spotlightColor="rgba(59, 130, 246, 0.06)"
-                className="flex flex-col p-6 sm:p-8"
-              >
+              <SpotlightCard className="flex flex-col p-6 sm:p-8">
                 {/* Foto */}
                 <div className="-mx-6 -mt-6 mb-5 overflow-hidden sm:-mx-8 sm:-mt-8">
                   {landingpage.coverImageUrl ? (
@@ -223,10 +197,7 @@ const SectionAbout = ({ contact, landingpage }: SectionAboutProps) => {
             </CometCard>
             {/* CARD STACK TECNOLÓGICA */}
             <CometCard rotateDepth={10} translateDepth={12} glareOpacity={0.08}>
-              <SpotlightCard
-                spotlightColor="rgba(6, 182, 212, 0.05)"
-                className="p-6 sm:p-7"
-              >
+              <SpotlightCard className="p-6 sm:p-7">
                 <div className="mb-4 flex items-center gap-3">
                   <div className="rounded-xl bg-cyan-500/10 p-2">
                     <Code size={20} className="text-cyan-400" />
@@ -251,10 +222,7 @@ const SectionAbout = ({ contact, landingpage }: SectionAboutProps) => {
           <div className="flex flex-col gap-4 lg:gap-5">
             {/* CARD SATISFAÇÃO */}
             <CometCard rotateDepth={10} translateDepth={12} glareOpacity={0.08}>
-              <SpotlightCard
-                spotlightColor="rgba(236, 72, 153, 0.06)"
-                className="flex flex-col items-center justify-center p-6 text-center"
-              >
+              <SpotlightCard className="flex flex-col items-center justify-center p-6 text-center">
                 <div className="mb-3 inline-flex rounded-2xl bg-pink-500/10 p-3">
                   <Heart size={28} className="text-pink-400" />
                 </div>
@@ -270,10 +238,7 @@ const SectionAbout = ({ contact, landingpage }: SectionAboutProps) => {
             </CometCard>
             {/* CARD DIFERENCIAIS */}
             <CometCard rotateDepth={10} translateDepth={12} glareOpacity={0.08}>
-              <SpotlightCard
-                spotlightColor="rgba(16, 185, 129, 0.05)"
-                className="p-6 sm:p-7"
-              >
+              <SpotlightCard className="p-6 sm:p-7">
                 <div className="mb-4 flex items-center gap-3">
                   <div className="rounded-xl bg-green-500/10 p-2">
                     <TrendingUp size={20} className="text-green-400" />

@@ -1,7 +1,7 @@
 'use client';
 
 import { ContactInfo, LandingPage } from '@prisma/client';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   ArrowRight,
   BarChart3,
@@ -28,8 +28,6 @@ import {
   CarouselPrevious,
   type CarouselApi,
 } from '@/components/ui/carousel';
-import { StarsBackground } from '@/components/animate-ui/components/backgrounds/stars';
-import { cn } from '@/lib/utils';
 
 interface SectionServicesProps {
   contact: ContactInfo;
@@ -220,16 +218,22 @@ const SectionServices = ({ contact, landingpage }: SectionServicesProps) => {
   const [current, setCurrent] = useState(0);
   const [count, setCount] = useState(0);
 
+  const onSelect = useCallback(() => {
+    if (!api) return;
+    setCurrent(api.selectedScrollSnap() + 1);
+  }, [api]);
+
   useEffect(() => {
     if (!api) return;
 
     setCount(api.scrollSnapList().length);
-    setCurrent(api.selectedScrollSnap() + 1);
+    onSelect();
 
-    api.on('select', () => {
-      setCurrent(api.selectedScrollSnap() + 1);
-    });
-  }, [api]);
+    api.on('select', onSelect);
+    return () => {
+      api.off('select', onSelect);
+    };
+  }, [api, onSelect]);
 
   return (
     <section id="servicos" className="relative w-full py-16 sm:py-20 md:py-28">

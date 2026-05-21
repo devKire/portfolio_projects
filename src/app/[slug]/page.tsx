@@ -1,23 +1,54 @@
+import dynamic from 'next/dynamic';
 import { notFound } from 'next/navigation';
 
-import { Separator } from '@/components/ui/separator';
+import { AuroraBackground } from '@/components/ui/aurora-background';
 import { db } from '@/lib/prisma';
 
-import Footer from './components/Footer';
-import SectionAbout from './components/SectionAbout';
-import SectionContacts from './components/SectionContacts';
 import SectionHero from './components/SectionHero';
-import SectionProjects from './components/SectionProjects';
-import SectionProcess from './components/SectionProcess';
-import SectionServices from './components/SectionServices';
-import { AuroraBackground } from '@/components/ui/aurora-background';
-import { Vortex } from '@/components/ui/vortex';
-import { WavyBackground } from '@/components/ui/wavy-background';
-import { StarsBackground } from '@/components/animate-ui/components/backgrounds/stars';
-import { cn } from '@/lib/utils';
+
+const SectionProjects = dynamic(() => import('./components/SectionProjects'), {
+  loading: () => <SectionFallback className="min-h-screen" />,
+});
+const SectionServices = dynamic(() => import('./components/SectionServices'), {
+  loading: () => <SectionFallback className="min-h-screen" />,
+});
+const SectionProcess = dynamic(() => import('./components/SectionProcess'), {
+  loading: () => <SectionFallback className="min-h-[80vh]" />,
+});
+const SectionAbout = dynamic(() => import('./components/SectionAbout'), {
+  loading: () => <SectionFallback className="min-h-screen" />,
+});
+const SectionContacts = dynamic(() => import('./components/SectionContacts'), {
+  loading: () => <SectionFallback className="min-h-[90vh]" />,
+});
+const Footer = dynamic(() => import('./components/Footer'), {
+  loading: () => <div className="min-h-32 bg-black" />,
+});
+
 interface LandingPageProps {
   params: Promise<{ slug: string }>;
 }
+
+const SectionFallback = ({
+  className = 'min-h-screen',
+}: {
+  className?: string;
+}) => (
+  // Mantém espaço reservado para seções abaixo da dobra e evita CLS enquanto o chunk carrega.
+  <div className={`relative bg-black ${className}`} aria-hidden="true" />
+);
+
+const ServicesShell = ({ children }: { children: React.ReactNode }) => (
+  <div className="relative min-h-screen w-full overflow-hidden bg-black px-2 py-4 md:px-10">
+    <div className="absolute inset-0">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(59,130,246,0.06),transparent_70%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.015)_1px,transparent_1px)] [mask-image:radial-gradient(ellipse_80%_60%_at_50%_0%,black,transparent)] bg-[size:80px_80px]" />
+    </div>
+    <div className="relative z-10 flex h-full w-full flex-col items-center justify-center">
+      {children}
+    </div>
+  </div>
+);
 
 const Page = async ({ params }: LandingPageProps) => {
   const { slug } = await params;
@@ -52,22 +83,12 @@ const Page = async ({ params }: LandingPageProps) => {
           landingpage={landingpage}
           projects={landingpage.projects}
         />
-        <WavyBackground
-          backgroundFill="black"
-          containerClassName="relative h-full w-full min-h-screen" // Adicione estas classes
-          className="flex h-full w-full flex-col items-center justify-center px-2 py-4 md:px-10"
-        >
-          <div className="absolute inset-0">
-            {/* Luz suave no topo */}
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(59,130,246,0.06),transparent_70%)]" />
-            {/* Grid sutil */}
-            <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.015)_1px,transparent_1px)] [mask-image:radial-gradient(ellipse_80%_60%_at_50%_0%,black,transparent)] bg-[size:80px_80px]" />
-          </div>
+        <ServicesShell>
           <SectionServices
             contact={landingpage.contactInfo}
             landingpage={landingpage}
           />
-        </WavyBackground>
+        </ServicesShell>
 
         <SectionProcess
           contact={landingpage.contactInfo}
@@ -77,15 +98,6 @@ const Page = async ({ params }: LandingPageProps) => {
           contact={landingpage.contactInfo}
           landingpage={landingpage}
         />
-        {/* <Vortex
-          backgroundColor="black"
-          className="flex h-full w-full flex-col items-center justify-center px-2 py-4 md:px-10"
-        >
-          <SectionAbout
-            contact={landingpage.contactInfo}
-            landingpage={landingpage}
-          />
-        </Vortex> */}
         <SectionContacts
           contact={landingpage.contactInfo}
           landingpage={landingpage}

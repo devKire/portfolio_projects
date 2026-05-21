@@ -255,7 +255,18 @@ function FireworksBackground({
       explosions.push(...particles);
     };
 
-    const launchFirework = () => {
+    let stopped = false;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let animationFrameId: number | null = null;
+
+    const scheduleNextFirework = () => {
+      const timeout = rand(450, 1000) / population;
+      timeoutId = setTimeout(launchFirework, timeout);
+    };
+
+    function launchFirework() {
+      if (stopped || document.hidden) return;
+
       const x = rand(maxX * 0.1, maxX * 0.9);
       const y = maxY;
       const targetY = rand(maxY * 0.1, maxY * 0.4);
@@ -275,14 +286,15 @@ function FireworksBackground({
           handleExplosion
         )
       );
-      const timeout = rand(300, 800) / population;
-      setTimeout(launchFirework, timeout);
-    };
+      scheduleNextFirework();
+    }
 
+    // O timeout recursivo precisa ser rastreado para não seguir disparando após unmount.
     launchFirework();
 
-    let animationFrameId: number;
     const animate = () => {
+      if (stopped) return;
+
       ctx.clearRect(0, 0, maxX, maxY);
 
       for (let i = fireworks.length - 1; i >= 0; i--) {
@@ -334,9 +346,13 @@ function FireworksBackground({
     container.addEventListener('click', handleClick);
 
     return () => {
+      stopped = true;
+      if (timeoutId) clearTimeout(timeoutId);
       window.removeEventListener('resize', setCanvasSize);
       container.removeEventListener('click', handleClick);
-      cancelAnimationFrame(animationFrameId);
+      if (animationFrameId !== null) cancelAnimationFrame(animationFrameId);
+      fireworks.length = 0;
+      explosions.length = 0;
     };
   }, [
     population,

@@ -9,7 +9,7 @@ import {
   useSpring,
 } from 'framer-motion';
 import { ArrowRight, Mail, MessageCircle, Phone } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface SectionContactsProps {
   contact: ContactInfo;
@@ -39,10 +39,19 @@ const SectionContacts = ({ contact, landingpage }: SectionContactsProps) => {
     mouseY.set(0);
   };
 
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    };
+  }, []);
+
   const copyEmail = () => {
     navigator.clipboard.writeText(contact.email);
     setCopiedEmail(true);
-    setTimeout(() => setCopiedEmail(false), 2000);
+    if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    copyTimeoutRef.current = setTimeout(() => setCopiedEmail(false), 2000);
   };
 
   return (

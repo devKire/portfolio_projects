@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { GravityStarsBackground } from '@/components/animate-ui/components/backgrounds/gravity-stars';
 import { Spotlight } from '@/components/ui/spotlight-new';
 import { cn } from '@/lib/utils';
@@ -17,7 +18,7 @@ import {
   Sparkles,
   Zap,
 } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 /* ================================================================
    INTERFACES
@@ -42,7 +43,7 @@ const processSteps = [
     ],
     duration: '1-2 dias',
     image:
-      'https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=3540&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1552664730-d307ca884978?q=75&w=1200&auto=format&fit=crop',
     color: 'from-blue-500 to-cyan-500',
   },
   {
@@ -52,7 +53,7 @@ const processSteps = [
     details: ['Arquitetura definida', 'Stack tecnológico', 'Cronograma visual'],
     duration: '2-3 dias',
     image:
-      'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=3540&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=75&w=1200&auto=format&fit=crop',
     color: 'from-purple-500 to-pink-500',
   },
   {
@@ -66,7 +67,7 @@ const processSteps = [
     ],
     duration: '7-30 dias',
     image:
-      'https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=3540&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=75&w=1200&auto=format&fit=crop',
     color: 'from-blue-600 to-cyan-600',
   },
   {
@@ -81,10 +82,12 @@ const processSteps = [
     ],
     duration: '1-2 dias',
     image:
-      'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=3540&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=75&w=1200&auto=format&fit=crop',
     color: 'from-green-500 to-emerald-500',
   },
 ];
+
+const slideRotations = [-6, 4, -3, 6];
 
 /* ================================================================
    GARANTIAS — Layout horizontal, ultra-simples
@@ -102,6 +105,18 @@ const guarantees = [
 const SectionProcess = ({ contact }: SectionProcessProps) => {
   const [active, setActive] = useState(0);
   const [autoplay, setAutoplay] = useState(true);
+  const resumeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const scheduleAutoplayResume = () => {
+    if (resumeTimeoutRef.current) clearTimeout(resumeTimeoutRef.current);
+    resumeTimeoutRef.current = setTimeout(() => setAutoplay(true), 15000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (resumeTimeoutRef.current) clearTimeout(resumeTimeoutRef.current);
+    };
+  }, []);
 
   const handleNext = () =>
     setActive((prev) => (prev + 1) % processSteps.length);
@@ -118,10 +133,8 @@ const SectionProcess = ({ contact }: SectionProcessProps) => {
   const handleManualNavigation = (direction: 'prev' | 'next') => {
     setAutoplay(false);
     direction === 'next' ? handleNext() : handlePrev();
-    setTimeout(() => setAutoplay(true), 15000);
+    scheduleAutoplayResume();
   };
-
-  const randomRotateY = () => Math.floor(Math.random() * 21) - 10;
 
   return (
     <section
@@ -168,55 +181,52 @@ const SectionProcess = ({ contact }: SectionProcessProps) => {
           {/* Lado Esquerdo — Imagens empilhadas */}
           <div>
             <div className="relative h-[380px] w-full overflow-hidden rounded-3xl border border-white/[0.06] lg:h-[480px]">
-              <AnimatePresence>
-                {processSteps.map((step, index) => (
-                  <motion.div
-                    key={step.step}
-                    initial={{
-                      opacity: 0,
-                      scale: 0.92,
-                      z: -100,
-                      rotate: randomRotateY(),
-                    }}
-                    animate={{
-                      opacity: active === index ? 1 : 0.6,
-                      scale: active === index ? 1 : 0.94,
-                      z: active === index ? 0 : -100,
-                      rotate: active === index ? 0 : randomRotateY(),
-                      zIndex:
-                        active === index ? 40 : processSteps.length + 2 - index,
-                      y: active === index ? [0, -40, 0] : 0,
-                    }}
-                    exit={{
-                      opacity: 0,
-                      scale: 0.92,
-                      z: 100,
-                      rotate: randomRotateY(),
-                    }}
-                    transition={{ duration: 0.4, ease: 'easeInOut' }}
-                    className="absolute inset-0 origin-bottom"
-                  >
-                    <div className="relative h-full w-full">
-                      <img
-                        src={step.image}
-                        alt={step.title}
-                        className="h-full w-full object-cover"
-                        draggable={false}
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-                      {/* Badges */}
-                      <div
-                        className={`absolute top-4 left-4 rounded-xl bg-gradient-to-r ${step.color} px-4 py-2 text-lg text-white shadow-lg`}
-                      >
-                        {step.step}
+              <AnimatePresence mode="wait">
+                {processSteps.map((step, index) => {
+                  const isActive = active === index;
+                  if (!isActive) return null;
+
+                  return (
+                    <motion.div
+                      key={step.step}
+                      initial={{
+                        opacity: 0,
+                        scale: 0.96,
+                        rotate: slideRotations[index] ?? 0,
+                      }}
+                      animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                      exit={{
+                        opacity: 0,
+                        scale: 0.96,
+                        rotate: slideRotations[index] ?? 0,
+                      }}
+                      transition={{ duration: 0.35, ease: 'easeInOut' }}
+                      className="absolute inset-0 origin-bottom"
+                    >
+                      <div className="relative h-full w-full">
+                        <Image
+                          src={step.image}
+                          alt={step.title}
+                          fill
+                          sizes="(max-width: 1024px) 100vw, 50vw"
+                          className="object-cover"
+                          draggable={false}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                        {/* Badges */}
+                        <div
+                          className={`absolute top-4 left-4 rounded-xl bg-gradient-to-r ${step.color} px-4 py-2 text-lg text-white shadow-lg`}
+                        >
+                          {step.step}
+                        </div>
+                        <div className="absolute bottom-4 left-4 flex items-center gap-1.5 rounded-full border border-white/15 bg-black/50 px-3 py-1.5 text-xs text-white backdrop-blur-sm">
+                          <Clock size={12} />
+                          {step.duration}
+                        </div>
                       </div>
-                      <div className="absolute bottom-4 left-4 flex items-center gap-1.5 rounded-full border border-white/15 bg-black/50 px-3 py-1.5 text-xs text-white backdrop-blur-sm">
-                        <Clock size={12} />
-                        {step.duration}
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
+                    </motion.div>
+                  );
+                })}
               </AnimatePresence>
             </div>
 
@@ -228,7 +238,7 @@ const SectionProcess = ({ contact }: SectionProcessProps) => {
                   onClick={() => {
                     setActive(index);
                     setAutoplay(false);
-                    setTimeout(() => setAutoplay(true), 15000);
+                    scheduleAutoplayResume();
                   }}
                   className={`h-1.5 rounded-full transition-all duration-300 ${
                     active === index

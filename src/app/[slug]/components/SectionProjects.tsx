@@ -141,20 +141,24 @@ const SectionProjects = ({
   const [isLoading, setIsLoading] = useState(false);
   const [visibleProjects, setVisibleProjects] = useState(6);
 
-  // Fechar com ESC e bloquear scroll
+  const previousBodyOverflow = useRef<string | null>(null);
+
+  // Fechar com ESC e bloquear scroll sem sobrescrever estado global permanentemente.
   useEffect(() => {
+    if (!active || typeof active !== 'object') return;
+
+    previousBodyOverflow.current = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') setActive(false);
     }
 
-    if (active && typeof active === 'object') {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'auto';
-    }
-
     window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = previousBodyOverflow.current ?? '';
+    };
   }, [active]);
 
   // Fechar ao clicar fora
@@ -225,49 +229,14 @@ const SectionProjects = ({
     setVisibleProjects(6);
   };
 
-  const images = [
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_cantinhogourmet.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_eriksantos.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_francostaacademy.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_nazariocicles.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_gilshinaider.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_insertion.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_itajubacasamar.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_joaogarcia.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_marivaldo.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_metanoiamentebiblico.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_episystem.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_neodoxa.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_projetocafarnaum.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_rafamanicure.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_rdseletrecista.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_tarefando.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_cantinhogourmet.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_eriksantos.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_francostaacademy.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_nazariocicles.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_gilshinaider.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_insertion.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_itajubacasamar.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_joaogarcia.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_marivaldo.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_metanoiamentebiblico.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_episystem.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_neodoxa.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_projetocafarnaum.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_rafamanicure.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_rdseletrecista.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_tarefando.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_cantinhogourmet.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_eriksantos.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_francostaacademy.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_nazariocicles.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_gilshinaider.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_insertion.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_itajubacasamar.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_joaogarcia.png',
-    'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/featured_marivaldo.png',
-  ];
+  const images = useMemo(
+    () =>
+      Array.from(new Set(projects.map((project) => project.image))).slice(
+        0,
+        12
+      ),
+    [projects]
+  );
 
   return (
     <>
@@ -302,73 +271,64 @@ const SectionProjects = ({
             </motion.button>
 
             <motion.div
-              layoutId={`card-${active.title}-${id}`}
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
               ref={ref}
               className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-gray-700/50 bg-gray-900 shadow-2xl shadow-black/50"
             >
               {/* Imagem Expandida */}
-              <motion.div layoutId={`image-${active.title}-${id}`}>
-                <div className="relative aspect-video w-full overflow-hidden sm:rounded-t-3xl">
-                  <Image
-                    src={active.image}
-                    alt={active.title}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 768px) 100vw, 700px"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-gray-900/80 via-transparent to-transparent" />
+              <div className="relative aspect-video w-full overflow-hidden sm:rounded-t-3xl">
+                <Image
+                  src={active.image}
+                  alt={active.title}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, 700px"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-gray-900/80 via-transparent to-transparent" />
 
-                  {/* Badges na imagem */}
-                  <div className="absolute top-4 left-4 flex flex-wrap gap-2">
-                    <span className="bg-electric-500/20 text-electric-400 rounded-full px-3 py-1 text-xs backdrop-blur-sm">
-                      {active.category}
-                    </span>
-                    <span
-                      className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs backdrop-blur-sm ${getStatusColor(active.status)}`}
-                    >
-                      <CheckCircle size={12} />
-                      {getStatusText(active.status)}
-                    </span>
-                    {active.featured && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 px-3 py-1 text-xs text-black">
-                        <Sparkles size={12} />
-                        Destaque
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Botão Fechar Desktop */}
-                  <button
-                    onClick={() => setActive(null)}
-                    className="absolute top-4 right-4 hidden rounded-xl bg-black/50 p-2 backdrop-blur-sm transition-colors hover:bg-black/70 lg:flex"
+                {/* Badges na imagem */}
+                <div className="absolute top-4 left-4 flex flex-wrap gap-2">
+                  <span className="bg-electric-500/20 text-electric-400 rounded-full px-3 py-1 text-xs backdrop-blur-sm">
+                    {active.category}
+                  </span>
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs backdrop-blur-sm ${getStatusColor(active.status)}`}
                   >
-                    <X size={20} className="text-white" />
-                  </button>
+                    <CheckCircle size={12} />
+                    {getStatusText(active.status)}
+                  </span>
+                  {active.featured && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 px-3 py-1 text-xs text-black">
+                      <Sparkles size={12} />
+                      Destaque
+                    </span>
+                  )}
                 </div>
-              </motion.div>
+
+                {/* Botão Fechar Desktop */}
+                <button
+                  onClick={() => setActive(null)}
+                  className="absolute top-4 right-4 hidden rounded-xl bg-black/50 p-2 backdrop-blur-sm transition-colors hover:bg-black/70 lg:flex"
+                >
+                  <X size={20} className="text-white" />
+                </button>
+              </div>
 
               {/* Conteúdo Scrollável */}
               <div className="flex-1 overflow-y-auto p-6 md:p-8">
                 {/* Header com Título e CTA */}
                 <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <motion.h3
-                      layoutId={`title-${active.title}-${id}`}
-                      className="text-2xl md:text-3xl"
-                    >
-                      {active.title}
-                    </motion.h3>
-                    <motion.p
-                      layoutId={`description-${active.description}-${id}`}
-                      className="mt-1 text-sm text-gray-400"
-                    >
+                    <h3 className="text-2xl md:text-3xl">{active.title}</h3>
+                    <p className="mt-1 text-sm text-gray-400">
                       {active.description}
-                    </motion.p>
+                    </p>
                   </div>
 
                   {/* CTA Principal */}
                   <motion.a
-                    layout
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
@@ -388,7 +348,6 @@ const SectionProjects = ({
 
                 {/* Grid de Conteúdo */}
                 <motion.div
-                  layout
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
@@ -604,20 +563,15 @@ const SectionProjects = ({
           </motion.div>
 
           {/* Grid de Projetos */}
-          <motion.div
-            layout
-            className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
-          >
-            <AnimatePresence mode="popLayout">
+          <motion.div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <AnimatePresence>
               {displayedProjects.map((project) => (
                 <motion.article
                   key={project.id}
-                  layout
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ duration: 0.3 }}
-                  layoutId={`card-${project.title}-${id}`}
+                  exit={{ opacity: 0, scale: 0.96 }}
+                  transition={{ duration: 0.25 }}
                   onClick={() => setActive(project)}
                   className="cursor-pointer"
                 >
@@ -634,10 +588,7 @@ const SectionProjects = ({
                       } hover:border-electric-500/50`}
                     >
                       {/* Imagem */}
-                      <motion.div
-                        layoutId={`image-${project.title}-${id}`}
-                        className="relative aspect-video overflow-hidden"
-                      >
+                      <div className="relative aspect-video overflow-hidden">
                         <Image
                           src={project.image}
                           alt={project.title}
@@ -660,7 +611,7 @@ const SectionProjects = ({
                             {getStatusText(project.status)}
                           </span>
                         </div>
-                      </motion.div>
+                      </div>
 
                       {/* Conteúdo */}
                       <div className="p-5">
@@ -676,19 +627,13 @@ const SectionProjects = ({
                           )}
                         </div>
 
-                        <motion.h3
-                          layoutId={`title-${project.title}-${id}`}
-                          className="group-hover:text-electric-400 mb-2 text-lg text-white transition-colors"
-                        >
+                        <h3 className="group-hover:text-electric-400 mb-2 text-lg text-white transition-colors">
                           {project.title}
-                        </motion.h3>
+                        </h3>
 
-                        <motion.p
-                          layoutId={`description-${project.description}-${id}`}
-                          className="mb-4 line-clamp-2 text-sm leading-relaxed text-gray-300"
-                        >
+                        <p className="mb-4 line-clamp-2 text-sm leading-relaxed text-gray-300">
                           {project.description}
-                        </motion.p>
+                        </p>
 
                         <div className="mb-4 flex flex-wrap gap-1.5">
                           {project.technologies.slice(0, 3).map((tech) => (
