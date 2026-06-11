@@ -7,6 +7,7 @@ import {
   CameraIcon,
   LinkedinIcon,
   ChevronRightIcon,
+  GithubIcon,
 } from 'lucide-react';
 import { HexagonBackground } from '@/components/animate-ui/components/backgrounds/hexagon';
 import Image from 'next/image';
@@ -27,36 +28,45 @@ export default function WelcomePage() {
       title: 'Portfólio',
       url: 'https://portfolioeriksantos.vercel.app/erikdossantos',
       icon: BriefcaseIcon,
-      description: 'Conheça meus projetos',
+      description: 'Projetos, soluções e experiências',
       accent:
-        'hover:border-emerald-200 hover:bg-emerald-50/50 dark:hover:border-emerald-800 dark:hover:bg-emerald-950/20',
+        'hover:border-teal-200 hover:bg-teal-50/60 dark:hover:border-teal-800 dark:hover:bg-teal-950/25',
     },
     {
       id: 2,
       title: 'WhatsApp',
       url: 'https://api.whatsapp.com/send/?phone=554797086965&text&type=phone_number&app_absent=0',
       icon: PhoneIcon,
-      description: 'Vamos conversar',
+      description: 'Fale comigo diretamente',
       accent:
-        'hover:border-green-200 hover:bg-green-50/50 dark:hover:border-green-800 dark:hover:bg-green-950/20',
+        'hover:border-green-200 hover:bg-green-50/60 dark:hover:border-green-800 dark:hover:bg-green-950/25',
     },
     {
       id: 3,
       title: 'Instagram',
       url: 'https://www.instagram.com/dossantoserik_jesus/',
       icon: CameraIcon,
-      description: 'Me siga no Instagram',
+      description: 'Acompanhe meus conteúdos',
       accent:
-        'hover:border-pink-200 hover:bg-pink-50/50 dark:hover:border-pink-800 dark:hover:bg-pink-950/20',
+        'hover:border-pink-200 hover:bg-pink-50/60 dark:hover:border-pink-800 dark:hover:bg-pink-950/25',
     },
     {
       id: 4,
       title: 'LinkedIn',
       url: 'https://www.linkedin.com/in/erik-rafael-dos-santos-416b64251/',
       icon: LinkedinIcon,
-      description: 'Conecte-se comigo',
+      description: 'Conecte-se comigo profissionalmente',
       accent:
-        'hover:border-blue-200 hover:bg-blue-50/50 dark:hover:border-blue-800 dark:hover:bg-blue-950/20',
+        'hover:border-sky-200 hover:bg-sky-50/60 dark:hover:border-sky-800 dark:hover:bg-sky-950/25',
+    },
+    {
+      id: 5,
+      title: 'GitHub',
+      url: 'https://github.com/devKire',
+      icon: GithubIcon,
+      description: 'Veja meus códigos e repositórios',
+      accent:
+        'hover:border-zinc-300 hover:bg-zinc-100/70 dark:hover:border-zinc-700 dark:hover:bg-zinc-900/50',
     },
   ];
 
