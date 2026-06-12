@@ -57,7 +57,10 @@ const Page = async ({ params }: LandingPageProps) => {
     where: { slug },
     include: {
       contactInfo: true,
-      projects: true,
+      projects: {
+        where: { isActive: true },
+        orderBy: { position: 'asc' },
+      },
     },
   });
 

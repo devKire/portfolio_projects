@@ -5,10 +5,17 @@ import { memo, useState, useCallback } from 'react';
 
 import { updateTaskPositions, updateTaskStatus } from '@/app/actions/tasks';
 import { TaskCard } from './task-card-kanban';
+import type {
+  TaskPatch,
+  TaskProjectOption,
+  TaskWithRelations,
+} from '@/types/tasks';
 
 interface TaskKanbanViewProps {
-  tasks: any[];
+  tasks: TaskWithRelations[];
   onTaskUpdate: () => void;
+  onTaskPatch: (id: string, patch: TaskPatch) => void;
+  projects: TaskProjectOption[];
 }
 
 const columns = [
@@ -30,6 +37,8 @@ const columns = [
 export const TaskKanbanView = memo(function TaskKanbanView({
   tasks,
   onTaskUpdate,
+  onTaskPatch,
+  projects,
 }: TaskKanbanViewProps) {
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
 
@@ -43,6 +52,10 @@ export const TaskKanbanView = memo(function TaskKanbanView({
   );
 
   const handleDragStart = (e: React.DragEvent, taskId: string) => {
+    if ((e.target as HTMLElement).closest('[data-kanban-control]')) {
+      e.preventDefault();
+      return;
+    }
     e.dataTransfer.setData('text/plain', taskId);
     e.dataTransfer.effectAllowed = 'move';
   };
@@ -116,7 +129,12 @@ export const TaskKanbanView = memo(function TaskKanbanView({
                   onDragStart={(e) => handleDragStart(e, task.id)}
                   className="cursor-grab active:cursor-grabbing"
                 >
-                  <TaskCard task={task} onUpdate={onTaskUpdate} />
+                  <TaskCard
+                    task={task}
+                    onUpdate={onTaskUpdate}
+                    onTaskPatch={(patch) => onTaskPatch(task.id, patch)}
+                    projects={projects}
+                  />
                 </div>
               ))}
 

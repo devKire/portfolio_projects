@@ -14,6 +14,7 @@ export type ProjectFormData = {
   liveUrl?: string;
   githubUrl?: string;
   featured: boolean;
+  isActive: boolean;
   status: 'completed' | 'in-progress' | 'planned';
   accentColor?: string;
   landingpageId: string;
@@ -31,6 +32,15 @@ export async function getProjects(landingpageId: string) {
     const projects = await db.project.findMany({
       where: { landingpageId },
       orderBy: { position: 'asc' },
+      include: {
+        _count: {
+          select: {
+            tasks: true,
+            features: true,
+            sprints: true,
+          },
+        },
+      },
     });
     return projects;
   } catch (error) {
@@ -65,8 +75,29 @@ export async function createProject(data: ProjectFormData) {
 
     const project = await db.project.create({
       data: {
-        ...data,
+        title: data.title,
+        category: data.category,
+        description: data.description,
+        fullDescription: data.fullDescription,
+        image: data.image,
+        technologies: data.technologies,
+        liveUrl: data.liveUrl || null,
+        githubUrl: data.githubUrl || null,
+        featured: data.featured,
+        isActive: data.isActive,
+        status: data.status,
+        accentColor: data.accentColor,
+        landingpageId: data.landingpageId,
         position,
+      },
+      include: {
+        _count: {
+          select: {
+            tasks: true,
+            features: true,
+            sprints: true,
+          },
+        },
       },
     });
 
@@ -88,7 +119,20 @@ export async function updateProject(
   try {
     const project = await db.project.update({
       where: { id },
-      data,
+      data: {
+        ...data,
+        liveUrl: data.liveUrl === '' ? null : data.liveUrl,
+        githubUrl: data.githubUrl === '' ? null : data.githubUrl,
+      },
+      include: {
+        _count: {
+          select: {
+            tasks: true,
+            features: true,
+            sprints: true,
+          },
+        },
+      },
     });
 
     revalidatePath('/admin/projects');
@@ -101,17 +145,46 @@ export async function updateProject(
   }
 }
 
+export async function setProjectActive(id: string, isActive: boolean) {
+  return updateProject(id, { isActive });
+}
+
+export async function toggleProjectFeatured(id: string, featured: boolean) {
+  return updateProject(id, { featured });
+}
+
 // Deletar projeto
 export async function deleteProject(id: string) {
   try {
     // Primeiro, buscar o projeto para obter o landingpageId
     const project = await db.project.findUnique({
       where: { id },
-      select: { landingpageId: true, position: true },
+      select: {
+        landingpageId: true,
+        position: true,
+        _count: {
+          select: {
+            tasks: true,
+            features: true,
+            sprints: true,
+          },
+        },
+      },
     });
 
     if (!project) {
       throw new Error('Project not found');
+    }
+
+    const hasHistory =
+      project._count.tasks > 0 ||
+      project._count.features > 0 ||
+      project._count.sprints > 0;
+
+    if (hasHistory) {
+      throw new Error(
+        'Project has linked history. Inactivate it instead of deleting.'
+      );
     }
 
     // Deletar o projeto

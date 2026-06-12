@@ -7,6 +7,7 @@ export interface TaskFilters {
   sprintId?: string;
   status?: string;
   priority?: string;
+  tag?: string;
   search?: string;
   dueDateRange?: 'today' | 'week' | 'overdue';
   sort?: 'dueDate' | 'priority' | 'position' | 'createdAt';
@@ -26,6 +27,7 @@ export async function getFilteredTasks(
     if (filters.sprintId) where.sprintId = filters.sprintId;
     if (filters.status) where.status = filters.status;
     if (filters.priority) where.priority = filters.priority;
+    if (filters.tag) where.tags = { has: filters.tag.toLowerCase() };
 
     // Filtro de busca (backend)
     if (filters.search) {

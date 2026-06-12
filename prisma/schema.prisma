@@ -51,6 +51,7 @@ model Project {
   liveUrl         String?
   githubUrl       String?
   featured        Boolean  @default(false)
+  isActive        Boolean  @default(true)
   status          String   @default("completed")
   accentColor     String?  @default("from-gray-500/20 to-gray-600/20")
   position        Int      @default(0)
@@ -60,13 +61,12 @@ model Project {
   // Relations
   landingpage   LandingPage @relation(fields: [landingpageId], references: [id], onDelete: Cascade)
   landingpageId String
-  
+
   // Adicione esta relação para tasks
-  tasks         Task[]      // Relacionamento com tasks
+  tasks    Task[] // Relacionamento com tasks
   features Feature[]
   sprints  Sprint[]
 }
-
 
 // Modelo para administrador
 model Admin {
@@ -124,8 +124,8 @@ model Feature {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  project        Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  tasks          Task[]
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks   Task[]
 }
 
 // Modelo para Sprints
@@ -140,24 +140,23 @@ model Sprint {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  project        Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  tasks          Task[]
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks   Task[]
 }
-
 
 // Template de Tarefas
 model TaskTemplate {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
-  status      String   @default("pending")
-  priority    String   @default("medium")
-  estimatedHours Int?  @default(0)
-  tags        String[] // Array de tags
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  tasks       Task[]
+  id             String   @id @default(uuid())
+  name           String
+  description    String?
+  status         String   @default("pending")
+  priority       String   @default("medium")
+  estimatedHours Float?   @default(0)
+  tags           String[] // Array de tags
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tasks Task[]
 }
 
 // Time Tracking
@@ -169,22 +168,23 @@ model TimeEntry {
   hours       Float
   date        DateTime @default(now())
   createdAt   DateTime @default(now())
-  
-  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
 }
 
 // Task Dependency
 model TaskDependency {
-  id              String @id @default(uuid())
-  taskId          String
-  dependsOnId     String
-  dependencyType  String @default("blocks") // blocks, relates_to
-  
-  task            Task   @relation("TaskDependencies", fields: [taskId], references: [id])
-  dependsOn       Task   @relation("DependsOnTasks", fields: [dependsOnId], references: [id])
-  
+  id             String @id @default(uuid())
+  taskId         String
+  dependsOnId    String
+  dependencyType String @default("blocks") // blocks, relates_to
+
+  task      Task @relation("TaskDependencies", fields: [taskId], references: [id])
+  dependsOn Task @relation("DependsOnTasks", fields: [dependsOnId], references: [id])
+
   @@unique([taskId, dependsOnId])
 }
+
 model Task {
   id             String    @id @default(uuid())
   title          String
@@ -192,21 +192,22 @@ model Task {
   status         String    @default("pending")
   priority       String    @default("medium")
   dueDate        DateTime?
-  estimatedHours Int?      @default(0)
-  actualHours    Int?      @default(0)
+  estimatedHours Float?    @default(0)
+  actualHours    Float?    @default(0)
   position       Int       @default(0)
 
-  tags            String[] @default([])
-  recurrence      String?
-  recurrenceEnd   DateTime?
-  completedAt     DateTime?
+  tags          String[]  @default([])
+  recurrence    String?
+  recurrenceEnd DateTime?
+  completedAt   DateTime?
 
   // Novas relações
-  templateId      String?
-  template        TaskTemplate? @relation(fields: [templateId], references: [id])
-  timeEntries     TimeEntry[]
-  dependencies    TaskDependency[] @relation("TaskDependencies")
-  dependedOnBy    TaskDependency[] @relation("DependsOnTasks")
+  templateId   String?
+  template     TaskTemplate?     @relation(fields: [templateId], references: [id])
+  timeEntries  TimeEntry[]
+  dependencies TaskDependency[]  @relation("TaskDependencies")
+  dependedOnBy TaskDependency[]  @relation("DependsOnTasks")
+  activityLogs TaskActivityLog[]
 
   // Relacionamentos
   projectId String?
@@ -218,13 +219,69 @@ model Task {
   updatedAt DateTime @updatedAt
 
   // Relações
-  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  feature   Feature? @relation(fields: [featureId], references: [id], onDelete: SetNull)
-  sprint    Sprint?  @relation(fields: [sprintId], references: [id], onDelete: SetNull)
-  parent    Task?    @relation("TaskToSubtask", fields: [parentId], references: [id])
-  subtasks  Task[]   @relation("TaskToSubtask")
+  project  Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  feature  Feature? @relation(fields: [featureId], references: [id], onDelete: SetNull)
+  sprint   Sprint?  @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  parent   Task?    @relation("TaskToSubtask", fields: [parentId], references: [id])
+  subtasks Task[]   @relation("TaskToSubtask")
 
   @@index([status])
   @@index([projectId])
   @@index([sprintId])
+}
+
+model DailyChecklistItem {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  title       String
+  description String
+  period      String
+  timeRange   String
+  startTime   String?
+  endTime     String?
+  position    Int      @default(0)
+  active      Boolean  @default(true)
+  isSacred    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  entries      DailyChecklistEntry[]
+  activityLogs TaskActivityLog[]
+
+  @@index([period])
+  @@index([position])
+}
+
+model DailyChecklistEntry {
+  id          String    @id @default(uuid())
+  itemId      String
+  date        DateTime
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+  note        String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  item DailyChecklistItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, date])
+  @@index([date])
+}
+
+model TaskActivityLog {
+  id                   String   @id @default(uuid())
+  taskId               String?
+  dailyChecklistItemId String?
+  type                 String
+  message              String
+  metadata             Json?
+  createdAt            DateTime @default(now())
+
+  task               Task?               @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  dailyChecklistItem DailyChecklistItem? @relation(fields: [dailyChecklistItemId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([taskId])
+  @@index([dailyChecklistItemId])
+  @@index([type])
 }

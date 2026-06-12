@@ -367,6 +367,7 @@ const SectionProjects = ({
   const projects = useMemo(
     () =>
       prismaProjects
+        .filter((prismaProject) => prismaProject.isActive)
         .map(convertPrismaProjectToProject)
         .sort((a, b) => a.position - b.position),
     [prismaProjects]

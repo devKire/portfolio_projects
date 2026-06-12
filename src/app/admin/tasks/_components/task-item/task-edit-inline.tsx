@@ -4,15 +4,18 @@
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { updateTask } from '@/app/actions/tasks';
+import type { TaskProjectOption, TaskWithRelations } from '@/types/tasks';
 
 interface TaskEditInlineProps {
-  task: any;
+  task: TaskWithRelations;
+  projects: TaskProjectOption[];
   onCancel: () => void;
   onSuccess: () => void;
 }
 
 export function TaskEditInline({
   task,
+  projects,
   onCancel,
   onSuccess,
 }: TaskEditInlineProps) {
@@ -25,6 +28,7 @@ export function TaskEditInline({
       ? new Date(task.dueDate).toISOString().split('T')[0]
       : '',
     estimatedHours: task.estimatedHours || 0,
+    projectId: task.project?.id || task.projectId || '',
   });
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -55,6 +59,7 @@ export function TaskEditInline({
         priority: formData.priority,
         dueDate: formData.dueDate ? new Date(formData.dueDate) : undefined,
         estimatedHours: formData.estimatedHours,
+        projectId: formData.projectId || null,
       });
 
       if (result.success) {
@@ -185,6 +190,26 @@ export function TaskEditInline({
             }
             className="w-full rounded-lg border border-gray-700 bg-[#2a2a2a] px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none"
           />
+        </div>
+
+        <div className="col-span-2">
+          <label className="mb-1 block text-xs font-medium text-gray-400">
+            Projeto
+          </label>
+          <select
+            value={formData.projectId}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, projectId: e.target.value }))
+            }
+            className="w-full rounded-lg border border-gray-700 bg-[#2a2a2a] px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none"
+          >
+            <option value="">Sem projeto</option>
+            {projects.map((project) => (
+              <option key={project.id} value={project.id}>
+                {project.title}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 

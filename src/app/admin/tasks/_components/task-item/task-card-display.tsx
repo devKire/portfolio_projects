@@ -1,17 +1,76 @@
-// src/app/(admin)/tasks/_components/task-item/task-card-display.tsx
 'use client';
 
-import { memo } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  AlertTriangle,
+  Briefcase,
+  Calendar,
+  CheckCircle2,
+  Circle,
+  Clock3,
+  Loader2,
+  Pencil,
+  Tag,
+  Trash2,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import type {
+  TaskPatch,
+  TaskPriority,
+  TaskProjectOption,
+  TaskWithRelations,
+} from '@/types/tasks';
 
 interface TaskCardDisplayProps {
-  task: any;
+  task: TaskWithRelations;
   isSelected: boolean;
   onToggleSelect: (id: string) => void;
   onEditStart: () => void;
   onStatusChange: (status: string) => void;
+  onPatch: (patch: TaskPatch) => Promise<void>;
+  onOptimisticPatch: (patch: TaskPatch) => void;
+  projects: TaskProjectOption[];
   onDelete: () => void;
   isDeleting: boolean;
+}
+
+type SaveState = 'idle' | 'saving' | 'saved' | 'error';
+
+const priorityLabels: Record<TaskPriority, string> = {
+  low: 'Baixa',
+  medium: 'Media',
+  high: 'Alta',
+  urgent: 'Urgente',
+};
+
+const priorityClasses: Record<TaskPriority, string> = {
+  low: 'border-gray-700 bg-gray-900/50 text-gray-400',
+  medium: 'border-blue-500/25 bg-blue-500/10 text-blue-300',
+  high: 'border-amber-500/25 bg-amber-500/10 text-amber-300',
+  urgent: 'border-red-500/30 bg-red-500/10 text-red-300',
+};
+
+function toDateInputValue(value?: Date | string | null) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toISOString().slice(0, 10);
+}
+
+function formatDate(value?: Date | string | null) {
+  if (!value) return 'Sem data';
+  return new Date(value).toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: 'short',
+  });
+}
+
+function parseTags(value: string) {
+  return value
+    .split(/[,\s]+/)
+    .map((tag) => tag.replace(/^#/, '').trim())
+    .filter(Boolean);
 }
 
 export const TaskCardDisplay = memo(function TaskCardDisplay({
@@ -20,9 +79,26 @@ export const TaskCardDisplay = memo(function TaskCardDisplay({
   onToggleSelect,
   onEditStart,
   onStatusChange,
+  onPatch,
+  onOptimisticPatch,
+  projects,
   onDelete,
   isDeleting,
 }: TaskCardDisplayProps) {
+  const [editingField, setEditingField] = useState<
+    'title' | 'description' | 'tags' | null
+  >(null);
+  const [draftTitle, setDraftTitle] = useState(task.title);
+  const [draftDescription, setDraftDescription] = useState(
+    task.description || ''
+  );
+  const [draftTags, setDraftTags] = useState(task.tags.join(' '));
+  const [saveState, setSaveState] = useState<SaveState>('idle');
+  const titleRef = useRef<HTMLInputElement>(null);
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
+  const tagsRef = useRef<HTMLInputElement>(null);
+
+  const isCompleted = task.status === 'completed';
   const isOverdue =
     task.dueDate &&
     new Date(task.dueDate) < new Date() &&
@@ -30,230 +106,480 @@ export const TaskCardDisplay = memo(function TaskCardDisplay({
   const isDueToday =
     task.dueDate &&
     new Date(task.dueDate).toDateString() === new Date().toDateString();
+  const priority = (task.priority || 'medium') as TaskPriority;
+  const projectOptions = useMemo(() => {
+    if (
+      !task.project ||
+      projects.some((project) => project.id === task.project?.id)
+    ) {
+      return projects;
+    }
 
-  const priorityConfig = {
-    low: {
-      color: 'text-gray-400',
-      bg: 'bg-gray-500/10',
-      border: 'border-gray-500/30',
-    },
-    medium: {
-      color: 'text-blue-400',
-      bg: 'bg-blue-500/10',
-      border: 'border-blue-500/30',
-    },
-    high: {
-      color: 'text-yellow-400',
-      bg: 'bg-yellow-500/10',
-      border: 'border-yellow-500/30',
-    },
-    urgent: {
-      color: 'text-red-400',
-      bg: 'bg-red-500/10',
-      border: 'border-red-500/30',
-    },
+    return [task.project, ...projects];
+  }, [projects, task.project]);
+
+  const completedSubtasks = useMemo(
+    () =>
+      task.subtasks?.filter((subtask) => subtask.status === 'completed')
+        .length || 0,
+    [task.subtasks]
+  );
+
+  useEffect(() => setDraftTitle(task.title), [task.title]);
+  useEffect(
+    () => setDraftDescription(task.description || ''),
+    [task.description]
+  );
+  useEffect(() => setDraftTags(task.tags.join(' ')), [task.tags]);
+
+  useEffect(() => {
+    if (editingField === 'title') {
+      titleRef.current?.focus();
+      titleRef.current?.select();
+    }
+    if (editingField === 'description') {
+      descriptionRef.current?.focus();
+    }
+    if (editingField === 'tags') {
+      tagsRef.current?.focus();
+      tagsRef.current?.select();
+    }
+  }, [editingField]);
+
+  useEffect(() => {
+    if (saveState !== 'saved') return;
+    const timer = window.setTimeout(() => setSaveState('idle'), 1200);
+    return () => window.clearTimeout(timer);
+  }, [saveState]);
+
+  const commitPatch = async (patch: TaskPatch, rollback?: TaskPatch) => {
+    setSaveState('saving');
+    try {
+      await onPatch(patch);
+      setSaveState('saved');
+    } catch (error) {
+      if (rollback) onOptimisticPatch(rollback);
+      console.error('Inline task update failed:', error);
+      setSaveState('error');
+    }
   };
 
-  const priority =
-    priorityConfig[task.priority as keyof typeof priorityConfig] ||
-    priorityConfig.medium;
+  const commitTitle = () => {
+    const nextTitle = draftTitle.trim();
+    if (!nextTitle) {
+      setDraftTitle(task.title);
+      setEditingField(null);
+      return;
+    }
+    setEditingField(null);
+    if (nextTitle !== task.title) {
+      void commitPatch({ title: nextTitle }, { title: task.title });
+    }
+  };
+
+  const commitDescription = () => {
+    const nextDescription = draftDescription.trim();
+    setEditingField(null);
+    if (nextDescription !== (task.description || '')) {
+      void commitPatch(
+        { description: nextDescription },
+        { description: task.description || '' }
+      );
+    }
+  };
+
+  const commitTags = () => {
+    const nextTags = parseTags(draftTags);
+    setEditingField(null);
+    if (nextTags.join('|') !== task.tags.join('|')) {
+      void commitPatch({ tags: nextTags }, { tags: task.tags });
+    }
+  };
+
+  const handleSimpleKeyDown = (
+    event: React.KeyboardEvent<HTMLInputElement>,
+    commit: () => void,
+    cancel: () => void
+  ) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      commit();
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      cancel();
+    }
+  };
 
   return (
     <div
-      className={`p-4 ${isOverdue ? 'border-l-2 border-l-red-500 bg-red-500/5' : ''} transition-all`}
+      className={cn(
+        'group px-3 py-2 transition-colors',
+        isOverdue && 'border-l-2 border-l-red-500 bg-red-500/5'
+      )}
+      onDoubleClick={(event) => {
+        if ((event.target as HTMLElement).closest('[data-inline-control]')) {
+          return;
+        }
+        setEditingField('title');
+      }}
     >
-      <div className="flex items-start gap-3">
-        {/* Checkbox de seleção */}
+      <div className="grid grid-cols-[auto_auto_minmax(0,1fr)_auto] items-start gap-2">
         <input
+          data-inline-control
+          aria-label={`Selecionar ${task.title}`}
           type="checkbox"
           checked={isSelected}
           onChange={() => onToggleSelect(task.id)}
-          onClick={(e) => e.stopPropagation()}
-          className="mt-1 h-4 w-4 cursor-pointer rounded border-gray-700 bg-[#2a2a2a] focus:ring-2 focus:ring-blue-500"
+          onClick={(event) => event.stopPropagation()}
+          className="mt-2 h-4 w-4 cursor-pointer rounded border-gray-700 bg-[#2a2a2a] focus:ring-2 focus:ring-blue-500"
         />
 
-        {/* Conteúdo principal */}
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0 flex-1">
-              {/* Título e badges */}
-              <div className="mb-2 flex flex-wrap items-center gap-2">
-                <h4
-                  className={`line-clamp-1 font-medium text-white ${
-                    task.status === 'completed'
-                      ? 'text-gray-500 line-through'
-                      : ''
-                  }`}
-                >
-                  {task.title}
-                </h4>
+        <button
+          data-inline-control
+          type="button"
+          aria-label={isCompleted ? 'Reabrir tarefa' : 'Concluir tarefa'}
+          onClick={(event) => {
+            event.stopPropagation();
+            onStatusChange(isCompleted ? 'pending' : 'completed');
+          }}
+          className="mt-1.5 rounded text-gray-500 transition-colors hover:text-green-300 focus:ring-2 focus:ring-green-500/50 focus:outline-none"
+        >
+          {isCompleted ? (
+            <CheckCircle2 className="h-4 w-4 text-green-400" />
+          ) : (
+            <Circle className="h-4 w-4" />
+          )}
+        </button>
 
-                {/* Badges de data */}
-                {isOverdue && (
-                  <span className="inline-flex items-center rounded-full border border-red-500/30 bg-red-500/20 px-2 py-0.5 text-xs font-medium text-red-400">
-                    ⚠️ Atrasada
-                  </span>
+        <div className="min-w-0">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            {editingField === 'title' ? (
+              <input
+                data-inline-control
+                ref={titleRef}
+                value={draftTitle}
+                onChange={(event) => setDraftTitle(event.target.value)}
+                onBlur={commitTitle}
+                onKeyDown={(event) =>
+                  handleSimpleKeyDown(event, commitTitle, () => {
+                    setDraftTitle(task.title);
+                    setEditingField(null);
+                  })
+                }
+                className="min-w-[220px] flex-1 rounded-md border border-blue-500/40 bg-[#111] px-2 py-1 text-sm font-medium text-white outline-none focus:ring-2 focus:ring-blue-500/30"
+              />
+            ) : (
+              <button
+                data-inline-control
+                type="button"
+                onClick={() => setEditingField('title')}
+                className={cn(
+                  'min-w-0 rounded px-1 py-0.5 text-left text-sm font-medium text-white transition-colors outline-none hover:bg-white/5 focus:ring-2 focus:ring-blue-500/40',
+                  isCompleted && 'text-gray-500 line-through'
                 )}
-                {isDueToday && !isOverdue && (
-                  <span className="inline-flex items-center rounded-full border border-yellow-500/30 bg-yellow-500/20 px-2 py-0.5 text-xs font-medium text-yellow-400">
-                    📅 Hoje
-                  </span>
-                )}
-              </div>
-
-              {/* Descrição (se existir) */}
-              {task.description && (
-                <p className="mb-2 line-clamp-2 text-sm text-gray-400">
-                  {task.description}
-                </p>
-              )}
-
-              {/* Badges de metadados */}
-              <div className="mb-2 flex flex-wrap gap-2">
-                {/* Priority Badge */}
-                <span
-                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${priority.color} ${priority.bg} border ${priority.border}`}
-                >
-                  {task.priority === 'high' && '⚠️ '}
-                  {task.priority === 'urgent' && '🚨 '}
-                  {task.priority === 'medium' && '📌 '}
-                  {task.priority === 'low' && '🔽 '}
-                  {task.priority || 'medium'}
-                </span>
-
-                {/* Project Badge */}
-                {task.project && (
-                  <span className="inline-flex items-center rounded-full border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 text-xs font-medium text-purple-400">
-                    📁 {task.project.title}
-                  </span>
-                )}
-
-                {/* Feature Badge */}
-                {task.feature && (
-                  <span className="inline-flex items-center rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2 py-0.5 text-xs font-medium text-indigo-400">
-                    🎯 {task.feature.name}
-                  </span>
-                )}
-
-                {/* Sprint Badge */}
-                {task.sprint && (
-                  <span className="inline-flex items-center rounded-full border border-green-500/30 bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-400">
-                    🏃 {task.sprint.name}
-                  </span>
-                )}
-
-                {/* Tags */}
-                {task.tags?.map((tag: string) => (
-                  <span
-                    key={tag}
-                    className="inline-flex items-center rounded-full border border-gray-700 bg-gray-800 px-2 py-0.5 text-xs text-gray-400"
-                  >
-                    #{tag}
-                  </span>
-                ))}
-              </div>
-
-              {/* Metadados de tempo e data */}
-              <div className="flex flex-wrap gap-3 text-xs text-gray-500">
-                {task.dueDate && (
-                  <span
-                    className={`flex items-center gap-1 ${isOverdue ? 'text-red-400' : ''}`}
-                  >
-                    📅 {new Date(task.dueDate).toLocaleDateString('pt-BR')}
-                  </span>
-                )}
-                {task.estimatedHours > 0 && (
-                  <span className="flex items-center gap-1">
-                    ⏱️ {task.estimatedHours}h est.
-                  </span>
-                )}
-                {task.actualHours > 0 && (
-                  <span className="flex items-center gap-1 text-blue-400">
-                    ✅ {task.actualHours}h real
-                  </span>
-                )}
-                {task.subtasks?.length > 0 && (
-                  <span className="flex items-center gap-1">
-                    📋{' '}
-                    {
-                      task.subtasks.filter((s: any) => s.status === 'completed')
-                        .length
-                    }
-                    /{task.subtasks.length} subtasks
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Ações rápidas (visíveis no hover) */}
-            <div className="ml-2 flex flex-shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-              <select
-                value={task.status}
-                onChange={(e) => onStatusChange(e.target.value)}
-                onClick={(e) => e.stopPropagation()}
-                className="cursor-pointer rounded border border-gray-700 bg-[#2a2a2a] px-2 py-1 text-xs text-white transition-colors hover:border-gray-600 focus:border-blue-500 focus:outline-none"
               >
-                <option value="pending">📋 Pendente</option>
-                <option value="in-progress">🔄 Em Andamento</option>
-                <option value="completed">✅ Concluído</option>
-              </select>
+                <span className="line-clamp-1">{task.title}</span>
+              </button>
+            )}
 
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEditStart();
-                }}
-                className="h-auto px-2 py-1 text-xs"
-                title="Editar tarefa"
-              >
-                ✏️
-              </Button>
-
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete();
-                }}
-                disabled={isDeleting}
-                className="h-auto px-2 py-1 text-xs text-red-400 hover:text-red-300"
-                title="Excluir tarefa"
-              >
-                {isDeleting ? '...' : '🗑️'}
-              </Button>
-            </div>
+            {isOverdue && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-red-500/25 bg-red-500/10 px-2 py-0.5 text-xs text-red-300">
+                <AlertTriangle className="h-3 w-3" />
+                Atrasada
+              </span>
+            )}
+            {isDueToday && !isOverdue && (
+              <span className="inline-flex items-center rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-xs text-amber-300">
+                Hoje
+              </span>
+            )}
           </div>
 
-          {/* Barra de progresso (se tiver horas estimadas) */}
-          {task.estimatedHours > 0 && (
-            <div className="mt-3 border-t border-gray-800 pt-3">
-              <div className="flex items-center gap-3">
-                <div className="flex-1">
-                  <div className="mb-1 flex items-center justify-between text-xs text-gray-500">
-                    <span>Progresso</span>
-                    <span>
-                      {Math.round(
-                        ((task.actualHours || 0) / task.estimatedHours) * 100
-                      )}
-                      %
-                    </span>
-                  </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-gray-800">
-                    <div
-                      className="h-full rounded-full bg-blue-500 transition-all duration-300"
-                      style={{
-                        width: `${Math.min(((task.actualHours || 0) / task.estimatedHours) * 100, 100)}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          <div className="mt-1">
+            {editingField === 'description' ? (
+              <textarea
+                data-inline-control
+                ref={descriptionRef}
+                value={draftDescription}
+                rows={2}
+                onChange={(event) => setDraftDescription(event.target.value)}
+                onBlur={commitDescription}
+                onKeyDown={(event) => {
+                  if (event.key === 'Escape') {
+                    event.preventDefault();
+                    setDraftDescription(task.description || '');
+                    setEditingField(null);
+                  }
+                  if (
+                    (event.ctrlKey || event.metaKey) &&
+                    event.key === 'Enter'
+                  ) {
+                    event.preventDefault();
+                    commitDescription();
+                  }
+                }}
+                className="w-full resize-none rounded-md border border-gray-700 bg-[#111] px-2 py-1 text-sm text-gray-200 outline-none focus:border-blue-500/50"
+              />
+            ) : (
+              <button
+                data-inline-control
+                type="button"
+                onClick={() => setEditingField('description')}
+                className="line-clamp-1 rounded px-1 py-0.5 text-left text-xs text-gray-500 transition-colors outline-none hover:bg-white/5 hover:text-gray-300 focus:ring-2 focus:ring-blue-500/30"
+              >
+                {task.description || 'Adicionar descricao'}
+              </button>
+            )}
+          </div>
+
+          <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
+            <select
+              data-inline-control
+              aria-label="Status"
+              value={task.status}
+              onChange={(event) => onStatusChange(event.target.value)}
+              className="h-7 cursor-pointer rounded-md border border-gray-800 bg-[#111] px-2 text-xs text-gray-300 outline-none hover:border-gray-700 focus:border-blue-500"
+            >
+              <option value="pending">Pendente</option>
+              <option value="in-progress">Em andamento</option>
+              <option value="completed">Concluido</option>
+            </select>
+
+            <select
+              data-inline-control
+              aria-label="Prioridade"
+              value={priority}
+              onChange={(event) =>
+                void commitPatch(
+                  { priority: event.target.value },
+                  { priority: task.priority }
+                )
+              }
+              className={cn(
+                'h-7 cursor-pointer rounded-md border px-2 text-xs outline-none focus:border-blue-500',
+                priorityClasses[priority] || priorityClasses.medium
+              )}
+            >
+              {Object.entries(priorityLabels).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+
+            <label
+              data-inline-control
+              className="inline-flex h-7 items-center gap-1 rounded-md border border-gray-800 bg-[#111] px-2 text-gray-400 hover:border-gray-700"
+            >
+              <Calendar className="h-3.5 w-3.5" />
+              <span className="sr-only">Data</span>
+              <input
+                type="date"
+                value={toDateInputValue(task.dueDate)}
+                onChange={(event) =>
+                  void commitPatch(
+                    {
+                      dueDate: event.target.value
+                        ? new Date(`${event.target.value}T00:00:00`)
+                        : null,
+                    },
+                    {
+                      dueDate: task.dueDate ? new Date(task.dueDate) : null,
+                    }
+                  )
+                }
+                className="w-[116px] bg-transparent text-xs text-gray-300 outline-none"
+              />
+            </label>
+
+            <label
+              data-inline-control
+              className="inline-flex h-7 items-center gap-1 rounded-md border border-gray-800 bg-[#111] px-2 text-gray-400 hover:border-gray-700"
+            >
+              <Clock3 className="h-3.5 w-3.5" />
+              <span className="sr-only">Horas estimadas</span>
+              <input
+                type="number"
+                min="0"
+                step="0.25"
+                value={task.estimatedHours || 0}
+                onChange={(event) =>
+                  void commitPatch(
+                    { estimatedHours: Number(event.target.value) || 0 },
+                    { estimatedHours: task.estimatedHours || 0 }
+                  )
+                }
+                className="w-12 bg-transparent text-xs text-gray-300 outline-none"
+              />
+              <span>h</span>
+            </label>
+
+            <label
+              data-inline-control
+              className="inline-flex h-7 items-center gap-1 rounded-md border border-gray-800 bg-[#111] px-2 text-gray-400 hover:border-gray-700"
+            >
+              <span className="text-[10px] font-medium">real</span>
+              <input
+                type="number"
+                min="0"
+                step="0.25"
+                value={task.actualHours || 0}
+                onChange={(event) =>
+                  void commitPatch(
+                    { actualHours: Number(event.target.value) || 0 },
+                    { actualHours: task.actualHours || 0 }
+                  )
+                }
+                className="w-12 bg-transparent text-xs text-gray-300 outline-none"
+              />
+              <span>h</span>
+            </label>
+
+            {editingField === 'tags' ? (
+              <input
+                data-inline-control
+                ref={tagsRef}
+                value={draftTags}
+                onChange={(event) => setDraftTags(event.target.value)}
+                onBlur={commitTags}
+                onKeyDown={(event) =>
+                  handleSimpleKeyDown(event, commitTags, () => {
+                    setDraftTags(task.tags.join(' '));
+                    setEditingField(null);
+                  })
+                }
+                className="h-7 min-w-[160px] rounded-md border border-gray-700 bg-[#111] px-2 text-xs text-gray-200 outline-none focus:border-blue-500/50"
+              />
+            ) : (
+              <button
+                data-inline-control
+                type="button"
+                onClick={() => setEditingField('tags')}
+                className="inline-flex h-7 max-w-full items-center gap-1 rounded-md border border-gray-800 bg-[#111] px-2 text-gray-400 outline-none hover:border-gray-700 hover:text-gray-200 focus:ring-2 focus:ring-blue-500/30"
+              >
+                <Tag className="h-3.5 w-3.5" />
+                <span className="truncate">
+                  {task.tags.length
+                    ? task.tags.map((tag) => `#${tag}`).join(' ')
+                    : 'tags'}
+                </span>
+              </button>
+            )}
+
+            {task.project && (
+              <span className="sr-only">
+                Projeto atual: {task.project.title}
+              </span>
+            )}
+
+            <label
+              data-inline-control
+              className="inline-flex h-7 items-center gap-1 rounded-md border border-purple-500/20 bg-purple-500/10 px-2 text-purple-300 hover:border-purple-400/40"
+            >
+              <Briefcase className="h-3.5 w-3.5" />
+              <span className="sr-only">Projeto</span>
+              <select
+                value={task.project?.id || task.projectId || ''}
+                onChange={(event) => {
+                  const projectId = event.target.value || null;
+                  const project =
+                    projectOptions.find((item) => item.id === projectId) ||
+                    null;
+
+                  void commitPatch(
+                    { projectId, project },
+                    {
+                      projectId: task.project?.id || task.projectId || null,
+                      project: task.project || null,
+                    }
+                  );
+                }}
+                className="max-w-[170px] cursor-pointer bg-transparent text-xs text-purple-200 outline-none"
+              >
+                <option value="">Sem projeto</option>
+                {projectOptions.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {task.subtasks && task.subtasks.length > 0 && (
+              <span className="inline-flex h-7 items-center rounded-md border border-gray-800 bg-[#111] px-2 text-gray-500">
+                {completedSubtasks}/{task.subtasks.length} subtasks
+              </span>
+            )}
+          </div>
         </div>
+
+        <div className="flex items-center gap-1 pt-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+          <span
+            className={cn(
+              'min-w-12 text-right text-[11px]',
+              saveState === 'error' ? 'text-red-300' : 'text-gray-600'
+            )}
+            aria-live="polite"
+          >
+            {saveState === 'saving' && (
+              <Loader2 className="ml-auto h-3.5 w-3.5 animate-spin" />
+            )}
+            {saveState === 'saved' && 'salvo'}
+            {saveState === 'error' && 'erro'}
+          </span>
+
+          <Button
+            data-inline-control
+            size="icon"
+            variant="ghost"
+            onClick={(event) => {
+              event.stopPropagation();
+              onEditStart();
+            }}
+            className="h-7 w-7 text-gray-500 hover:text-gray-200"
+            title="Abrir edicao completa"
+          >
+            <span className="sr-only">Abrir edicao completa</span>
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+
+          <Button
+            data-inline-control
+            size="icon"
+            variant="ghost"
+            onClick={(event) => {
+              event.stopPropagation();
+              onDelete();
+            }}
+            disabled={isDeleting}
+            className="h-7 w-7 text-gray-500 hover:text-red-300"
+            title="Excluir tarefa"
+          >
+            <span className="sr-only">Excluir tarefa</span>
+            {isDeleting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Trash2 className="h-3.5 w-3.5" />
+            )}
+          </Button>
+        </div>
+      </div>
+
+      {(task.estimatedHours || 0) > 0 && (
+        <div className="mt-2 ml-14 h-1 overflow-hidden rounded-full bg-gray-900">
+          <div
+            className="h-full rounded-full bg-blue-500 transition-all duration-300"
+            style={{
+              width: `${Math.min(((task.actualHours || 0) / (task.estimatedHours || 1)) * 100, 100)}%`,
+            }}
+          />
+        </div>
+      )}
+
+      <div className="sr-only">
+        Data: {formatDate(task.dueDate)}. Prioridade: {priorityLabels[priority]}
+        .
       </div>
     </div>
   );

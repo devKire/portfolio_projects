@@ -4,6 +4,7 @@
 import { memo, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { TaskFilters } from '@/lib/task-service';
+import type { TaskProjectOption } from '@/types/tasks';
 
 interface TaskFiltersBarProps {
   filters: TaskFilters;
@@ -15,6 +16,8 @@ interface TaskFiltersBarProps {
   onViewModeChange: (mode: 'list' | 'kanban') => void;
   // CORRIGIDO: Aceitar null no RefObject
   searchInputRef: React.RefObject<HTMLInputElement | null>;
+  projects: TaskProjectOption[];
+  tags: string[];
 }
 
 export const TaskFiltersBar = memo(function TaskFiltersBar({
@@ -23,18 +26,10 @@ export const TaskFiltersBar = memo(function TaskFiltersBar({
   viewMode,
   onViewModeChange,
   searchInputRef,
+  projects,
+  tags,
 }: TaskFiltersBarProps) {
-  const [projects, setProjects] = useState<any[]>([]);
   const [sprints, setSprints] = useState<any[]>([]);
-
-  useEffect(() => {
-    // Carregar projetos para o filtro
-    import('@/app/actions/tasks').then(({ getProjects }) => {
-      getProjects().then((result) => {
-        if (result.success) setProjects(result.data || []);
-      });
-    });
-  }, []);
 
   useEffect(() => {
     if (filters.projectId) {
@@ -137,6 +132,19 @@ export const TaskFiltersBar = memo(function TaskFiltersBar({
           {projects.map((project) => (
             <option key={project.id} value={project.id}>
               {project.title}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={filters.tag || ''}
+          onChange={(e) => onFilterChange('tag', e.target.value || undefined)}
+          className="rounded-lg border border-gray-700 bg-[#1a1a1a] px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none"
+        >
+          <option value="">Todas Tags</option>
+          {tags.map((tag) => (
+            <option key={tag} value={tag}>
+              #{tag}
             </option>
           ))}
         </select>

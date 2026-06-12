@@ -2,9 +2,10 @@
 import { useState, useCallback, useEffect } from 'react';
 import { getTasks, getTaskStats } from '@/app/actions/tasks';
 import type { TaskFilters } from '@/lib/task-service';
+import type { TaskPatch, TaskWithRelations } from '@/types/tasks';
 
 export function useTasks(filters: TaskFilters) {
-  const [tasks, setTasks] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<TaskWithRelations[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +38,14 @@ export function useTasks(filters: TaskFilters) {
           // Aplicar filtros adicionais no frontend
           if (currentFilters.priority) {
             filteredTasks = filteredTasks.filter(
-              (t: any) => t.priority === currentFilters.priority
+              (t: TaskWithRelations) => t.priority === currentFilters.priority
+            );
+          }
+
+          if (currentFilters.tag) {
+            const wantedTag = currentFilters.tag.toLowerCase();
+            filteredTasks = filteredTasks.filter((t: TaskWithRelations) =>
+              (t.tags || []).some((tag) => tag.toLowerCase() === wantedTag)
             );
           }
 
@@ -46,21 +54,21 @@ export function useTasks(filters: TaskFilters) {
             today.setHours(0, 0, 0, 0);
 
             if (currentFilters.dueDateRange === 'today') {
-              filteredTasks = filteredTasks.filter((t: any) => {
+              filteredTasks = filteredTasks.filter((t: TaskWithRelations) => {
                 if (!t.dueDate) return false;
                 const dueDate = new Date(t.dueDate);
                 dueDate.setHours(0, 0, 0, 0);
                 return dueDate.getTime() === today.getTime();
               });
             } else if (currentFilters.dueDateRange === 'overdue') {
-              filteredTasks = filteredTasks.filter((t: any) => {
+              filteredTasks = filteredTasks.filter((t: TaskWithRelations) => {
                 if (!t.dueDate || t.status === 'completed') return false;
                 return new Date(t.dueDate) < today;
               });
             } else if (currentFilters.dueDateRange === 'week') {
               const endOfWeek = new Date(today);
               endOfWeek.setDate(today.getDate() + 7);
-              filteredTasks = filteredTasks.filter((t: any) => {
+              filteredTasks = filteredTasks.filter((t: TaskWithRelations) => {
                 if (!t.dueDate) return false;
                 const dueDate = new Date(t.dueDate);
                 return dueDate >= today && dueDate <= endOfWeek;
@@ -104,10 +112,17 @@ export function useTasks(filters: TaskFilters) {
     filters.sprintId,
     filters.status,
     filters.priority,
+    filters.tag,
     filters.search,
     filters.dueDateRange,
     fetchTasks,
   ]);
+
+  const updateTaskInCache = useCallback((id: string, patch: TaskPatch) => {
+    setTasks((current) =>
+      current.map((task) => (task.id === id ? { ...task, ...patch } : task))
+    );
+  }, []);
 
   return {
     tasks,
@@ -115,6 +130,7 @@ export function useTasks(filters: TaskFilters) {
     loading,
     error,
     pagination,
+    updateTaskInCache,
     refetch: () => fetchTasks(filters),
   };
 }

@@ -30,7 +30,17 @@ export function useTaskFilters(initialFilters: TaskFilters = {}) {
 
   const updateFilter = useCallback(
     (key: keyof TaskFilters, value: string | boolean | undefined) => {
-      setFilters((prev) => ({ ...prev, [key]: value }));
+      setFilters((prev) => {
+        if (key === 'projectId') {
+          return {
+            ...prev,
+            projectId: value as string | undefined,
+            sprintId: undefined,
+          };
+        }
+
+        return { ...prev, [key]: value };
+      });
     },
     []
   );

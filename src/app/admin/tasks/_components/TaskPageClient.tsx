@@ -6,19 +6,27 @@ import { useTaskFilters } from '@/hooks/use-task-filters';
 import { useTaskSelection } from '@/hooks/use-task-selection';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 
-import { deleteTask, updateTaskStatus } from '@/app/actions/tasks';
+import {
+  deleteTask,
+  getProjects,
+  getTaskTags,
+  updateTaskStatus,
+} from '@/app/actions/tasks';
 import { TaskFiltersBar } from './task-filters-bar';
 import { BulkActionsBar } from './bulk-actions-bar';
 import { QuickTaskInput } from './quick-task-input';
 import { TaskListView } from './task-list-view';
 import { TaskKanbanView } from './task-kanban-view';
 import { TaskHeader } from './task-header';
+import { DailyChecklistCard } from './daily-checklist-card';
+import type { TaskPatch, TaskProjectOption } from '@/types/tasks';
 
 type ViewMode = 'list' | 'kanban';
 
 export function TaskPageClient() {
   const { filters, resolvedFilters, updateFilter } = useTaskFilters({});
-  const { tasks, stats, loading, error, refetch } = useTasks(resolvedFilters);
+  const { tasks, stats, loading, error, refetch, updateTaskInCache } =
+    useTasks(resolvedFilters);
   const {
     selectedIds,
     count: selectionCount,
@@ -30,6 +38,32 @@ export function TaskPageClient() {
   const [isQuickInputOpen, setIsQuickInputOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [projects, setProjects] = useState<TaskProjectOption[]>([]);
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
+
+  const loadTags = useCallback(async () => {
+    const result = await getTaskTags();
+    if (result.success) setAvailableTags(result.data || []);
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    getProjects().then((result) => {
+      if (!isMounted || !result.success) return;
+      setProjects(
+        (result.data || []).map((project) => ({
+          id: project.id,
+          title: project.title,
+        }))
+      );
+    });
+    void loadTags();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [loadTags]);
 
   // Debug para ver o que está acontecendo
   useEffect(() => {
@@ -70,6 +104,12 @@ export function TaskPageClient() {
   };
 
   const closeQuickInput = useCallback(() => setIsQuickInputOpen(false), []);
+  const handleTaskPatch = useCallback(
+    (id: string, patch: TaskPatch) => {
+      updateTaskInCache(id, patch);
+    },
+    [updateTaskInCache]
+  );
 
   // Atalhos de teclado
   useKeyboardShortcuts({
@@ -92,6 +132,8 @@ export function TaskPageClient() {
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         searchInputRef={searchInputRef}
+        projects={projects}
+        tags={availableTags}
       />
 
       {selectionCount > 0 && (
@@ -106,9 +148,12 @@ export function TaskPageClient() {
       {isQuickInputOpen && (
         <QuickTaskInput
           onClose={closeQuickInput}
+          projects={projects}
+          tags={availableTags}
           onSuccess={() => {
             closeQuickInput();
             refetch();
+            void loadTags();
           }}
         />
       )}
@@ -149,10 +194,19 @@ export function TaskPageClient() {
               setEditingTaskId(null);
               refetch();
             }}
+            onTaskPatch={handleTaskPatch}
+            projects={projects}
           />
         ) : (
-          <TaskKanbanView tasks={tasks} onTaskUpdate={() => refetch()} />
+          <TaskKanbanView
+            tasks={tasks}
+            onTaskUpdate={() => refetch()}
+            onTaskPatch={handleTaskPatch}
+            projects={projects}
+          />
         ))}
+
+      {!loading && !error && <DailyChecklistCard />}
 
       {/* Loading overlay para refetch */}
       {loading && tasks.length > 0 && (

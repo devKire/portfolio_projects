@@ -1,19 +1,25 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import {
   ArrowDown,
   ArrowUp,
   Check,
-  Edit,
-  Eye,
+  ExternalLink,
+  Github,
+  ImageIcon,
   Loader2,
+  Pencil,
   Plus,
+  Power,
+  RotateCcw,
+  Search,
+  Star,
   Trash2,
   X,
 } from 'lucide-react';
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
+import type { Dispatch, KeyboardEvent, ReactNode, SetStateAction } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import {
   createProject,
@@ -21,133 +27,232 @@ import {
   getProjects,
   ProjectFormData,
   reorderProjects,
+  setProjectActive,
+  toggleProjectFeatured,
   updateProject,
 } from '@/app/actions/project';
 
-// Supondo que você tenha uma landingpage padrão
 const DEFAULT_LANDINGPAGE_ID = '3eb3839d-eb78-43ed-9eb7-8f39352d64bb';
+const FALLBACK_PROJECT_IMAGE = '/file.svg';
+
+const DEFAULT_CATEGORIES = [
+  'Sistema Web',
+  'Portfólio Pessoal',
+  'Serviços Profissionais',
+  'Página de Vendas',
+  'Institucional',
+];
+
+const STATUS_OPTIONS = [
+  { value: 'completed', label: 'Concluído' },
+  { value: 'in-progress', label: 'Em desenvolvimento' },
+  { value: 'planned', label: 'Planejado' },
+] as const;
+
+type ProjectStatus = (typeof STATUS_OPTIONS)[number]['value'];
+type ActiveFilter = 'all' | 'active' | 'inactive';
+type FeaturedFilter = 'all' | 'featured' | 'standard';
+type SaveState = 'idle' | 'saving' | 'saved' | 'error';
+
+type ProjectWithCounts = {
+  id: string;
+  title: string;
+  category: string;
+  description: string;
+  fullDescription: string;
+  image: string;
+  technologies: string[];
+  liveUrl: string | null;
+  githubUrl: string | null;
+  featured: boolean;
+  isActive: boolean;
+  status: string;
+  accentColor: string | null;
+  position: number;
+  landingpageId: string;
+  _count?: {
+    tasks: number;
+    features: number;
+    sprints: number;
+  };
+};
+
+type ProjectDraft = ProjectFormData;
+
+const emptyDraft = (): ProjectDraft => ({
+  title: '',
+  category: DEFAULT_CATEGORIES[0],
+  description: '',
+  fullDescription: '',
+  image: '',
+  technologies: [],
+  liveUrl: '',
+  githubUrl: '',
+  featured: false,
+  isActive: true,
+  status: 'in-progress',
+  accentColor: 'from-gray-500/20 to-gray-600/20',
+  landingpageId: DEFAULT_LANDINGPAGE_ID,
+});
+
+function statusLabel(status: string) {
+  return (
+    STATUS_OPTIONS.find((option) => option.value === status)?.label || status
+  );
+}
+
+function statusClass(status: string) {
+  if (status === 'completed')
+    return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200';
+  if (status === 'in-progress')
+    return 'border-amber-500/30 bg-amber-500/10 text-amber-200';
+  return 'border-sky-500/30 bg-sky-500/10 text-sky-200';
+}
+
+function uniqueValues(values: string[]) {
+  return Array.from(new Set(values.filter(Boolean))).sort((a, b) =>
+    a.localeCompare(b)
+  );
+}
 
 export default function Projects() {
-  const [projects, setProjects] = useState<any[]>([]);
+  const [projects, setProjects] = useState<ProjectWithCounts[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [editingProject, setEditingProject] = useState<any>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  const [isReordering, setIsReordering] = useState(false);
-  // Form state
-  const [formData, setFormData] = useState<ProjectFormData>({
-    title: '',
-    category: 'Sistema Web',
-    description: '',
-    fullDescription: '',
-    image: '',
-    technologies: [],
-    liveUrl: '',
-    githubUrl: '',
-    featured: false,
-    status: 'completed',
-    accentColor: 'from-gray-500/20 to-gray-600/20',
-    landingpageId: DEFAULT_LANDINGPAGE_ID,
-  });
-
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [editingProject, setEditingProject] =
+    useState<ProjectWithCounts | null>(null);
+  const [draft, setDraft] = useState<ProjectDraft>(emptyDraft);
   const [techInput, setTechInput] = useState('');
+  const [saveState, setSaveState] = useState<SaveState>('idle');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isReordering, setIsReordering] = useState(false);
 
-  // Categorias disponíveis
-  const categories = [
-    'Sistema Web',
-    'Portfólio Pessoal',
-    'Serviços Profissionais',
-    'Página de Vendas',
-    'Institucional',
-  ];
+  const [search, setSearch] = useState('');
+  const [activeFilter, setActiveFilter] = useState<ActiveFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | ProjectStatus>(
+    'all'
+  );
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [featuredFilter, setFeaturedFilter] = useState<FeaturedFilter>('all');
 
-  // Status disponíveis
-  const statusOptions = [
-    { value: 'completed', label: 'Concluído' },
-    { value: 'in-progress', label: 'Em Desenvolvimento' },
-    { value: 'planned', label: 'Planejado' },
-  ];
-
-  // Carregar projetos
   useEffect(() => {
     loadProjects();
   }, []);
 
   const loadProjects = async () => {
     try {
+      setLoading(true);
       const data = await getProjects(DEFAULT_LANDINGPAGE_ID);
-      setProjects(data);
+      setProjects(data as ProjectWithCounts[]);
     } catch (error) {
       console.error('Error loading projects:', error);
+      setErrorMessage('Não foi possível carregar os projetos.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Adicionar tecnologia
-  const addTechnology = () => {
-    if (techInput.trim()) {
-      setFormData({
-        ...formData,
-        technologies: [...formData.technologies, techInput.trim()],
-      });
-      setTechInput('');
-    }
-  };
+  const categories = useMemo(
+    () =>
+      uniqueValues([
+        ...DEFAULT_CATEGORIES,
+        ...projects.map((project) => project.category),
+      ]),
+    [projects]
+  );
 
-  // Remover tecnologia
-  const removeTechnology = (index: number) => {
-    const newTech = [...formData.technologies];
-    newTech.splice(index, 1);
-    setFormData({ ...formData, technologies: newTech });
-  };
+  const stats = useMemo(
+    () => ({
+      total: projects.length,
+      active: projects.filter((project) => project.isActive).length,
+      inactive: projects.filter((project) => !project.isActive).length,
+      inProgress: projects.filter((project) => project.status === 'in-progress')
+        .length,
+      completed: projects.filter((project) => project.status === 'completed')
+        .length,
+      featured: projects.filter((project) => project.featured).length,
+    }),
+    [projects]
+  );
 
-  // Reset form
-  const resetForm = () => {
-    setFormData({
-      title: '',
-      category: 'Sistema Web',
-      description: '',
-      fullDescription: '',
-      image: '',
-      technologies: [],
-      liveUrl: '',
-      githubUrl: '',
-      featured: false,
-      status: 'completed',
-      accentColor: 'from-gray-500/20 to-gray-600/20',
-      landingpageId: DEFAULT_LANDINGPAGE_ID,
+  const filteredProjects = useMemo(() => {
+    const term = search.trim().toLowerCase();
+
+    return projects.filter((project) => {
+      const matchesSearch =
+        !term ||
+        [
+          project.title,
+          project.category,
+          project.description,
+          ...project.technologies,
+        ]
+          .join(' ')
+          .toLowerCase()
+          .includes(term);
+
+      const matchesActive =
+        activeFilter === 'all' ||
+        (activeFilter === 'active' && project.isActive) ||
+        (activeFilter === 'inactive' && !project.isActive);
+
+      const matchesStatus =
+        statusFilter === 'all' || project.status === statusFilter;
+
+      const matchesCategory =
+        categoryFilter === 'all' || project.category === categoryFilter;
+
+      const matchesFeatured =
+        featuredFilter === 'all' ||
+        (featuredFilter === 'featured' && project.featured) ||
+        (featuredFilter === 'standard' && !project.featured);
+
+      return (
+        matchesSearch &&
+        matchesActive &&
+        matchesStatus &&
+        matchesCategory &&
+        matchesFeatured
+      );
     });
+  }, [
+    activeFilter,
+    categoryFilter,
+    featuredFilter,
+    projects,
+    search,
+    statusFilter,
+  ]);
+
+  const hasFilters =
+    search ||
+    activeFilter !== 'all' ||
+    statusFilter !== 'all' ||
+    categoryFilter !== 'all' ||
+    featuredFilter !== 'all';
+
+  const resetFilters = () => {
+    setSearch('');
+    setActiveFilter('all');
+    setStatusFilter('all');
+    setCategoryFilter('all');
+    setFeaturedFilter('all');
+  };
+
+  const startCreate = () => {
+    setDraft(emptyDraft());
     setEditingProject(null);
-    setShowForm(false);
+    setSaveState('idle');
+    setErrorMessage('');
+    setAdvancedOpen(false);
+    setShowForm(true);
   };
 
-  // Handle form submit
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      if (editingProject) {
-        await updateProject(editingProject.id, formData);
-      } else {
-        await createProject(formData);
-      }
-      resetForm();
-      await loadProjects();
-    } catch (error) {
-      console.error('Error saving project:', error);
-      alert('Erro ao salvar projeto');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Iniciar edição
-  const startEdit = (project: any) => {
-    setEditingProject(project);
-    setFormData({
+  const startEdit = (project: ProjectWithCounts) => {
+    setDraft({
       title: project.title,
       category: project.category,
       description: project.description,
@@ -157,548 +262,453 @@ export default function Projects() {
       liveUrl: project.liveUrl || '',
       githubUrl: project.githubUrl || '',
       featured: project.featured,
-      status: project.status,
+      isActive: project.isActive,
+      status: project.status as ProjectStatus,
       accentColor: project.accentColor || 'from-gray-500/20 to-gray-600/20',
       landingpageId: project.landingpageId,
     });
+    setEditingProject(project);
+    setSaveState('idle');
+    setErrorMessage('');
+    setAdvancedOpen(false);
     setShowForm(true);
   };
-  // Deletar projeto
-  const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja deletar este projeto?')) return;
 
-    setLoading(true);
-    try {
-      await deleteProject(id);
-      await loadProjects();
-    } catch (error) {
-      console.error('Error deleting project:', error);
-      alert('Erro ao deletar projeto');
-    } finally {
-      setLoading(false);
-      setDeletingId(null);
-    }
+  const closeForm = () => {
+    setShowForm(false);
+    setEditingProject(null);
+    setDraft(emptyDraft());
+    setTechInput('');
+    setSaveState('idle');
+    setErrorMessage('');
   };
 
-  // Reordenar projeto
-  const moveProject = async (index: number, direction: 'up' | 'down') => {
-    if (
-      (direction === 'up' && index === 0) ||
-      (direction === 'down' && index === projects.length - 1)
-    ) {
+  const addTechnology = () => {
+    const value = techInput.trim();
+    if (!value) return;
+
+    setDraft((current) => ({
+      ...current,
+      technologies: Array.from(new Set([...current.technologies, value])),
+    }));
+    setTechInput('');
+  };
+
+  const removeTechnology = (technology: string) => {
+    setDraft((current) => ({
+      ...current,
+      technologies: current.technologies.filter((item) => item !== technology),
+    }));
+  };
+
+  const normalizedDraft = (): ProjectDraft => ({
+    ...draft,
+    title: draft.title.trim(),
+    category: draft.category.trim(),
+    description: draft.description.trim(),
+    fullDescription: draft.fullDescription.trim() || draft.description.trim(),
+    image: draft.image.trim() || FALLBACK_PROJECT_IMAGE,
+    technologies: draft.technologies.map((tech) => tech.trim()).filter(Boolean),
+    liveUrl: draft.liveUrl?.trim() || '',
+    githubUrl: draft.githubUrl?.trim() || '',
+    accentColor: draft.accentColor?.trim() || 'from-gray-500/20 to-gray-600/20',
+  });
+
+  const handleSubmit = async () => {
+    const nextDraft = normalizedDraft();
+
+    if (!nextDraft.title || !nextDraft.category || !nextDraft.description) {
+      setErrorMessage('Título, categoria e descrição curta são obrigatórios.');
+      setSaveState('error');
       return;
     }
 
-    setIsReordering(true);
-    const newProjects = [...projects];
-    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    try {
+      setSaveState('saving');
+      setErrorMessage('');
 
-    // Trocar posições
-    const temp = newProjects[index];
-    newProjects[index] = newProjects[newIndex];
-    newProjects[newIndex] = temp;
+      if (editingProject) {
+        const saved = await updateProject(editingProject.id, nextDraft);
+        setProjects((current) =>
+          current.map((project) =>
+            project.id === editingProject.id
+              ? (saved as ProjectWithCounts)
+              : project
+          )
+        );
+      } else {
+        const created = await createProject(nextDraft);
+        setProjects((current) => [...current, created as ProjectWithCounts]);
+      }
 
-    // Recalcular todas as posições
-    const projectsWithUpdatedPositions = newProjects.map((project, idx) => ({
-      ...project,
-      position: idx,
+      setSaveState('saved');
+      window.setTimeout(closeForm, 450);
+    } catch (error) {
+      console.error('Error saving project:', error);
+      setSaveState('error');
+      setErrorMessage('Erro ao salvar. O rascunho foi preservado.');
+    }
+  };
+
+  const handleFormKeyDown = (event: KeyboardEvent) => {
+    if (event.key === 'Escape') {
+      closeForm();
+    }
+
+    if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+      event.preventDefault();
+      handleSubmit();
+    }
+  };
+
+  const updateProjectLocally = (
+    id: string,
+    updater: (project: ProjectWithCounts) => ProjectWithCounts
+  ) => {
+    setProjects((current) =>
+      current.map((project) => (project.id === id ? updater(project) : project))
+    );
+  };
+
+  const handleToggleActive = async (project: ProjectWithCounts) => {
+    const previous = project.isActive;
+    setUpdatingId(project.id);
+    updateProjectLocally(project.id, (item) => ({
+      ...item,
+      isActive: !previous,
     }));
 
-    setProjects(projectsWithUpdatedPositions);
+    try {
+      const saved = await setProjectActive(project.id, !previous);
+      updateProjectLocally(project.id, () => saved as ProjectWithCounts);
+    } catch (error) {
+      console.error('Error toggling project active state:', error);
+      updateProjectLocally(project.id, (item) => ({
+        ...item,
+        isActive: previous,
+      }));
+      setErrorMessage('Não foi possível alterar o estado do projeto.');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleToggleFeatured = async (project: ProjectWithCounts) => {
+    const previous = project.featured;
+    setUpdatingId(project.id);
+    updateProjectLocally(project.id, (item) => ({
+      ...item,
+      featured: !previous,
+    }));
 
     try {
-      // Enviar array completo com posições atualizadas
+      const saved = await toggleProjectFeatured(project.id, !previous);
+      updateProjectLocally(project.id, () => saved as ProjectWithCounts);
+    } catch (error) {
+      console.error('Error toggling featured state:', error);
+      updateProjectLocally(project.id, (item) => ({
+        ...item,
+        featured: previous,
+      }));
+      setErrorMessage('Não foi possível alterar o destaque.');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const moveProject = async (projectId: string, direction: 'up' | 'down') => {
+    const currentIndex = projects.findIndex(
+      (project) => project.id === projectId
+    );
+    if (currentIndex < 0) return;
+    if (direction === 'up' && currentIndex === 0) return;
+    if (direction === 'down' && currentIndex === projects.length - 1) return;
+
+    const previousProjects = projects;
+    const nextProjects = [...projects];
+    const nextIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    const [project] = nextProjects.splice(currentIndex, 1);
+    nextProjects.splice(nextIndex, 0, project);
+
+    const positionedProjects = nextProjects.map((item, index) => ({
+      ...item,
+      position: index,
+    }));
+
+    setProjects(positionedProjects);
+    setIsReordering(true);
+
+    try {
       await reorderProjects(
-        projectsWithUpdatedPositions.map((p) => ({
-          id: p.id,
-          position: p.position,
+        positionedProjects.map((item) => ({
+          id: item.id,
+          position: item.position,
         }))
       );
     } catch (error) {
       console.error('Error reordering projects:', error);
-      await loadProjects(); // Recarregar se der erro
+      setProjects(previousProjects);
+      setErrorMessage(
+        'A ordem não foi salva. A lista voltou ao estado anterior.'
+      );
     } finally {
       setIsReordering(false);
     }
   };
 
+  const handleDelete = async () => {
+    if (!deletingId) return;
+
+    setUpdatingId(deletingId);
+    try {
+      await deleteProject(deletingId);
+      setProjects((current) =>
+        current
+          .filter((project) => project.id !== deletingId)
+          .map((project, index) => ({ ...project, position: index }))
+      );
+      setDeletingId(null);
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      setErrorMessage(
+        'Não foi possível excluir. Se o projeto tem histórico, inative-o.'
+      );
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   if (loading && !projects.length) {
     return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+      <div className="flex min-h-[420px] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-sky-400" />
       </div>
     );
   }
 
   return (
-    <div>
-      {/* Header do componente Projects */}
-      <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-white">Gerenciar Projetos</h2>
-          <p className="mt-2 text-gray-400">
-            Total de projetos: {projects.length}
+    <div className="space-y-5">
+      <section className="rounded-lg border border-slate-800 bg-slate-950/40 p-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">
+              Portfolio workspace
+            </p>
+            <h2 className="mt-1 text-2xl font-semibold text-slate-100">
+              Projects
+            </h2>
+            <p className="mt-1 text-sm text-slate-400">
+              Organize portfolio, clientes e trabalhos sem perder vínculo com
+              tasks.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={startCreate}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-sky-500 px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-sky-400 focus:ring-2 focus:ring-sky-300 focus:outline-none"
+          >
+            <Plus className="h-4 w-4" />
+            Novo Projeto
+          </button>
+        </div>
+
+        <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+          <StatCard label="Total" value={stats.total} />
+          <StatCard label="Ativos" value={stats.active} tone="green" />
+          <StatCard label="Inativos" value={stats.inactive} tone="slate" />
+          <StatCard
+            label="Em desenvolvimento"
+            value={stats.inProgress}
+            tone="amber"
+          />
+          <StatCard label="Concluídos" value={stats.completed} tone="green" />
+          <StatCard label="Destaques" value={stats.featured} tone="yellow" />
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
+        <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_repeat(4,minmax(140px,180px))_auto]">
+          <label className="relative">
+            <span className="sr-only">Buscar projetos</span>
+            <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Buscar por título, categoria, tecnologia..."
+              className="h-11 w-full rounded-md border border-slate-800 bg-slate-900/70 pr-3 pl-9 text-sm text-slate-100 transition outline-none placeholder:text-slate-500 focus:border-sky-500"
+            />
+          </label>
+
+          <FilterSelect
+            label="Estado"
+            value={activeFilter}
+            onChange={(value) => setActiveFilter(value as ActiveFilter)}
+            options={[
+              { value: 'all', label: 'Todos' },
+              { value: 'active', label: 'Ativos' },
+              { value: 'inactive', label: 'Inativos' },
+            ]}
+          />
+
+          <FilterSelect
+            label="Status"
+            value={statusFilter}
+            onChange={(value) =>
+              setStatusFilter(value as 'all' | ProjectStatus)
+            }
+            options={[
+              { value: 'all', label: 'Todos status' },
+              ...STATUS_OPTIONS,
+            ]}
+          />
+
+          <FilterSelect
+            label="Categoria"
+            value={categoryFilter}
+            onChange={setCategoryFilter}
+            options={[
+              { value: 'all', label: 'Todas categorias' },
+              ...categories.map((category) => ({
+                value: category,
+                label: category,
+              })),
+            ]}
+          />
+
+          <FilterSelect
+            label="Destaque"
+            value={featuredFilter}
+            onChange={(value) => setFeaturedFilter(value as FeaturedFilter)}
+            options={[
+              { value: 'all', label: 'Todos' },
+              { value: 'featured', label: 'Destacados' },
+              { value: 'standard', label: 'Sem destaque' },
+            ]}
+          />
+
+          <button
+            type="button"
+            onClick={resetFilters}
+            disabled={!hasFilters}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-slate-800 px-3 text-sm text-slate-300 transition hover:border-slate-600 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <RotateCcw className="h-4 w-4" />
+            Limpar
+          </button>
+        </div>
+      </section>
+
+      {showForm && (
+        <section
+          onKeyDown={handleFormKeyDown}
+          className="rounded-lg border border-sky-500/30 bg-slate-950 p-4 shadow-xl shadow-sky-950/20"
+        >
+          <ProjectForm
+            advancedOpen={advancedOpen}
+            draft={draft}
+            editing={Boolean(editingProject)}
+            errorMessage={errorMessage}
+            saveState={saveState}
+            techInput={techInput}
+            categories={categories}
+            onAddTechnology={addTechnology}
+            onCancel={closeForm}
+            onRemoveTechnology={removeTechnology}
+            onSave={handleSubmit}
+            onSetAdvancedOpen={setAdvancedOpen}
+            onSetDraft={setDraft}
+            onSetTechInput={setTechInput}
+          />
+        </section>
+      )}
+
+      {errorMessage && !showForm && (
+        <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+          {errorMessage}
+        </div>
+      )}
+
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-slate-400">
+            {filteredProjects.length} de {projects.length} projetos
             {isReordering && (
-              <span className="ml-2 text-yellow-400">
-                (Atualizando ordem...)
-              </span>
+              <span className="ml-2 text-amber-300">Salvando ordem...</span>
             )}
           </p>
         </div>
 
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => setShowForm(true)}
-            className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 px-4 py-2 text-white transition-all hover:from-blue-600 hover:to-purple-700"
-          >
-            <Plus className="h-5 w-5" />
-            Novo Projeto
-          </button>
-        </div>
-      </div>
-
-      {/* Formulário de criação/edição */}
-      {showForm && (
-        <div className="mb-8 rounded-2xl border border-gray-700/50 bg-gray-800/50 p-6 shadow-2xl backdrop-blur-sm">
-          <div className="mb-6 flex items-center justify-between">
-            <h3 className="text-xl font-semibold text-white">
-              {editingProject ? 'Editar Projeto' : 'Novo Projeto'}
-            </h3>
-            <button
-              onClick={resetForm}
-              className="text-gray-400 hover:text-white"
-            >
-              <X className="h-6 w-6" />
-            </button>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              {/* Título */}
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-300">
-                  Título *
-                </label>
-                <input
-                  type="text"
-                  value={formData.title}
-                  onChange={(e) =>
-                    setFormData({ ...formData, title: e.target.value })
-                  }
-                  className="w-full rounded-lg border border-gray-700 bg-gray-900/50 px-4 py-2 text-white"
-                  required
-                />
-              </div>
-
-              {/* Categoria */}
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-300">
-                  Categoria *
-                </label>
-                <select
-                  value={formData.category}
-                  onChange={(e) =>
-                    setFormData({ ...formData, category: e.target.value })
-                  }
-                  className="w-full rounded-lg border border-gray-700 bg-gray-900/50 px-4 py-2 text-white"
-                >
-                  {categories.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Status */}
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-300">
-                  Status
-                </label>
-                <select
-                  value={formData.status}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      status: e.target.value as any,
-                    })
-                  }
-                  className="w-full rounded-lg border border-gray-700 bg-gray-900/50 px-4 py-2 text-white"
-                >
-                  {statusOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Featured */}
-              <div className="flex items-center">
-                <label className="flex cursor-pointer items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.featured}
-                    onChange={(e) =>
-                      setFormData({ ...formData, featured: e.target.checked })
-                    }
-                    className="rounded border-gray-700 bg-gray-900 text-blue-500 focus:ring-blue-500"
-                  />
-                  <span className="text-gray-300">Projeto em Destaque</span>
-                </label>
-              </div>
-
-              {/* Imagem */}
-              <div className="md:col-span-2">
-                <label className="mb-2 block text-sm font-medium text-gray-300">
-                  URL da Imagem *
-                </label>
-                <input
-                  type="url"
-                  value={formData.image}
-                  onChange={(e) =>
-                    setFormData({ ...formData, image: e.target.value })
-                  }
-                  className="w-full rounded-lg border border-gray-700 bg-gray-900/50 px-4 py-2 text-white"
-                  required
-                />
-              </div>
-
-              {/* Descrição Curta */}
-              <div className="md:col-span-2">
-                <label className="mb-2 block text-sm font-medium text-gray-300">
-                  Descrição Curta *
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  className="h-24 w-full rounded-lg border border-gray-700 bg-gray-900/50 px-4 py-2 text-white"
-                  required
-                />
-              </div>
-
-              {/* Descrição Completa */}
-              <div className="md:col-span-2">
-                <label className="mb-2 block text-sm font-medium text-gray-300">
-                  Descrição Completa *
-                </label>
-                <textarea
-                  value={formData.fullDescription}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      fullDescription: e.target.value,
-                    })
-                  }
-                  className="h-32 w-full rounded-lg border border-gray-700 bg-gray-900/50 px-4 py-2 text-white"
-                  required
-                />
-              </div>
-
-              {/* Tecnologias */}
-              <div className="md:col-span-2">
-                <label className="mb-2 block text-sm font-medium text-gray-300">
-                  Tecnologias
-                </label>
-                <div className="mb-2 flex gap-2">
-                  <input
-                    type="text"
-                    value={techInput}
-                    onChange={(e) => setTechInput(e.target.value)}
-                    onKeyPress={(e) =>
-                      e.key === 'Enter' && (e.preventDefault(), addTechnology())
-                    }
-                    className="flex-1 rounded-lg border border-gray-700 bg-gray-900/50 px-4 py-2 text-white"
-                    placeholder="Digite uma tecnologia e pressione Enter"
-                  />
-                  <button
-                    type="button"
-                    onClick={addTechnology}
-                    className="rounded-lg bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
-                  >
-                    Add
-                  </button>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {formData.technologies.map((tech, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center gap-1 rounded-full bg-gray-700 px-3 py-1"
-                    >
-                      <span className="text-sm text-gray-200">{tech}</span>
-                      <button
-                        type="button"
-                        onClick={() => removeTechnology(index)}
-                        className="text-gray-400 hover:text-red-400"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Links */}
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-300">
-                  URL Live
-                </label>
-                <input
-                  type="url"
-                  value={formData.liveUrl}
-                  onChange={(e) =>
-                    setFormData({ ...formData, liveUrl: e.target.value })
-                  }
-                  className="w-full rounded-lg border border-gray-700 bg-gray-900/50 px-4 py-2 text-white"
-                  placeholder="https://..."
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-300">
-                  URL GitHub
-                </label>
-                <input
-                  type="url"
-                  value={formData.githubUrl}
-                  onChange={(e) =>
-                    setFormData({ ...formData, githubUrl: e.target.value })
-                  }
-                  className="w-full rounded-lg border border-gray-700 bg-gray-900/50 px-4 py-2 text-white"
-                  placeholder="https://..."
-                />
-              </div>
-
-              {/* Accent Color */}
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-300">
-                  Cor de Destaque
-                </label>
-                <input
-                  type="text"
-                  value={formData.accentColor}
-                  onChange={(e) =>
-                    setFormData({ ...formData, accentColor: e.target.value })
-                  }
-                  className="w-full rounded-lg border border-gray-700 bg-gray-900/50 px-4 py-2 text-white"
-                  placeholder="from-blue-500/20 to-purple-600/20"
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  Formato: from-cor-500/20 to-cor-600/20
-                </p>
-              </div>
-            </div>
-
-            {/* Submit Buttons */}
-            <div className="flex gap-4 pt-4">
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex-1 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 py-3 font-semibold text-white hover:from-green-600 hover:to-emerald-700 disabled:opacity-50"
-              >
-                {loading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    Salvando...
-                  </span>
-                ) : (
-                  <span className="flex items-center justify-center gap-2">
-                    <Check className="h-5 w-5" />
-                    {editingProject ? 'Atualizar' : 'Criar'} Projeto
-                  </span>
-                )}
-              </button>
-
+        {filteredProjects.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-slate-700 bg-slate-950/40 p-8 text-center">
+            <p className="text-sm text-slate-300">
+              Nenhum projeto encontrado com os filtros atuais.
+            </p>
+            {hasFilters && (
               <button
                 type="button"
-                onClick={resetForm}
-                className="rounded-lg border border-gray-600 px-6 py-3 text-gray-300 hover:bg-gray-800"
+                onClick={resetFilters}
+                className="mt-3 text-sm font-medium text-sky-300 hover:text-sky-200"
               >
-                Cancelar
+                Limpar filtros
               </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* Lista de Projetos */}
-      <div className="overflow-hidden rounded-2xl border border-gray-700/50 bg-gray-800/30 backdrop-blur-sm">
-        {projects.length === 0 ? (
-          <div className="p-8 text-center">
-            <p className="text-gray-400">Nenhum projeto cadastrado ainda.</p>
+            )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-900/50">
-                <tr>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">
-                    Ordem (Posição)
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">
-                    Projeto
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">
-                    Categoria
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">
-                    Status
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">
-                    Destaque
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">
-                    Ações
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-700/50">
-                {projects.map((project, index) => (
-                  <tr key={project.id} className="hover:bg-gray-800/30">
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col items-start gap-1">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => moveProject(index, 'up')}
-                            disabled={index === 0 || isReordering}
-                            className="p-1 text-gray-400 hover:text-white disabled:opacity-30"
-                          >
-                            <ArrowUp className="h-4 w-4" />
-                          </button>
-                          <span className="text-gray-300">{index + 1}</span>
-                          <button
-                            onClick={() => moveProject(index, 'down')}
-                            disabled={
-                              index === projects.length - 1 || isReordering
-                            }
-                            className="p-1 text-gray-400 hover:text-white disabled:opacity-30"
-                          >
-                            <ArrowDown className="h-4 w-4" />
-                          </button>
-                        </div>
-                        <span className="text-xs text-gray-500">
-                          Posição: {project.position}
-                        </span>
-                      </div>
-                    </td>
+          <div className="grid gap-3 xl:grid-cols-2">
+            {filteredProjects.map((project) => {
+              const fullIndex = projects.findIndex(
+                (item) => item.id === project.id
+              );
 
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 overflow-hidden rounded bg-gray-700">
-                          <Image
-                            src={project.image}
-                            alt={project.title}
-                            width={40}
-                            height={40}
-                            className="h-full w-full object-cover"
-                          />
-                        </div>
-                        <div>
-                          <div className="font-medium text-white">
-                            {project.title}
-                          </div>
-                          <div className="max-w-xs truncate text-sm text-gray-400">
-                            {project.description}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-
-                    <td className="px-6 py-4">
-                      <span className="inline-block rounded-full bg-gray-700 px-3 py-1 text-xs text-gray-300">
-                        {project.category}
-                      </span>
-                    </td>
-
-                    <td className="px-6 py-4">
-                      <span
-                        className={`inline-block rounded-full px-3 py-1 text-xs ${
-                          project.status === 'completed'
-                            ? 'bg-green-500/20 text-green-300'
-                            : project.status === 'in-progress'
-                              ? 'bg-yellow-500/20 text-yellow-300'
-                              : 'bg-blue-500/20 text-blue-300'
-                        }`}
-                      >
-                        {project.status === 'completed'
-                          ? 'Concluído'
-                          : project.status === 'in-progress'
-                            ? 'Em Desenvolvimento'
-                            : 'Planejado'}
-                      </span>
-                    </td>
-
-                    <td className="px-6 py-4">
-                      {project.featured ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 px-3 py-1 text-xs font-semibold text-black">
-                          ★ Destaque
-                        </span>
-                      ) : (
-                        <span className="text-gray-500">—</span>
-                      )}
-                    </td>
-
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => startEdit(project)}
-                          className="rounded-lg p-2 text-blue-400 hover:bg-blue-500/10 hover:text-blue-300"
-                          title="Editar"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-
-                        <a
-                          href={project.liveUrl || '#'}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="rounded-lg p-2 text-green-400 hover:bg-green-500/10 hover:text-green-300"
-                          title="Visualizar"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </a>
-
-                        <button
-                          onClick={() => setDeletingId(project.id)}
-                          className="rounded-lg p-2 text-red-400 hover:bg-red-500/10 hover:text-red-300"
-                          title="Deletar"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+              return (
+                <ProjectCard
+                  key={project.id}
+                  disabled={updatingId === project.id || isReordering}
+                  isFirst={fullIndex === 0}
+                  isLast={fullIndex === projects.length - 1}
+                  project={project}
+                  onDelete={() => setDeletingId(project.id)}
+                  onEdit={() => startEdit(project)}
+                  onMoveDown={() => moveProject(project.id, 'down')}
+                  onMoveUp={() => moveProject(project.id, 'up')}
+                  onToggleActive={() => handleToggleActive(project)}
+                  onToggleFeatured={() => handleToggleFeatured(project)}
+                />
+              );
+            })}
           </div>
         )}
-      </div>
+      </section>
 
-      {/* Modal de Confirmação de Exclusão */}
       {deletingId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-gray-800 p-6">
-            <h3 className="mb-2 text-xl font-bold text-white">
-              Confirmar Exclusão
+          <div className="w-full max-w-md rounded-lg border border-slate-700 bg-slate-950 p-5 shadow-2xl">
+            <h3 className="text-lg font-semibold text-slate-100">
+              Excluir projeto
             </h3>
-            <p className="mb-6 text-gray-300">
-              Tem certeza que deseja excluir este projeto? Esta ação não pode
-              ser desfeita.
+            <p className="mt-2 text-sm text-slate-400">
+              Exclusão é bloqueada quando há tasks, features ou sprints
+              vinculadas. Para remover da rotina, inative o projeto.
             </p>
-            <div className="flex gap-4">
+            <div className="mt-5 flex gap-3">
               <button
-                onClick={() => handleDelete(deletingId)}
-                className="flex-1 rounded-lg bg-red-500 py-2 font-semibold text-white hover:bg-red-600"
+                type="button"
+                onClick={handleDelete}
+                disabled={updatingId === deletingId}
+                className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-md bg-red-500 px-3 text-sm font-medium text-white transition hover:bg-red-400 disabled:opacity-50"
               >
+                {updatingId === deletingId ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
                 Excluir
               </button>
               <button
+                type="button"
                 onClick={() => setDeletingId(null)}
-                className="flex-1 rounded-lg border border-gray-600 py-2 font-semibold text-gray-300 hover:bg-gray-700"
+                className="h-10 flex-1 rounded-md border border-slate-700 px-3 text-sm font-medium text-slate-300 transition hover:bg-slate-800"
               >
                 Cancelar
               </button>
@@ -707,5 +717,663 @@ export default function Projects() {
         </div>
       )}
     </div>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  tone = 'sky',
+}: {
+  label: string;
+  value: number;
+  tone?: 'sky' | 'green' | 'amber' | 'yellow' | 'slate';
+}) {
+  const toneClass = {
+    sky: 'text-sky-200',
+    green: 'text-emerald-200',
+    amber: 'text-amber-200',
+    yellow: 'text-yellow-200',
+    slate: 'text-slate-200',
+  }[tone];
+
+  return (
+    <div className="rounded-md border border-slate-800 bg-slate-900/50 p-3">
+      <p className="text-xs text-slate-500">{label}</p>
+      <p className={`mt-1 text-xl font-semibold ${toneClass}`}>{value}</p>
+    </div>
+  );
+}
+
+function FilterSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <label>
+      <span className="sr-only">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-11 w-full rounded-md border border-slate-800 bg-slate-900/70 px-3 text-sm text-slate-100 transition outline-none focus:border-sky-500"
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function ProjectForm({
+  advancedOpen,
+  draft,
+  editing,
+  errorMessage,
+  saveState,
+  techInput,
+  categories,
+  onAddTechnology,
+  onCancel,
+  onRemoveTechnology,
+  onSave,
+  onSetAdvancedOpen,
+  onSetDraft,
+  onSetTechInput,
+}: {
+  advancedOpen: boolean;
+  draft: ProjectDraft;
+  editing: boolean;
+  errorMessage: string;
+  saveState: SaveState;
+  techInput: string;
+  categories: string[];
+  onAddTechnology: () => void;
+  onCancel: () => void;
+  onRemoveTechnology: (technology: string) => void;
+  onSave: () => void;
+  onSetAdvancedOpen: (open: boolean) => void;
+  onSetDraft: Dispatch<SetStateAction<ProjectDraft>>;
+  onSetTechInput: (value: string) => void;
+}) {
+  const saving = saveState === 'saving';
+
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSave();
+      }}
+      className="space-y-4"
+    >
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-slate-100">
+            {editing ? 'Editar projeto' : 'Novo projeto'}
+          </h3>
+          <p className="mt-1 text-sm text-slate-400">
+            Campos principais primeiro. Salve com Ctrl/Cmd + Enter ou cancele
+            com Esc.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {saveState === 'saved' && (
+            <span className="text-sm text-emerald-300">Salvo</span>
+          )}
+          {saveState === 'error' && (
+            <span className="text-sm text-red-300">Erro</span>
+          )}
+          <button
+            type="button"
+            onClick={onCancel}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-700 px-3 text-sm text-slate-300 transition hover:bg-slate-800"
+          >
+            <X className="h-4 w-4" />
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-emerald-500 px-4 text-sm font-medium text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {saving ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Check className="h-4 w-4" />
+            )}
+            {saving ? 'Salvando...' : 'Salvar'}
+          </button>
+        </div>
+      </div>
+
+      {errorMessage && (
+        <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+          {errorMessage}
+        </div>
+      )}
+
+      <div className="grid gap-3 lg:grid-cols-2">
+        <Field label="Título *">
+          <input
+            value={draft.title}
+            onChange={(event) =>
+              onSetDraft((current) => ({
+                ...current,
+                title: event.target.value,
+              }))
+            }
+            className="project-input"
+            placeholder="Portfolio OS"
+            autoFocus
+          />
+        </Field>
+
+        <Field label="Categoria *">
+          <input
+            value={draft.category}
+            onChange={(event) =>
+              onSetDraft((current) => ({
+                ...current,
+                category: event.target.value,
+              }))
+            }
+            list="project-categories"
+            className="project-input"
+          />
+          <datalist id="project-categories">
+            {categories.map((category) => (
+              <option key={category} value={category} />
+            ))}
+          </datalist>
+        </Field>
+
+        <Field label="Descrição curta *" className="lg:col-span-2">
+          <textarea
+            value={draft.description}
+            onChange={(event) =>
+              onSetDraft((current) => ({
+                ...current,
+                description: event.target.value,
+              }))
+            }
+            className="project-input min-h-20 resize-y"
+            placeholder="Resumo escaneável para cards e filtros."
+          />
+        </Field>
+
+        <Field label="Status">
+          <select
+            value={draft.status}
+            onChange={(event) =>
+              onSetDraft((current) => ({
+                ...current,
+                status: event.target.value as ProjectStatus,
+              }))
+            }
+            className="project-input"
+          >
+            {STATUS_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+
+        <div className="grid grid-cols-2 gap-3">
+          <ToggleField
+            checked={draft.isActive}
+            label="Ativo"
+            onChange={(checked) =>
+              onSetDraft((current) => ({ ...current, isActive: checked }))
+            }
+          />
+          <ToggleField
+            checked={draft.featured}
+            label="Destaque"
+            onChange={(checked) =>
+              onSetDraft((current) => ({ ...current, featured: checked }))
+            }
+          />
+        </div>
+
+        <Field label="Tecnologias" className="lg:col-span-2">
+          <div className="flex gap-2">
+            <input
+              value={techInput}
+              onChange={(event) => onSetTechInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.metaKey && !event.ctrlKey) {
+                  event.preventDefault();
+                  onAddTechnology();
+                }
+              }}
+              className="project-input"
+              placeholder="React, Prisma, Tailwind..."
+            />
+            <button
+              type="button"
+              onClick={onAddTechnology}
+              className="h-11 rounded-md border border-slate-700 px-3 text-sm text-slate-200 transition hover:bg-slate-800"
+            >
+              Adicionar
+            </button>
+          </div>
+
+          {draft.technologies.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {draft.technologies.map((technology) => (
+                <span
+                  key={technology}
+                  className="inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-200"
+                >
+                  {technology}
+                  <button
+                    type="button"
+                    onClick={() => onRemoveTechnology(technology)}
+                    className="rounded text-slate-500 hover:text-red-300"
+                    aria-label={`Remover ${technology}`}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+        </Field>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => onSetAdvancedOpen(!advancedOpen)}
+        className="text-sm font-medium text-sky-300 hover:text-sky-200"
+      >
+        {advancedOpen ? 'Ocultar campos avançados' : 'Mostrar campos avançados'}
+      </button>
+
+      {advancedOpen && (
+        <div className="grid gap-3 border-t border-slate-800 pt-4 lg:grid-cols-2">
+          <Field label="Descrição completa" className="lg:col-span-2">
+            <textarea
+              value={draft.fullDescription}
+              onChange={(event) =>
+                onSetDraft((current) => ({
+                  ...current,
+                  fullDescription: event.target.value,
+                }))
+              }
+              className="project-input min-h-28 resize-y"
+              placeholder="Se vazio, a descrição curta será usada."
+            />
+          </Field>
+
+          <Field label="URL da imagem">
+            <input
+              value={draft.image}
+              onChange={(event) =>
+                onSetDraft((current) => ({
+                  ...current,
+                  image: event.target.value,
+                }))
+              }
+              className="project-input"
+              placeholder="https://..."
+            />
+          </Field>
+
+          <div className="overflow-hidden rounded-md border border-slate-800 bg-slate-900">
+            <div className="relative h-28">
+              {draft.image ? (
+                <Image
+                  src={draft.image}
+                  alt="Preview do projeto"
+                  fill
+                  sizes="320px"
+                  className="object-cover"
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center text-slate-500">
+                  <ImageIcon className="h-6 w-6" />
+                </div>
+              )}
+            </div>
+          </div>
+
+          <Field label="Live URL">
+            <input
+              value={draft.liveUrl}
+              onChange={(event) =>
+                onSetDraft((current) => ({
+                  ...current,
+                  liveUrl: event.target.value,
+                }))
+              }
+              className="project-input"
+              placeholder="https://..."
+            />
+          </Field>
+
+          <Field label="GitHub URL">
+            <input
+              value={draft.githubUrl}
+              onChange={(event) =>
+                onSetDraft((current) => ({
+                  ...current,
+                  githubUrl: event.target.value,
+                }))
+              }
+              className="project-input"
+              placeholder="https://github.com/..."
+            />
+          </Field>
+
+          <Field label="Accent color">
+            <input
+              value={draft.accentColor}
+              onChange={(event) =>
+                onSetDraft((current) => ({
+                  ...current,
+                  accentColor: event.target.value,
+                }))
+              }
+              className="project-input"
+              placeholder="from-gray-500/20 to-gray-600/20"
+            />
+          </Field>
+
+          <Field label="Landingpage ID">
+            <input
+              value={draft.landingpageId}
+              onChange={(event) =>
+                onSetDraft((current) => ({
+                  ...current,
+                  landingpageId: event.target.value,
+                }))
+              }
+              className="project-input"
+            />
+          </Field>
+        </div>
+      )}
+    </form>
+  );
+}
+
+function Field({
+  label,
+  children,
+  className = '',
+}: {
+  label: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <label className={className}>
+      <span className="mb-1 block text-xs font-medium text-slate-400">
+        {label}
+      </span>
+      {children}
+    </label>
+  );
+}
+
+function ToggleField({
+  checked,
+  label,
+  onChange,
+}: {
+  checked: boolean;
+  label: string;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="flex h-full min-h-11 items-center justify-between gap-3 rounded-md border border-slate-800 bg-slate-900/70 px-3">
+      <span className="text-sm text-slate-200">{label}</span>
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        className="h-4 w-4 rounded border-slate-600 bg-slate-950 text-sky-500 focus:ring-sky-400"
+      />
+    </label>
+  );
+}
+
+function ProjectCard({
+  disabled,
+  isFirst,
+  isLast,
+  project,
+  onDelete,
+  onEdit,
+  onMoveDown,
+  onMoveUp,
+  onToggleActive,
+  onToggleFeatured,
+}: {
+  disabled: boolean;
+  isFirst: boolean;
+  isLast: boolean;
+  project: ProjectWithCounts;
+  onDelete: () => void;
+  onEdit: () => void;
+  onMoveDown: () => void;
+  onMoveUp: () => void;
+  onToggleActive: () => void;
+  onToggleFeatured: () => void;
+}) {
+  return (
+    <article
+      onDoubleClick={onEdit}
+      className="group rounded-lg border border-slate-800 bg-slate-950/60 p-3 transition hover:border-slate-700 hover:bg-slate-950"
+    >
+      <div className="flex gap-3">
+        <div className="relative h-24 w-28 shrink-0 overflow-hidden rounded-md border border-slate-800 bg-slate-900">
+          <Image
+            src={project.image || FALLBACK_PROJECT_IMAGE}
+            alt={project.title}
+            fill
+            sizes="112px"
+            className="object-cover"
+          />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="truncate text-base font-semibold text-slate-100">
+                  {project.title}
+                </h3>
+                {project.featured && (
+                  <span className="inline-flex items-center gap-1 rounded-md border border-yellow-500/30 bg-yellow-500/10 px-2 py-0.5 text-xs text-yellow-200">
+                    <Star className="h-3 w-3 fill-current" />
+                    Destaque
+                  </span>
+                )}
+              </div>
+              <p className="mt-1 line-clamp-2 text-sm text-slate-400">
+                {project.description}
+              </p>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-1 opacity-100 transition md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100">
+              <IconButton
+                label="Mover para cima"
+                disabled={disabled || isFirst}
+                onClick={onMoveUp}
+              >
+                <ArrowUp className="h-4 w-4" />
+              </IconButton>
+              <IconButton
+                label="Mover para baixo"
+                disabled={disabled || isLast}
+                onClick={onMoveDown}
+              >
+                <ArrowDown className="h-4 w-4" />
+              </IconButton>
+              <IconButton label="Editar" disabled={disabled} onClick={onEdit}>
+                <Pencil className="h-4 w-4" />
+              </IconButton>
+            </div>
+          </div>
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Badge>{project.category}</Badge>
+            <Badge className={statusClass(project.status)}>
+              {statusLabel(project.status)}
+            </Badge>
+            <Badge
+              className={
+                project.isActive
+                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
+                  : 'border-slate-600 bg-slate-800 text-slate-400'
+              }
+            >
+              {project.isActive ? 'Ativo' : 'Inativo'}
+            </Badge>
+            <Badge>#{project.position + 1}</Badge>
+          </div>
+
+          {project.technologies.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {project.technologies.slice(0, 6).map((technology) => (
+                <span
+                  key={technology}
+                  className="rounded-md bg-slate-900 px-2 py-1 text-xs text-slate-300"
+                >
+                  {technology}
+                </span>
+              ))}
+              {project.technologies.length > 6 && (
+                <span className="rounded-md bg-slate-900 px-2 py-1 text-xs text-slate-500">
+                  +{project.technologies.length - 6}
+                </span>
+              )}
+            </div>
+          )}
+
+          <div className="mt-3 flex flex-col gap-3 border-t border-slate-800 pt-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap gap-3 text-xs text-slate-500">
+              <span>{project._count?.tasks || 0} tasks</span>
+              <span>{project._count?.features || 0} features</span>
+              <span>{project._count?.sprints || 0} sprints</span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1">
+              {project.liveUrl && (
+                <a
+                  href={project.liveUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-9 items-center justify-center gap-1 rounded-md border border-slate-800 px-2 text-xs text-slate-300 transition hover:border-sky-500/50 hover:text-sky-200"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  Live
+                </a>
+              )}
+              {project.githubUrl && (
+                <a
+                  href={project.githubUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-9 items-center justify-center gap-1 rounded-md border border-slate-800 px-2 text-xs text-slate-300 transition hover:border-slate-500 hover:text-slate-100"
+                >
+                  <Github className="h-3.5 w-3.5" />
+                  GitHub
+                </a>
+              )}
+              <IconButton
+                label={project.isActive ? 'Inativar' : 'Reativar'}
+                disabled={disabled}
+                onClick={onToggleActive}
+              >
+                <Power className="h-4 w-4" />
+              </IconButton>
+              <IconButton
+                label={project.featured ? 'Remover destaque' : 'Destacar'}
+                disabled={disabled}
+                onClick={onToggleFeatured}
+              >
+                <Star
+                  className={
+                    project.featured ? 'h-4 w-4 fill-current' : 'h-4 w-4'
+                  }
+                />
+              </IconButton>
+              <IconButton
+                label="Excluir"
+                disabled={disabled}
+                onClick={onDelete}
+                danger
+              >
+                <Trash2 className="h-4 w-4" />
+              </IconButton>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function Badge({
+  children,
+  className = 'border-slate-700 bg-slate-900 text-slate-300',
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <span
+      className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs ${className}`}
+    >
+      {children}
+    </span>
+  );
+}
+
+function IconButton({
+  children,
+  danger,
+  disabled,
+  label,
+  onClick,
+}: {
+  children: ReactNode;
+  danger?: boolean;
+  disabled?: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      disabled={disabled}
+      onClick={(event) => {
+        event.stopPropagation();
+        onClick();
+      }}
+      className={`inline-flex h-9 w-9 items-center justify-center rounded-md border transition disabled:cursor-not-allowed disabled:opacity-35 ${
+        danger
+          ? 'border-red-500/20 text-red-300 hover:bg-red-500/10'
+          : 'border-slate-800 text-slate-400 hover:border-slate-600 hover:bg-slate-800 hover:text-slate-100'
+      }`}
+    >
+      {children}
+    </button>
   );
 }

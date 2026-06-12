@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
+import type { TaskPatch } from '@/types/tasks';
 
 // Types
 export interface CreateTaskInput {
@@ -12,10 +13,28 @@ export interface CreateTaskInput {
   priority?: string;
   dueDate?: Date;
   estimatedHours?: number;
+  actualHours?: number;
+  tags?: string[];
   projectId?: string | null;
   featureId?: string | null;
   sprintId?: string | null;
   parentId?: string | null;
+}
+
+function normalizeTaskTag(tag: string) {
+  return tag
+    .trim()
+    .replace(/^#/, '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\p{L}\p{N}_-]/gu, '');
+}
+
+function normalizeTaskTags(tags?: string[]) {
+  return Array.from(
+    new Set((tags || []).map(normalizeTaskTag).filter(Boolean))
+  );
 }
 
 export interface CreateFeatureInput {
@@ -34,15 +53,37 @@ export interface CreateSprintInput {
   status?: string;
 }
 
+async function createTaskActivityLog(data: {
+  taskId?: string | null;
+  type: string;
+  message: string;
+  metadata?: Prisma.InputJsonValue;
+}) {
+  try {
+    await db.taskActivityLog.create({
+      data: {
+        taskId: data.taskId || null,
+        type: data.type,
+        message: data.message,
+        metadata: data.metadata,
+      },
+    });
+  } catch (error) {
+    console.error('Error creating task activity log:', error);
+  }
+}
+
 export async function createTask(data: CreateTaskInput) {
   try {
-    const createData: any = {
+    const createData: Prisma.TaskUncheckedCreateInput = {
       title: data.title,
       description: data.description,
       status: data.status || 'pending',
       priority: data.priority || 'medium',
       dueDate: data.dueDate,
       estimatedHours: data.estimatedHours || 0,
+      actualHours: data.actualHours || 0,
+      tags: normalizeTaskTags(data.tags),
     };
 
     // Só adicionar se tiver valor válido
@@ -68,6 +109,17 @@ export async function createTask(data: CreateTaskInput) {
       },
     });
 
+    await createTaskActivityLog({
+      taskId: task.id,
+      type: 'task.created',
+      message: `Task criada: ${task.title}`,
+      metadata: {
+        status: task.status,
+        priority: task.priority,
+        projectId: task.projectId,
+      },
+    });
+
     revalidatePath('/admin/tasks');
     return { success: true, data: task };
   } catch (error) {
@@ -76,7 +128,7 @@ export async function createTask(data: CreateTaskInput) {
   }
 }
 
-export async function updateTask(id: string, data: Partial<CreateTaskInput>) {
+export async function updateTask(id: string, data: TaskPatch) {
   // Validação do ID
   if (!id || typeof id !== 'string' || id.trim() === '') {
     console.error('Invalid task ID provided to updateTask:', id);
@@ -84,16 +136,22 @@ export async function updateTask(id: string, data: Partial<CreateTaskInput>) {
   }
 
   try {
-    const updateData: any = {};
+    const updateData: Prisma.TaskUncheckedUpdateInput = {};
 
     if (data.title !== undefined) updateData.title = data.title;
     if (data.description !== undefined)
       updateData.description = data.description;
-    if (data.status !== undefined) updateData.status = data.status;
+    if (data.status !== undefined) {
+      updateData.status = data.status;
+      updateData.completedAt = data.status === 'completed' ? new Date() : null;
+    }
     if (data.priority !== undefined) updateData.priority = data.priority;
     if (data.dueDate !== undefined) updateData.dueDate = data.dueDate;
     if (data.estimatedHours !== undefined)
       updateData.estimatedHours = data.estimatedHours;
+    if (data.actualHours !== undefined)
+      updateData.actualHours = data.actualHours;
+    if (data.tags !== undefined) updateData.tags = normalizeTaskTags(data.tags);
 
     // Tratar relações
     if (data.projectId !== undefined) {
@@ -129,6 +187,24 @@ export async function updateTask(id: string, data: Partial<CreateTaskInput>) {
       },
     });
 
+    if (data.status !== undefined && data.status !== existingTask.status) {
+      await createTaskActivityLog({
+        taskId: task.id,
+        type:
+          data.status === 'completed'
+            ? 'task.completed'
+            : 'task.status_changed',
+        message:
+          data.status === 'completed'
+            ? `Task concluida: ${task.title}`
+            : `Status alterado: ${task.title}`,
+        metadata: {
+          from: existingTask.status,
+          to: data.status,
+        },
+      });
+    }
+
     revalidatePath('/admin/tasks');
     return { success: true, data: task };
   } catch (error) {
@@ -139,7 +215,27 @@ export async function updateTask(id: string, data: Partial<CreateTaskInput>) {
 
 export async function deleteTask(id: string) {
   try {
+    const task = await db.task.findUnique({
+      where: { id },
+      select: { id: true, title: true, status: true, projectId: true },
+    });
+
     await db.task.delete({ where: { id } });
+
+    if (task) {
+      await createTaskActivityLog({
+        taskId: null,
+        type: 'task.deleted',
+        message: `Task deletada: ${task.title}`,
+        metadata: {
+          taskId: task.id,
+          title: task.title,
+          status: task.status,
+          projectId: task.projectId,
+        },
+      });
+    }
+
     revalidatePath('/admin/tasks');
     return { success: true };
   } catch (error) {
@@ -182,12 +278,11 @@ export async function updateTaskPositions(
   }
 }
 // Project Actions - Buscar projetos do portfólio
-export async function getProjects() {
+export async function getProjects(options: { includeInactive?: boolean } = {}) {
   try {
-    console.log('Buscando projetos do portfólio...');
-
     // Buscar da tabela Project (portfólio)
     const projects = await db.project.findMany({
+      where: options.includeInactive ? undefined : { isActive: true },
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
@@ -196,16 +291,31 @@ export async function getProjects() {
         status: true,
         featured: true,
         category: true,
+        isActive: true,
       },
     });
-
-    console.log('Projetos encontrados:', projects);
-    console.log('Quantidade de projetos:', projects.length);
 
     return { success: true, data: projects };
   } catch (error) {
     console.error('Error fetching projects:', error);
     return { success: false, error: 'Failed to fetch projects' };
+  }
+}
+
+export async function getTaskTags() {
+  try {
+    const tasks = await db.task.findMany({
+      select: { tags: true },
+    });
+
+    const tags = Array.from(
+      new Set(tasks.flatMap((task) => normalizeTaskTags(task.tags)))
+    ).sort((first, second) => first.localeCompare(second));
+
+    return { success: true, data: tags };
+  } catch (error) {
+    console.error('Error fetching task tags:', error);
+    return { success: false, error: 'Failed to fetch task tags' };
   }
 }
 // Feature Actions
@@ -398,6 +508,7 @@ export async function getTasksWithFilters(filters?: {
   sprintId?: string;
   status?: string;
   priority?: string;
+  tag?: string;
   search?: string;
   dueDateRange?: 'today' | 'week' | 'overdue';
   page?: number;
@@ -410,6 +521,7 @@ export async function getTasksWithFilters(filters?: {
     if (filters?.sprintId) where.sprintId = filters.sprintId;
     if (filters?.status) where.status = filters.status;
     if (filters?.priority) where.priority = filters.priority;
+    if (filters?.tag) where.tags = { has: filters.tag.toLowerCase() };
 
     if (filters?.search) {
       where.OR = [
@@ -479,6 +591,7 @@ export async function getTasks(filters?: {
   projectId?: string;
   sprintId?: string;
   status?: string;
+  tag?: string;
   search?: string;
 }) {
   try {
@@ -487,6 +600,7 @@ export async function getTasks(filters?: {
     if (filters?.projectId) where.projectId = filters.projectId;
     if (filters?.sprintId) where.sprintId = filters.sprintId;
     if (filters?.status) where.status = filters.status;
+    if (filters?.tag) where.tags = { has: filters.tag.toLowerCase() };
     if (filters?.search) {
       where.OR = [
         { title: { contains: filters.search, mode: 'insensitive' } },

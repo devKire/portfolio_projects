@@ -4,15 +4,22 @@
 import { memo } from 'react';
 import { EmptyState } from './empty-state';
 import { TaskItem } from './task-item';
+import type {
+  TaskPatch,
+  TaskProjectOption,
+  TaskWithRelations,
+} from '@/types/tasks';
 
 interface TaskListViewProps {
-  tasks: any[];
+  tasks: TaskWithRelations[];
   selectedIds: Set<string>;
   onToggleSelect: (id: string) => void;
   onSelectAll: (ids: string[]) => void;
   onEditStart: (id: string | null) => void;
   editingTaskId: string | null;
   onTaskUpdate: () => void;
+  onTaskPatch: (id: string, patch: TaskPatch) => void;
+  projects: TaskProjectOption[];
 }
 
 export const TaskListView = memo(function TaskListView({
@@ -23,6 +30,8 @@ export const TaskListView = memo(function TaskListView({
   onEditStart,
   editingTaskId,
   onTaskUpdate,
+  onTaskPatch,
+  projects,
 }: TaskListViewProps) {
   if (tasks.length === 0) {
     return (
@@ -69,6 +78,8 @@ export const TaskListView = memo(function TaskListView({
             isEditing={editingTaskId === task.id}
             onEditStart={onEditStart}
             onUpdate={onTaskUpdate}
+            onTaskPatch={onTaskPatch}
+            projects={projects}
           />
         ))}
       </div>

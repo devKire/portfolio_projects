@@ -4,15 +4,22 @@
 import { memo, useState, useCallback } from 'react';
 import { TaskCardDisplay } from './task-card-display';
 import { TaskEditInline } from './task-edit-inline';
-import { updateTaskStatus, deleteTask } from '@/app/actions/tasks';
+import { updateTaskStatus, deleteTask, updateTask } from '@/app/actions/tasks';
+import type {
+  TaskPatch,
+  TaskProjectOption,
+  TaskWithRelations,
+} from '@/types/tasks';
 
 interface TaskItemProps {
-  task: any;
+  task: TaskWithRelations;
   isSelected: boolean;
   onToggleSelect: (id: string) => void;
   isEditing: boolean;
   onEditStart: (id: string | null) => void;
   onUpdate: () => void;
+  onTaskPatch: (id: string, patch: TaskPatch) => void;
+  projects: TaskProjectOption[];
 }
 
 export const TaskItem = memo(function TaskItem({
@@ -22,6 +29,8 @@ export const TaskItem = memo(function TaskItem({
   isEditing,
   onEditStart,
   onUpdate,
+  onTaskPatch,
+  projects,
 }: TaskItemProps) {
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -47,20 +56,36 @@ export const TaskItem = memo(function TaskItem({
 
   const handleStatusChange = useCallback(
     async (newStatus: string) => {
+      const previousStatus = task.status;
+      onTaskPatch(task.id, { status: newStatus });
       try {
         const result = await updateTaskStatus(task.id, newStatus);
         if (result.success) {
           onUpdate();
         } else {
+          onTaskPatch(task.id, { status: previousStatus });
           console.error('Failed to update status:', result.error);
           alert('Erro ao atualizar status');
         }
       } catch (error) {
+        onTaskPatch(task.id, { status: previousStatus });
         console.error('Error updating status:', error);
         alert('Erro ao atualizar status');
       }
     },
-    [task.id, onUpdate]
+    [task.id, task.status, onTaskPatch, onUpdate]
+  );
+
+  const handlePatch = useCallback(
+    async (patch: TaskPatch) => {
+      onTaskPatch(task.id, patch);
+      const result = await updateTask(task.id, patch);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to update task');
+      }
+      onUpdate();
+    },
+    [task.id, onTaskPatch, onUpdate]
   );
 
   const handleEditSuccess = useCallback(() => {
@@ -91,6 +116,7 @@ export const TaskItem = memo(function TaskItem({
       {isEditing ? (
         <TaskEditInline
           task={task}
+          projects={projects}
           onCancel={handleEditCancel}
           onSuccess={handleEditSuccess}
         />
@@ -101,6 +127,9 @@ export const TaskItem = memo(function TaskItem({
           onToggleSelect={onToggleSelect}
           onEditStart={() => onEditStart(task.id)}
           onStatusChange={handleStatusChange}
+          onPatch={handlePatch}
+          onOptimisticPatch={(patch) => onTaskPatch(task.id, patch)}
+          projects={projects}
           onDelete={handleDelete}
           isDeleting={isDeleting}
         />
