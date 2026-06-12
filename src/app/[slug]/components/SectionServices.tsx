@@ -28,11 +28,28 @@ import {
   CarouselPrevious,
   type CarouselApi,
 } from '@/components/ui/carousel';
+import type { PortfolioServicesContent } from '@/lib/portfolio-content/types';
 
 interface SectionServicesProps {
   contact: ContactInfo;
   landingpage: LandingPage;
+  content: PortfolioServicesContent;
 }
+
+const iconMap = {
+  'bar-chart-3': BarChart3,
+  code: Code,
+  globe: Globe,
+  palette: Palette,
+  rocket: Rocket,
+  'shopping-cart': ShoppingCart,
+  sparkles: Sparkles,
+  'trending-up': TrendingUp,
+  zap: Zap,
+} as const;
+
+const getIcon = (icon?: string) =>
+  iconMap[icon as keyof typeof iconMap] || Sparkles;
 
 // Serviços com cores pastel sólidas
 const services = [
@@ -213,10 +230,14 @@ const services = [
   },
 ];
 
-const SectionServices = ({ contact, landingpage }: SectionServicesProps) => {
+const SectionServices = ({ contact, content }: SectionServicesProps) => {
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
   const [count, setCount] = useState(0);
+  const services = content.services
+    .filter((service) => service.active !== false)
+    .slice()
+    .sort((a, b) => a.position - b.position);
 
   const onSelect = useCallback(() => {
     if (!api) return;
@@ -247,16 +268,14 @@ const SectionServices = ({ contact, landingpage }: SectionServicesProps) => {
           className="mb-16 text-center md:mb-24"
         >
           <h2 className="mb-6 text-3xl md:text-5xl lg:text-6xl">
-            Serviços e{' '}
+            {content.titlePrefix}{' '}
             <span className="bg-gradient-to-r from-sky-400 via-purple-400 to-purple-500 bg-clip-text text-transparent">
-              Investimento
+              {content.titleHighlight}
             </span>
           </h2>
 
           <p className="mx-auto max-w-3xl text-base text-gray-400 md:text-lg">
-            Soluções digitais completas com preços transparentes. Escolha o
-            serviço ideal para seu negócio ou solicite uma proposta
-            personalizada.
+            {content.subtitle}
           </p>
         </motion.div>
 
@@ -302,7 +321,10 @@ const SectionServices = ({ contact, landingpage }: SectionServicesProps) => {
                     <div
                       className={`mb-5 inline-flex rounded-2xl p-3.5 shadow-sm ${service.iconBg}`}
                     >
-                      <service.icon size={28} className={service.iconColor} />
+                      {(() => {
+                        const Icon = getIcon(service.icon);
+                        return <Icon size={28} className={service.iconColor} />;
+                      })()}
                     </div>
 
                     {/* Título e Descrição */}
@@ -408,12 +430,9 @@ const SectionServices = ({ contact, landingpage }: SectionServicesProps) => {
           <div className="mx-auto max-w-3xl rounded-2xl border border-gray-700/50 bg-gradient-to-br from-gray-800/50 to-gray-900/50 p-8 backdrop-blur-sm md:p-12">
             <Rocket size={48} className="text-electric-500 mx-auto mb-6" />
             <h3 className="mb-4 text-2xl md:text-3xl">
-              Não Encontrou o Que Precisava?
+              {content.finalCta.title}
             </h3>
-            <p className="mb-6 text-gray-400">
-              Cada negócio é único. Me conte sobre seu projeto e receba uma
-              proposta personalizada em até 2 horas, sem compromisso.
-            </p>
+            <p className="mb-6 text-gray-400">{content.finalCta.description}</p>
             <motion.a
               href={
                 contact.whatsappLink ||
@@ -426,12 +445,12 @@ const SectionServices = ({ contact, landingpage }: SectionServicesProps) => {
               className="inline-flex items-center gap-3 rounded-full bg-gradient-to-r from-green-500 to-green-600 px-8 py-4 text-lg text-white shadow-2xl shadow-green-500/25 transition-all hover:from-green-600 hover:to-green-700"
             >
               <MessageCircle size={24} />
-              Solicitar Proposta Personalizada
+              {content.finalCta.label}
               <ArrowRight size={20} />
             </motion.a>
             <p className="mt-4 flex items-center justify-center gap-2 text-sm text-gray-500">
               <Clock size={14} />
-              Resposta em até 2 horas • Sem compromisso • Satisfação garantida
+              {content.finalCta.microcopy}
             </p>
           </div>
         </motion.div>

@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 
 import { AuroraBackground } from '@/components/ui/aurora-background';
 import { db } from '@/lib/prisma';
+import { resolvePortfolioContent } from '@/lib/portfolio-content/merge';
 
 import SectionHero from './components/SectionHero';
 
@@ -57,6 +58,7 @@ const Page = async ({ params }: LandingPageProps) => {
     where: { slug },
     include: {
       contactInfo: true,
+      portfolioContent: true,
       projects: {
         where: { isActive: true },
         orderBy: { position: 'asc' },
@@ -72,6 +74,10 @@ const Page = async ({ params }: LandingPageProps) => {
     notFound();
   }
 
+  const portfolioContent = resolvePortfolioContent(
+    landingpage.portfolioContent
+  );
+
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-black text-white">
       <div className="relative z-10">
@@ -79,31 +85,37 @@ const Page = async ({ params }: LandingPageProps) => {
           <SectionHero
             contact={landingpage.contactInfo}
             landingpage={landingpage}
+            content={portfolioContent.hero}
           />
         </AuroraBackground>
         <SectionProjects
           contact={landingpage.contactInfo}
           landingpage={landingpage}
           projects={landingpage.projects}
+          content={portfolioContent.projects}
         />
         <ServicesShell>
           <SectionServices
             contact={landingpage.contactInfo}
             landingpage={landingpage}
+            content={portfolioContent.services}
           />
         </ServicesShell>
 
         <SectionProcess
           contact={landingpage.contactInfo}
           landingpage={landingpage}
+          content={portfolioContent.process}
         />
         <SectionAbout
           contact={landingpage.contactInfo}
           landingpage={landingpage}
+          content={portfolioContent.about}
         />
         <SectionContacts
           contact={landingpage.contactInfo}
           landingpage={landingpage}
+          content={portfolioContent.contact}
         />
         <Footer contact={landingpage.contactInfo} landingpage={landingpage} />
       </div>

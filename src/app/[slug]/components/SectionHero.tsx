@@ -21,40 +21,33 @@ import { useRef } from 'react';
 
 import { AnimatedText } from '@/components/ui/animated-text';
 import { ContainerTextFlip } from '@/components/ui/container-text-flip';
+import type { PortfolioHeroContent } from '@/lib/portfolio-content/types';
 
 interface SectionHeroProps {
   contact: ContactInfo;
   landingpage: LandingPage;
+  content: PortfolioHeroContent;
 }
 
-const words = ['Lucro', 'Impacto', 'Valor', 'Leads'];
+const iconMap = {
+  'layout-template': LayoutTemplate,
+  zap: Zap,
+  code: Code,
+  sparkles: Sparkles,
+  rocket: Rocket,
+  'trending-up': TrendingUp,
+} as const;
 
-const serviceHighlights = [
-  { label: 'Landing Pages', icon: LayoutTemplate },
-  { label: 'Automações', icon: Zap },
-  { label: 'Sistemas', icon: Code },
-  { label: 'UI/UX', icon: Sparkles },
-];
+const getIcon = (icon?: string) =>
+  iconMap[icon as keyof typeof iconMap] || Sparkles;
 
-const desktopProcessSteps = [
-  'Diagnóstico',
-  'Estratégia',
-  'Design',
-  'Desenvolvimento',
-  'Otimização',
-  'Entrega',
-];
-
-const mobileProcessSteps = ['Estratégia', 'Construção', 'Entrega'];
-
-const resultMetrics = [
-  { value: '+43%', label: 'conversão média' },
-  { value: '95+', label: 'performance' },
-  { value: '2h', label: 'resposta' },
-];
-
-const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
+const SectionHero = ({ contact, landingpage, content }: SectionHeroProps) => {
   const sectionRef = useRef<HTMLElement | null>(null);
+  const dashboard = content.dashboardPreview;
+  const primaryHref =
+    content.primaryCta.hrefType === 'custom' && content.primaryCta.href
+      ? content.primaryCta.href
+      : contact.whatsappLink || content.primaryCta.href || '#contato';
 
   const { scrollYProgress } = useScroll({
     target: sectionRef,
@@ -159,7 +152,7 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
                   }}
                   className="absolute -right-1 -bottom-1 rounded-full bg-gradient-to-r from-green-500 to-green-600 px-2 py-[2px] text-[10px] whitespace-nowrap text-white shadow-lg sm:px-3 sm:py-1 sm:text-xs"
                 >
-                  ✓ Verificado
+                  {content.verifiedBadge}
                 </motion.div>
               </div>
             </motion.div>
@@ -173,14 +166,14 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
                 className="text-3xl leading-tight font-semibold tracking-normal text-balance sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl"
               >
                 <AnimatedText
-                  text="Transformo Ideias em "
+                  text={content.headlineLine1}
                   delay={delays.h1Line1 + 0.1}
                   duration={0.08}
                   mode="word"
                 />
                 <span className="block">
                   <AnimatedText
-                    text="Negócios Digitais"
+                    text={content.headlineLine2}
                     delay={delays.h1Line2 + 0.1}
                     duration={0.09}
                     mode="word"
@@ -195,7 +188,7 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
                 className="flex flex-wrap items-center justify-center gap-2 text-2xl leading-tight font-semibold tracking-normal sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl"
               >
                 <AnimatedText
-                  text="Que Geram"
+                  text={content.headlineLine3}
                   delay={delays.h1Line3 + 0.1}
                   duration={0.08}
                   mode="word"
@@ -211,7 +204,7 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
                   }}
                   className="inline-flex"
                 >
-                  <ContainerTextFlip words={words} />
+                  <ContainerTextFlip words={content.rotatingWords} />
                 </motion.div>
               </motion.div>
             </div>
@@ -223,9 +216,7 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
               transition={{ delay: delays.subheadline, duration: 0.4 }}
               className="mx-auto max-w-2xl text-sm text-gray-300 sm:text-base md:text-lg"
             >
-              Crio interfaces, landing pages e soluções digitais com foco em
-              performance, conversão e experiência — do planejamento à entrega
-              final.
+              {content.subheadline}
             </motion.p>
 
             <motion.div
@@ -234,15 +225,21 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
               transition={{ delay: delays.subheadline + 0.15, duration: 0.45 }}
               className="mx-auto flex max-w-3xl flex-wrap items-center justify-center gap-2"
             >
-              {serviceHighlights.map(({ label, icon: Icon }, index) => (
-                <span
-                  key={label}
-                  className={`inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs text-gray-300 backdrop-blur-sm ${index > 1 ? 'hidden sm:inline-flex' : ''}`}
-                >
-                  <Icon size={13} className="text-cyan-300" />
-                  {label}
-                </span>
-              ))}
+              {content.serviceHighlights
+                .filter((highlight) => highlight.active !== false)
+                .map(({ label, icon }, index) => {
+                  const Icon = getIcon(icon);
+
+                  return (
+                    <span
+                      key={label}
+                      className={`inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs text-gray-300 backdrop-blur-sm ${index > 1 ? 'hidden sm:inline-flex' : ''}`}
+                    >
+                      <Icon size={13} className="text-cyan-300" />
+                      {label}
+                    </span>
+                  );
+                })}
             </motion.div>
 
             {/* CTAs */}
@@ -255,10 +252,7 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
               {/* CTA PRIMÁRIO - Responsivo e limitado no mobile */}
               <div className="flex w-full justify-center">
                 <motion.a
-                  href={
-                    contact.whatsappLink ||
-                    'https://api.whatsapp.com/send/?phone=554797086965&text=Olá! Gostaria de saber mais sobre seus serviços'
-                  }
+                  href={primaryHref}
                   target="_blank"
                   rel="noopener noreferrer"
                   whileHover={{
@@ -270,7 +264,7 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
                 >
                   <MessageCircle size={20} className="sm:hidden" />
                   <MessageCircle size={24} className="hidden sm:block" />
-                  Quero Criar Meu Projeto
+                  {content.primaryCta.label}
                   <ArrowRight
                     size={18}
                     className="transition-transform duration-300 group-hover:translate-x-1 sm:hidden"
@@ -292,11 +286,15 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
                   type="button"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => scrollToSection('projetos')}
+                  onClick={() =>
+                    scrollToSection(
+                      content.secondaryCta.targetSection || 'projetos'
+                    )
+                  }
                   className="group flex items-center gap-2 rounded-full border border-gray-600/50 px-6 py-3 text-sm text-gray-300 backdrop-blur-sm transition-all duration-300 hover:border-gray-500 hover:text-white focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 focus-visible:outline-none sm:text-base"
                 >
                   <Eye size={18} />
-                  Ver Projetos
+                  {content.secondaryCta.label}
                   <ArrowRight
                     size={16}
                     className="transition-transform duration-300 group-hover:translate-x-1"
@@ -312,8 +310,7 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
                 className="flex items-center gap-1.5 text-xs text-gray-400 sm:text-sm"
               >
                 <Clock size={14} />
-                Resposta rápida • Planejamento personalizado • Orçamento sem
-                compromisso
+                {content.microcopy}
               </motion.p>
             </motion.div>
 
@@ -366,10 +363,10 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
                   </div>
                   <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/50 sm:flex">
                     <Search size={12} />
-                    projeto.digital/dashboard
+                    {dashboard.searchLabel}
                   </div>
                   <div className="flex h-7 items-center rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 text-[10px] text-emerald-100 sm:text-xs">
-                    Online
+                    {dashboard.statusLabel}
                   </div>
                 </div>
 
@@ -379,71 +376,66 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
                       <div>
                         <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-cyan-300/15 bg-cyan-300/10 px-2.5 py-1 text-[10px] text-cyan-100 sm:text-xs">
                           <Rocket size={12} />
-                          Projeto em construção
+                          {dashboard.badge}
                         </div>
                         <div className="text-left text-base font-medium text-white sm:text-xl lg:text-2xl">
-                          Landing page de alta conversão
+                          {dashboard.title}
                         </div>
                       </div>
                       <div className="hidden rounded-2xl border border-emerald-300/20 bg-emerald-400/10 px-3 py-2 text-xs text-emerald-100 sm:block">
-                        78% pronto
+                        {dashboard.progressLabel}
                       </div>
                     </div>
 
                     <div className="mb-3 rounded-full bg-white/10 p-1">
-                      <div className="h-2 w-[78%] rounded-full bg-gradient-to-r from-emerald-300 via-cyan-300 to-sky-400" />
+                      <div
+                        className="h-2 rounded-full bg-gradient-to-r from-emerald-300 via-cyan-300 to-sky-400"
+                        style={{
+                          width: `${Math.max(
+                            0,
+                            Math.min(100, dashboard.progressValue)
+                          )}%`,
+                        }}
+                      />
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
-                      {[
-                        {
-                          label: 'Design',
-                          value: 'UI clara',
-                          icon: Sparkles,
-                          tone: 'text-violet-200',
-                        },
-                        {
-                          label: 'Desenvolvimento',
-                          value: 'Next.js',
-                          icon: Code,
-                          tone: 'text-cyan-200',
-                        },
-                        {
-                          label: 'Conversão',
-                          value: '+Leads',
-                          icon: TrendingUp,
-                          tone: 'text-emerald-200',
-                        },
-                      ].map(({ label, value, icon: Icon, tone }, index) => (
-                        <div
-                          key={label}
-                          className={`rounded-2xl border border-white/10 bg-white/[0.04] p-2.5 text-left sm:p-3 ${index === 1 ? 'hidden sm:block' : ''}`}
-                        >
-                          <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04]">
-                            <Icon size={15} className={tone} />
-                          </div>
-                          <div className="text-[11px] text-white/55 sm:text-xs">
-                            {label}
-                          </div>
-                          <div className="mt-1 text-sm text-white sm:text-base">
-                            {value}
-                          </div>
-                        </div>
-                      ))}
+                      {dashboard.cards.map(
+                        ({ label, value, icon, tone }, index) => {
+                          const Icon = getIcon(icon);
+
+                          return (
+                            <div
+                              key={label}
+                              className={`rounded-2xl border border-white/10 bg-white/[0.04] p-2.5 text-left sm:p-3 ${index === 1 ? 'hidden sm:block' : ''}`}
+                            >
+                              <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04]">
+                                <Icon size={15} className={tone} />
+                              </div>
+                              <div className="text-[11px] text-white/55 sm:text-xs">
+                                {label}
+                              </div>
+                              <div className="mt-1 text-sm text-white sm:text-base">
+                                {value}
+                              </div>
+                            </div>
+                          );
+                        }
+                      )}
                     </div>
 
                     <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-left">
                       <div className="mb-3 flex items-center justify-between">
                         <span className="text-xs text-white/60">
-                          Processo aplicado
+                          {dashboard.processLabel}
                         </span>
                         <span className="hidden text-xs text-white/35 sm:inline">
-                          do briefing ao deploy
+                          {dashboard.processMicrocopy}
                         </span>
                       </div>
 
                       <div className="grid grid-cols-3 gap-2 sm:hidden">
-                        {mobileProcessSteps.map((step, index) => (
+                        {dashboard.mobileProcessSteps.map((step, index) => (
                           <div key={step} className="min-w-0">
                             <div className="mb-2 flex items-center gap-1.5">
                               <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/10 text-[10px] text-white/70">
@@ -461,7 +453,7 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
                       </div>
 
                       <div className="hidden grid-cols-6 gap-2 sm:grid">
-                        {desktopProcessSteps.map((step, index) => (
+                        {dashboard.desktopProcessSteps.map((step, index) => (
                           <div key={step} className="min-w-0">
                             <div className="mb-2 flex items-center gap-1.5">
                               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-[10px] text-white/70">
@@ -487,10 +479,10 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
                     <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-3 text-left">
                       <div className="mb-3 flex items-center justify-between">
                         <span className="text-xs text-white/60">
-                          Preview do projeto
+                          {dashboard.previewTitle}
                         </span>
                         <span className="rounded-full bg-violet-400/10 px-3 py-1 text-xs text-violet-100">
-                          Responsivo
+                          {dashboard.previewBadge}
                         </span>
                       </div>
                       <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-2.5">
@@ -512,12 +504,12 @@ const SectionHero = ({ contact, landingpage }: SectionHeroProps) => {
                     <div className="rounded-3xl border border-white/10 bg-black/35 p-3">
                       <div className="mb-3 flex items-center justify-between">
                         <span className="text-xs text-white/60">
-                          Indicadores
+                          {dashboard.metricsTitle}
                         </span>
                         <CheckCircle size={15} className="text-emerald-300" />
                       </div>
                       <div className="grid gap-2">
-                        {resultMetrics.map(({ value, label }) => (
+                        {dashboard.metrics.map(({ value, label }) => (
                           <div
                             key={label}
                             className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2"

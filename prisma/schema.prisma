@@ -20,9 +20,26 @@ model LandingPage {
   updatedAt      DateTime @updatedAt
 
   contactInfo        ContactInfo?
+  portfolioContent   PortfolioContent?
   projects           Project[]
   pageViews          PageView[]
   socialInteractions SocialInteraction[]
+}
+
+model PortfolioContent {
+  id            String   @id @default(uuid())
+  landingpageId String   @unique
+  hero          Json?
+  about         Json?
+  services      Json?
+  process       Json?
+  contact       Json?
+  projects      Json?
+  settings      Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  landingpage LandingPage @relation(fields: [landingpageId], references: [id], onDelete: Cascade)
 }
 
 model ContactInfo {

@@ -14,11 +14,10 @@ import {
   Clock,
   MessageCircle,
   Rocket,
-  Shield,
-  Sparkles,
-  Zap,
 } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
+
+import type { PortfolioProcessContent } from '@/lib/portfolio-content/types';
 
 /* ================================================================
    INTERFACES
@@ -26,86 +25,22 @@ import React, { useEffect, useRef, useState } from 'react';
 interface SectionProcessProps {
   contact: ContactInfo;
   landingpage: LandingPage;
+  content: PortfolioProcessContent;
 }
-
-/* ================================================================
-   DADOS — Texto reduzido, foco no essencial
-   ================================================================ */
-const processSteps = [
-  {
-    step: '01',
-    title: 'Discovery',
-    description: 'Entendemos seu negócio, objetivos e definimos a estratégia.',
-    details: [
-      'Briefing e objetivos',
-      'Análise de mercado',
-      'Estratégia definida',
-    ],
-    duration: '1-2 dias',
-    image:
-      'https://images.unsplash.com/photo-1552664730-d307ca884978?q=75&w=1200&auto=format&fit=crop',
-    color: 'from-blue-500 to-cyan-500',
-  },
-  {
-    step: '02',
-    title: 'Planejamento',
-    description: 'Roadmap claro com tecnologias, cronograma e milestones.',
-    details: ['Arquitetura definida', 'Stack tecnológico', 'Cronograma visual'],
-    duration: '2-3 dias',
-    image:
-      'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=75&w=1200&auto=format&fit=crop',
-    color: 'from-purple-500 to-pink-500',
-  },
-  {
-    step: '03',
-    title: 'Desenvolvimento',
-    description: 'Código limpo, atualizações diárias e feedback constante.',
-    details: [
-      'Sprints ágeis',
-      'Atualizações no WhatsApp',
-      'Revisões por etapa',
-    ],
-    duration: '7-30 dias',
-    image:
-      'https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=75&w=1200&auto=format&fit=crop',
-    color: 'from-blue-600 to-cyan-600',
-  },
-  {
-    step: '04',
-    title: 'Lançamento',
-    description: 'Publicação, testes de performance e suporte pós-entrega.',
-    details: [
-      'Deploy otimizado',
-      'Testes Lighthouse',
-      'Testes de Carga',
-      'Suporte 30 dias',
-    ],
-    duration: '1-2 dias',
-    image:
-      'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=75&w=1200&auto=format&fit=crop',
-    color: 'from-green-500 to-emerald-500',
-  },
-];
 
 const slideRotations = [-6, 4, -3, 6];
 
 /* ================================================================
-   GARANTIAS — Layout horizontal, ultra-simples
-   ================================================================ */
-const guarantees = [
-  { icon: Shield, label: 'Satisfação Garantida' },
-  { icon: Zap, label: 'Performance Premium' },
-  { icon: MessageCircle, label: 'Comunicação Direta' },
-  { icon: Clock, label: 'Prazo Garantido' },
-];
-
-/* ================================================================
    COMPONENTE PRINCIPAL
    ================================================================ */
-const SectionProcess = ({ contact }: SectionProcessProps) => {
+const SectionProcess = ({ contact, content }: SectionProcessProps) => {
   const [active, setActive] = useState(0);
   const [autoplay, setAutoplay] = useState(true);
   const resumeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const processSteps = content.steps
+    .filter((step) => step.active !== false)
+    .slice()
+    .sort((a, b) => a.position - b.position);
 
   const scheduleAutoplayResume = () => {
     if (resumeTimeoutRef.current) clearTimeout(resumeTimeoutRef.current);
@@ -123,12 +58,18 @@ const SectionProcess = ({ contact }: SectionProcessProps) => {
   const handlePrev = () =>
     setActive((prev) => (prev - 1 + processSteps.length) % processSteps.length);
 
+  useEffect(() => {
+    if (active > processSteps.length - 1) setActive(0);
+  }, [active, processSteps.length]);
+
   // Autoplay
   useEffect(() => {
-    if (!autoplay) return;
+    if (!autoplay || processSteps.length <= 1) return;
     const interval = setInterval(handleNext, 6000);
     return () => clearInterval(interval);
-  }, [autoplay]);
+  }, [autoplay, processSteps.length]);
+
+  if (processSteps.length === 0) return null;
 
   const handleManualNavigation = (direction: 'prev' | 'next') => {
     setAutoplay(false);
@@ -158,19 +99,19 @@ const SectionProcess = ({ contact }: SectionProcessProps) => {
           className="mb-16 text-center md:mb-20"
         >
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-4 py-1.5 backdrop-blur-sm">
-            <span className="text-xs text-gray-400">Como funciona</span>
+            <span className="text-xs text-gray-400">{content.badge}</span>
           </div>
 
           <h2 className="text-4xl leading-tight tracking-tight sm:text-5xl md:text-6xl">
-            Da ideia ao{' '}
+            {content.titlePrefix}{' '}
             <span className="bg-gradient-to-r from-sky-400 via-purple-400 to-purple-500 bg-clip-text text-transparent">
-              lançamento
+              {content.titleHighlight}
             </span>{' '}
-            em 4 passos
+            {content.titleSuffix}
           </h2>
 
           <p className="mx-auto mt-4 max-w-lg text-sm text-gray-500 sm:text-base">
-            Processo transparente, sem surpresas, sem dor de cabeça.
+            {content.subtitle}
           </p>
         </motion.div>
 
@@ -286,8 +227,8 @@ const SectionProcess = ({ contact }: SectionProcessProps) => {
                 {/* Detalhes */}
                 <div className="space-y-2 rounded-2xl border border-white/[0.05] bg-white/[0.01] p-5 backdrop-blur-sm">
                   <p className="mb-3 flex items-center gap-2 text-xs text-gray-500">
-                    <CheckCircle size={14} className="text-green-500" />O que
-                    está incluído:
+                    <CheckCircle size={14} className="text-green-500" />
+                    {content.includedLabel}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {processSteps[active].details.map((detail, idx) => (
@@ -335,9 +276,9 @@ const SectionProcess = ({ contact }: SectionProcessProps) => {
         >
           <div className="mx-auto max-w-lg rounded-2xl border border-white/[0.06] bg-white/[0.01] p-8 backdrop-blur-xl sm:p-10">
             <Rocket size={32} className="mx-auto mb-4 text-blue-400" />
-            <h3 className="text-xl sm:text-2xl">Vamos começar?</h3>
+            <h3 className="text-xl sm:text-2xl">{content.finalCta.title}</h3>
             <p className="mt-2 text-sm text-gray-400">
-              Me conta sua ideia. Em até 2 horas você recebe um plano claro.
+              {content.finalCta.description}
             </p>
             <motion.a
               href={
@@ -351,7 +292,7 @@ const SectionProcess = ({ contact }: SectionProcessProps) => {
               className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-green-500 px-6 py-3.5 text-sm text-white shadow-lg shadow-green-500/20 transition-all hover:bg-green-600 sm:w-auto sm:px-8"
             >
               <MessageCircle size={18} />
-              Falar no WhatsApp
+              {content.finalCta.label}
               <ArrowRight size={16} />
             </motion.a>
           </div>

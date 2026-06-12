@@ -34,11 +34,13 @@ import React, {
 } from 'react';
 
 import { useOutsideClick } from '@/hooks/use-outside-click';
+import type { PortfolioProjectsContent } from '@/lib/portfolio-content/types';
 
 interface SectionProjectsProps {
   contact: ContactInfo;
   landingpage: LandingPage;
   projects: PrismaProject[];
+  content: PortfolioProjectsContent;
 }
 
 interface Project {
@@ -69,14 +71,6 @@ interface ProjectFileCardProps {
   onSwipeNext: () => void;
   onSwipePrevious: () => void;
 }
-
-const organizerTabs = [
-  'Projetos',
-  'Case Studies',
-  'Landing Pages',
-  'Apps',
-  'Automações',
-];
 
 const swipeConfidenceThreshold = 9000;
 
@@ -360,6 +354,7 @@ const ProjectFileCard = ({
 const SectionProjects = ({
   contact,
   projects: prismaProjects,
+  content,
 }: SectionProjectsProps) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const id = useId();
@@ -889,7 +884,7 @@ const SectionProjects = ({
 
               {filteredProjects.length > 0 ? (
                 <div className="hidden flex-wrap gap-2 lg:flex">
-                  {organizerTabs.map((tab) => (
+                  {content.organizerTabs.map((tab) => (
                     <span
                       key={tab}
                       className="rounded-full border border-white/10 bg-white/[0.025] px-3 py-1.5 text-xs text-gray-500 backdrop-blur-sm"

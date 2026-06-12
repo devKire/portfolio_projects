@@ -22,6 +22,8 @@ import {
 import Image from 'next/image';
 import React, { useEffect, useRef, useState } from 'react';
 
+import type { PortfolioAboutContent } from '@/lib/portfolio-content/types';
+
 /* ================================================================
    SPOTLIGHT CARD — card visual sem tracking de mouse invisível
    ================================================================ */
@@ -46,27 +48,23 @@ const SpotlightCard = ({
 interface SectionAboutProps {
   contact: ContactInfo;
   landingpage: LandingPage;
+  content: PortfolioAboutContent;
 }
 
-const technologies = [
-  'Next.js',
-  'React',
-  'TypeScript',
-  'Tailwind CSS',
-  'Node.js',
-  'Prisma',
-  'PostgreSQL',
-  'Firebase',
-  'Stripe',
-  'ShadCN UI',
-  'Framer Motion',
-  'Docker',
-];
+const iconMap = {
+  shield: Shield,
+  zap: Zap,
+  users: Users,
+  'check-circle': CheckCircle,
+} as const;
+
+const getIcon = (icon?: string) =>
+  iconMap[icon as keyof typeof iconMap] || CheckCircle;
 
 /* ================================================================
    COMPONENTE PRINCIPAL
    ================================================================ */
-const SectionAbout = ({ contact, landingpage }: SectionAboutProps) => {
+const SectionAbout = ({ contact, landingpage, content }: SectionAboutProps) => {
   const [copied, setCopied] = useState(false);
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const experienceYears = new Date().getFullYear() - 2021;
@@ -83,6 +81,11 @@ const SectionAbout = ({ contact, landingpage }: SectionAboutProps) => {
     if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
     copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
   };
+
+  const subtitle = content.subtitleTemplate.replace(
+    '{years}',
+    String(experienceYears)
+  );
 
   return (
     <section id="sobre" className="relative overflow-hidden py-20 md:py-28">
@@ -111,21 +114,18 @@ const SectionAbout = ({ contact, landingpage }: SectionAboutProps) => {
           className="mb-16 text-center md:mb-20"
         >
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-4 py-1.5 backdrop-blur-sm">
-            <span className="text-xs text-gray-400">
-              Quem está por trás do código
-            </span>
+            <span className="text-xs text-gray-400">{content.badge}</span>
           </div>
 
           <h2 className="text-4xl leading-tight tracking-tight sm:text-5xl md:text-6xl">
-            Não é só código.
+            {content.titleLine1}
             <span className="mt-2 block bg-gradient-to-r from-blue-400 via-purple-400 to-purple-500 bg-clip-text text-transparent">
-              É resultado.
+              {content.titleHighlight}
             </span>
           </h2>
 
           <p className="mx-auto mt-5 max-w-xl text-sm text-gray-500 sm:text-base">
-            {experienceYears}+ anos transformando ideias em soluções digitais
-            que geram valor real.
+            {subtitle}
           </p>
         </motion.div>
 
@@ -161,7 +161,9 @@ const SectionAbout = ({ contact, landingpage }: SectionAboutProps) => {
                     <div />
                     <div className="flex items-center gap-2 rounded-full border border-green-500/20 bg-green-500/10 px-3 py-1 backdrop-blur-sm">
                       <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-500" />
-                      <span className="text-xs text-green-400">Disponível</span>
+                      <span className="text-xs text-green-400">
+                        {content.availabilityLabel}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -202,10 +204,10 @@ const SectionAbout = ({ contact, landingpage }: SectionAboutProps) => {
                   <div className="rounded-xl bg-cyan-500/10 p-2">
                     <Code size={20} className="text-cyan-400" />
                   </div>
-                  <h4 className="text-lg">Stack Tecnológica</h4>
+                  <h4 className="text-lg">{content.techTitle}</h4>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {technologies.map((tech) => (
+                  {content.technologies.map((tech) => (
                     <span
                       key={tech}
                       className="rounded-lg border border-white/[0.05] bg-white/[0.02] px-3 py-1.5 text-xs text-gray-400 transition-colors hover:border-white/[0.12] hover:text-white"
@@ -226,13 +228,15 @@ const SectionAbout = ({ contact, landingpage }: SectionAboutProps) => {
                 <div className="mb-3 inline-flex rounded-2xl bg-pink-500/10 p-3">
                   <Heart size={28} className="text-pink-400" />
                 </div>
-                <p className="text-4xl text-white">98%</p>
+                <p className="text-4xl text-white">
+                  {content.satisfaction.value}
+                </p>
                 <p className="mt-1 text-sm text-gray-400">
-                  Clientes satisfeitos
+                  {content.satisfaction.label}
                 </p>
                 <p className="mt-2 flex items-center gap-1 text-xs text-gray-500">
                   <Star size={12} className="text-yellow-500" />
-                  Recorrentes
+                  {content.satisfaction.microcopy}
                 </p>
               </SpotlightCard>
             </CometCard>
@@ -243,27 +247,29 @@ const SectionAbout = ({ contact, landingpage }: SectionAboutProps) => {
                   <div className="rounded-xl bg-green-500/10 p-2">
                     <TrendingUp size={20} className="text-green-400" />
                   </div>
-                  <h4 className="text-lg">Foco em Resultados</h4>
+                  <h4 className="text-lg">{content.differentiator.title}</h4>
                 </div>
                 <p className="mb-4 text-sm text-gray-400">
-                  Não entrego apenas código. Entrego soluções que impactam seu
-                  negócio.
+                  {content.differentiator.description}
                 </p>
                 <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { icon: Shield, text: 'Código Seguro' },
-                    { icon: Zap, text: 'Performance' },
-                    { icon: Users, text: 'Comunicação' },
-                    { icon: CheckCircle, text: 'Qualidade' },
-                  ].map((item) => (
-                    <div
-                      key={item.text}
-                      className="flex items-center gap-2 rounded-lg bg-white/[0.03] px-3 py-2"
-                    >
-                      <item.icon size={14} className="text-blue-400" />
-                      <span className="text-xs text-gray-300">{item.text}</span>
-                    </div>
-                  ))}
+                  {content.differentiator.items
+                    .filter((item) => item.active !== false)
+                    .map((item) => {
+                      const Icon = getIcon(item.icon);
+
+                      return (
+                        <div
+                          key={item.label}
+                          className="flex items-center gap-2 rounded-lg bg-white/[0.03] px-3 py-2"
+                        >
+                          <Icon size={14} className="text-blue-400" />
+                          <span className="text-xs text-gray-300">
+                            {item.label}
+                          </span>
+                        </div>
+                      );
+                    })}
                 </div>
               </SpotlightCard>
             </CometCard>
@@ -274,9 +280,9 @@ const SectionAbout = ({ contact, landingpage }: SectionAboutProps) => {
                   <div className="mb-4 inline-flex rounded-xl bg-green-500/10 p-2">
                     <MessageCircle size={20} className="text-green-400" />
                   </div>
-                  <h4 className="text-xl">Vamos conversar?</h4>
+                  <h4 className="text-xl">{content.cta.title}</h4>
                   <p className="mt-2 text-sm text-gray-400">
-                    Me conta sobre o seu projeto. Resposta em até 2 horas.
+                    {content.cta.description}
                   </p>
                 </div>
 
@@ -294,7 +300,7 @@ const SectionAbout = ({ contact, landingpage }: SectionAboutProps) => {
                     className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-500 px-4 py-3 text-sm text-white shadow-lg shadow-green-500/20 transition-all hover:bg-green-600"
                   >
                     <MessageCircle size={18} />
-                    Falar no WhatsApp
+                    {content.cta.primaryLabel}
                     <ArrowRight size={16} />
                   </motion.a>
 
@@ -304,7 +310,9 @@ const SectionAbout = ({ contact, landingpage }: SectionAboutProps) => {
                     className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-2.5 text-xs text-gray-400 transition-colors hover:border-white/[0.15] hover:text-white"
                   >
                     <Mail size={14} />
-                    {copied ? 'Email copiado!' : 'Copiar email'}
+                    {copied
+                      ? content.cta.copiedLabel
+                      : content.cta.secondaryLabel}
                   </button>
                 </div>
               </div>

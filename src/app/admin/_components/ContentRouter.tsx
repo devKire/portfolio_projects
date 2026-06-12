@@ -3,7 +3,7 @@
 
 import dynamic from 'next/dynamic';
 import { Suspense } from 'react';
-import { Globe, MessageSquare, Settings, Users } from 'lucide-react';
+import { Globe, MessageSquare, Users } from 'lucide-react';
 import ContentLoader from './ContentLoader';
 
 // Lazy loading dos módulos pesados
@@ -16,6 +16,10 @@ const Tasks = dynamic(() => import('../_tabs/Tasks'), {
 });
 
 const Projects = dynamic(() => import('../_tabs/Projects'), {
+  loading: () => <ContentLoader />,
+});
+
+const SettingsTab = dynamic(() => import('../_tabs/Settings'), {
   loading: () => <ContentLoader />,
 });
 
@@ -58,7 +62,7 @@ export default function ContentRouter({ activeTab }: ContentRouterProps) {
       case 'analytics':
         return <ComingSoon icon={Globe} title="Analytics" />;
       case 'settings':
-        return <ComingSoon icon={Settings} title="Configurações" />;
+        return <SettingsTab />;
       default:
         return <Dashboard />;
     }

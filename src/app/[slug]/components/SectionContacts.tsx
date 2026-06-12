@@ -11,12 +11,15 @@ import {
 import { ArrowRight, Mail, MessageCircle, Phone } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
+import type { PortfolioContactContent } from '@/lib/portfolio-content/types';
+
 interface SectionContactsProps {
   contact: ContactInfo;
   landingpage: LandingPage;
+  content: PortfolioContactContent;
 }
 
-const SectionContacts = ({ contact, landingpage }: SectionContactsProps) => {
+const SectionContacts = ({ contact, content }: SectionContactsProps) => {
   const [copiedEmail, setCopiedEmail] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -125,9 +128,9 @@ const SectionContacts = ({ contact, landingpage }: SectionContactsProps) => {
           transition={{ duration: 0.8 }}
           className="text-4xl leading-tight tracking-tight sm:text-5xl md:text-6xl lg:text-7xl"
         >
-          Vamos construir algo{' '}
+          {content.titlePrefix}{' '}
           <span className="bg-gradient-to-r from-green-400 via-emerald-400 to-green-500 bg-clip-text text-transparent">
-            NOVO
+            {content.titleHighlight}
           </span>
         </motion.h2>
 
@@ -139,9 +142,9 @@ const SectionContacts = ({ contact, landingpage }: SectionContactsProps) => {
           transition={{ delay: 0.2, duration: 0.8 }}
           className="mx-auto mt-5 max-w-lg text-base text-gray-400 sm:text-lg"
         >
-          Me chama no WhatsApp. Em menos de{' '}
-          <span className="text-white">2 horas</span> você já tem um plano claro
-          para o seu projeto.
+          {content.subtitlePrefix}{' '}
+          <span className="text-white">{content.subtitleHighlight}</span>{' '}
+          {content.subtitleSuffix}
         </motion.p>
 
         {/* ============================================ */}
@@ -171,7 +174,7 @@ const SectionContacts = ({ contact, landingpage }: SectionContactsProps) => {
             className="group relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-xl bg-green-500 px-6 py-4 text-lg text-white shadow-lg shadow-green-500/20 transition-all hover:bg-green-600 hover:shadow-green-500/30"
           >
             <MessageCircle size={22} />
-            <span>Falar no WhatsApp</span>
+            <span>{content.primaryCtaLabel}</span>
             <ArrowRight
               size={18}
               className="transition-transform duration-300 group-hover:translate-x-1"
@@ -182,7 +185,9 @@ const SectionContacts = ({ contact, landingpage }: SectionContactsProps) => {
           {/* Separador */}
           <div className="my-5 flex items-center gap-4">
             <div className="h-px flex-1 bg-white/[0.06]" />
-            <span className="text-xs text-gray-600">ou também</span>
+            <span className="text-xs text-gray-600">
+              {content.separatorLabel}
+            </span>
             <div className="h-px flex-1 bg-white/[0.06]" />
           </div>
 
@@ -197,7 +202,7 @@ const SectionContacts = ({ contact, landingpage }: SectionContactsProps) => {
                 size={16}
                 className="transition-colors group-hover:text-blue-400"
               />
-              {copiedEmail ? 'Copiado!' : 'Email'}
+              {copiedEmail ? content.copiedEmailLabel : content.emailLabel}
             </button>
 
             {/* Telefone */}
@@ -210,7 +215,7 @@ const SectionContacts = ({ contact, landingpage }: SectionContactsProps) => {
                   size={16}
                   className="transition-colors group-hover:text-purple-400"
                 />
-                Ligar
+                {content.phoneLabel}
               </a>
             )}
           </div>
@@ -224,7 +229,7 @@ const SectionContacts = ({ contact, landingpage }: SectionContactsProps) => {
           transition={{ delay: 0.6, duration: 0.8 }}
           className="mt-6 text-xs text-gray-600"
         >
-          Resposta em até 2h • Sem compromisso • Satisfação garantida
+          {content.trustMicrocopy}
         </motion.p>
       </div>
     </section>
