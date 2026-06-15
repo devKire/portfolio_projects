@@ -83,6 +83,7 @@ model Project {
   tasks    Task[] // Relacionamento com tasks
   features Feature[]
   sprints  Sprint[]
+  notes    Note[]
 }
 
 // Modelo para administrador
@@ -217,6 +218,7 @@ model Task {
   recurrence    String?
   recurrenceEnd DateTime?
   completedAt   DateTime?
+  noteTaskKey   String?
 
   // Novas relações
   templateId   String?
@@ -231,6 +233,7 @@ model Task {
   featureId String?
   sprintId  String?
   parentId  String?
+  noteId    String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -239,12 +242,15 @@ model Task {
   project  Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
   feature  Feature? @relation(fields: [featureId], references: [id], onDelete: SetNull)
   sprint   Sprint?  @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  note     Note?    @relation(fields: [noteId], references: [id], onDelete: SetNull)
   parent   Task?    @relation("TaskToSubtask", fields: [parentId], references: [id])
   subtasks Task[]   @relation("TaskToSubtask")
 
   @@index([status])
   @@index([projectId])
   @@index([sprintId])
+  @@index([noteId])
+  @@unique([noteId, noteTaskKey])
 }
 
 model DailyChecklistItem {
@@ -301,4 +307,130 @@ model TaskActivityLog {
   @@index([taskId])
   @@index([dailyChecklistItemId])
   @@index([type])
+}
+
+enum NoteVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum NoteStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model Note {
+  id         String         @id @default(uuid())
+  title      String
+  slug       String         @unique
+  content    String         @db.Text
+  excerpt    String?
+  visibility NoteVisibility @default(PRIVATE)
+  status     NoteStatus     @default(DRAFT)
+
+  isFavorite Boolean @default(false)
+  viewCount  Int     @default(0)
+
+  fileName   String?
+  filePath   String?   @unique
+  folderPath String?
+  folderName String?
+  folderId   String?
+  extension  String?
+  importedAt DateTime?
+  position   Int       @default(0)
+
+  projectId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  folder  NoteFolder?  @relation(fields: [folderId], references: [id], onDelete: SetNull)
+
+  tags     NoteTag[]
+  outgoing NoteLink[] @relation("SourceLinks")
+  incoming NoteLink[] @relation("TargetLinks")
+  tasks    Task[]
+
+  @@index([slug])
+  @@index([visibility])
+  @@index([status])
+  @@index([projectId])
+  @@index([folderPath])
+  @@index([folderId])
+  @@index([position])
+  @@index([updatedAt])
+}
+
+model NoteFolder {
+  id        String   @id @default(uuid())
+  name      String
+  path      String   @unique
+  parentId  String?
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  parent   NoteFolder?  @relation("NoteFolderTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children NoteFolder[] @relation("NoteFolderTree")
+  notes    Note[]
+
+  @@index([parentId])
+  @@index([path])
+  @@index([position])
+}
+
+model NoteAttachment {
+  id         String   @id @default(uuid())
+  fileName   String
+  filePath   String   @unique
+  folderPath String?
+  folderName String?
+  extension  String?
+  mimeType   String?
+  size       Int?
+  dataUrl    String?  @db.Text
+  importedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([folderPath])
+  @@index([fileName])
+}
+
+model NoteTag {
+  id        String   @id @default(uuid())
+  noteId    String
+  name      String
+  slug      String
+  createdAt DateTime @default(now())
+
+  note Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@unique([noteId, slug])
+  @@index([slug])
+  @@index([name])
+}
+
+model NoteLink {
+  id             String   @id @default(uuid())
+  sourceNoteId   String
+  targetNoteId   String?
+  targetSlug     String
+  targetTitle    String
+  alias          String?
+  occurrences    Int      @default(1)
+  targetExists   Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  sourceNote Note  @relation("SourceLinks", fields: [sourceNoteId], references: [id], onDelete: Cascade)
+  targetNote Note? @relation("TargetLinks", fields: [targetNoteId], references: [id], onDelete: SetNull)
+
+  @@unique([sourceNoteId, targetSlug])
+  @@index([targetNoteId])
+  @@index([targetSlug])
+  @@index([targetExists])
 }

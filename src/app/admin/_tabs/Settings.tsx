@@ -68,13 +68,13 @@ function Field({
 }) {
   return (
     <label className="space-y-2">
-      <span className="text-sm font-medium text-gray-200">{label}</span>
+      <span className="text-sm font-medium text-[#f2f2f3]">{label}</span>
       <input
         type={type}
         value={value}
         placeholder={placeholder}
         onChange={(event) => onChange(event.target.value)}
-        className="min-h-11 w-full rounded-lg border border-gray-700 bg-gray-950/60 px-3 text-sm text-white transition-colors outline-none placeholder:text-gray-600 focus:border-cyan-400/50"
+        className="min-h-11 w-full rounded-lg border border-[#303036] bg-[#19191d]/60 px-3 text-sm text-white transition-colors outline-none placeholder:text-[#777780] focus:border-[#9a8cff]/50"
       />
     </label>
   );
@@ -93,12 +93,12 @@ function TextArea({
 }) {
   return (
     <label className="space-y-2">
-      <span className="text-sm font-medium text-gray-200">{label}</span>
+      <span className="text-sm font-medium text-[#f2f2f3]">{label}</span>
       <textarea
         value={value}
         rows={rows}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full resize-y rounded-lg border border-gray-700 bg-gray-950/60 px-3 py-3 text-sm text-white transition-colors outline-none placeholder:text-gray-600 focus:border-cyan-400/50"
+        className="w-full resize-y rounded-lg border border-[#303036] bg-[#19191d]/60 px-3 py-3 text-sm text-white transition-colors outline-none placeholder:text-[#777780] focus:border-[#9a8cff]/50"
       />
     </label>
   );
@@ -117,7 +117,7 @@ function SectionShell({
     <div className="space-y-5">
       <div>
         <h3 className="text-lg font-semibold text-white">{title}</h3>
-        <p className="mt-1 text-sm text-gray-500">{description}</p>
+        <p className="mt-1 text-sm text-[#777780]">{description}</p>
       </div>
       <div className="grid gap-4">{children}</div>
     </div>
@@ -170,7 +170,7 @@ function ServiceEditor({
         badgeBg: 'bg-slate-500',
         priceColor: 'text-slate-700',
         tagColor: 'bg-slate-50 text-slate-700',
-        featureDot: 'text-slate-500',
+        featureDot: 'text-[#777780]',
       },
     ]);
   };
@@ -184,13 +184,13 @@ function ServiceEditor({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-medium text-gray-200">
+        <span className="text-sm font-medium text-[#f2f2f3]">
           Cards de serviço
         </span>
         <button
           type="button"
           onClick={addService}
-          className="inline-flex h-9 items-center gap-2 rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-3 text-xs text-cyan-100 transition-colors hover:bg-cyan-400/15"
+          className="inline-flex h-9 items-center gap-2 rounded-lg border border-[#9a8cff]/30 bg-[#9a8cff]/10 px-3 text-xs text-cyan-100 transition-colors hover:bg-[#9a8cff]/15"
         >
           <Plus className="h-3.5 w-3.5" />
           Adicionar
@@ -200,10 +200,10 @@ function ServiceEditor({
       {services.map((service, index) => (
         <div
           key={`${service.name}-${index}`}
-          className="rounded-xl border border-gray-800 bg-gray-950/40 p-4"
+          className="rounded-xl border border-[#2f2f35] bg-[#1e1e22] p-4"
         >
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <label className="inline-flex items-center gap-2 text-sm text-gray-300">
+            <label className="inline-flex items-center gap-2 text-sm text-[#dcddde]">
               <input
                 type="checkbox"
                 checked={service.active}
@@ -213,7 +213,7 @@ function ServiceEditor({
                     active: event.target.checked,
                   })
                 }
-                className="h-4 w-4 rounded border-gray-700 bg-gray-950"
+                className="h-4 w-4 rounded border-[#303036] bg-[#19191d]"
               />
               Ativo
             </label>
@@ -221,7 +221,7 @@ function ServiceEditor({
               <button
                 type="button"
                 onClick={() => onChange(moveItem(services, index, -1))}
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-700 bg-gray-900 text-gray-300 disabled:opacity-40"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#303036] bg-[#19191d] text-[#dcddde] disabled:opacity-40"
                 disabled={index === 0}
                 aria-label="Subir serviço"
               >
@@ -230,7 +230,7 @@ function ServiceEditor({
               <button
                 type="button"
                 onClick={() => onChange(moveItem(services, index, 1))}
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-700 bg-gray-900 text-gray-300 disabled:opacity-40"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#303036] bg-[#19191d] text-[#dcddde] disabled:opacity-40"
                 disabled={index === services.length - 1}
                 aria-label="Descer serviço"
               >
@@ -348,7 +348,7 @@ function ProcessStepEditor({
         details: [],
         duration: '',
         image: '',
-        color: 'from-blue-500 to-cyan-500',
+        color: 'from-[#6f55d9] to-[#6f55d9]',
         active: true,
         position: steps.length,
       },
@@ -364,11 +364,11 @@ function ProcessStepEditor({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-medium text-gray-200">Etapas</span>
+        <span className="text-sm font-medium text-[#f2f2f3]">Etapas</span>
         <button
           type="button"
           onClick={addStep}
-          className="inline-flex h-9 items-center gap-2 rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-3 text-xs text-cyan-100 transition-colors hover:bg-cyan-400/15"
+          className="inline-flex h-9 items-center gap-2 rounded-lg border border-[#9a8cff]/30 bg-[#9a8cff]/10 px-3 text-xs text-cyan-100 transition-colors hover:bg-[#9a8cff]/15"
         >
           <Plus className="h-3.5 w-3.5" />
           Adicionar
@@ -378,17 +378,17 @@ function ProcessStepEditor({
       {steps.map((step, index) => (
         <div
           key={`${step.step}-${index}`}
-          className="rounded-xl border border-gray-800 bg-gray-950/40 p-4"
+          className="rounded-xl border border-[#2f2f35] bg-[#1e1e22] p-4"
         >
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <label className="inline-flex items-center gap-2 text-sm text-gray-300">
+            <label className="inline-flex items-center gap-2 text-sm text-[#dcddde]">
               <input
                 type="checkbox"
                 checked={step.active}
                 onChange={(event) =>
                   updateStep(index, { ...step, active: event.target.checked })
                 }
-                className="h-4 w-4 rounded border-gray-700 bg-gray-950"
+                className="h-4 w-4 rounded border-[#303036] bg-[#19191d]"
               />
               Ativa
             </label>
@@ -397,7 +397,7 @@ function ProcessStepEditor({
                 type="button"
                 onClick={() => onChange(moveItem(steps, index, -1))}
                 disabled={index === 0}
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-700 bg-gray-900 text-gray-300 disabled:opacity-40"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#303036] bg-[#19191d] text-[#dcddde] disabled:opacity-40"
                 aria-label="Subir etapa"
               >
                 <ArrowUp className="h-4 w-4" />
@@ -406,7 +406,7 @@ function ProcessStepEditor({
                 type="button"
                 onClick={() => onChange(moveItem(steps, index, 1))}
                 disabled={index === steps.length - 1}
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-700 bg-gray-900 text-gray-300 disabled:opacity-40"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#303036] bg-[#19191d] text-[#dcddde] disabled:opacity-40"
                 aria-label="Descer etapa"
               >
                 <ArrowDown className="h-4 w-4" />
@@ -580,7 +580,7 @@ export default function Settings() {
 
   if (loading) {
     return (
-      <div className="flex min-h-80 items-center justify-center text-gray-400">
+      <div className="flex min-h-80 items-center justify-center text-[#9b9ba3]">
         <Loader2 className="mr-2 h-5 w-5 animate-spin" />
         Carregando CMS...
       </div>
@@ -615,13 +615,13 @@ export default function Settings() {
     <div onKeyDown={handleKeyDown} className="space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className="text-xs font-medium tracking-[0.18em] text-cyan-300 uppercase">
+          <p className="text-xs font-medium tracking-[0.18em] text-[#c9b8ff] uppercase">
             CMS do Portfólio
           </p>
           <h2 className="mt-2 text-2xl font-semibold text-white">
             Configurações de conteúdo
           </h2>
-          <p className="mt-1 max-w-2xl text-sm text-gray-500">
+          <p className="mt-1 max-w-2xl text-sm text-[#777780]">
             Edite textos, CTAs, listas e cards da página pública sem alterar
             código. Projetos continuam no tab Projetos.
           </p>
@@ -632,7 +632,7 @@ export default function Settings() {
             href={publicUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex h-10 items-center gap-2 rounded-lg border border-gray-700 bg-gray-900 px-3 text-sm text-gray-200 transition-colors hover:border-gray-600"
+            className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#303036] bg-[#19191d] px-3 text-sm text-[#f2f2f3] transition-colors hover:border-[#33333a]"
           >
             <ExternalLink className="h-4 w-4" />
             Ver página
@@ -652,7 +652,7 @@ export default function Settings() {
             type="button"
             onClick={cancelDraft}
             disabled={saveState === 'saving'}
-            className="inline-flex h-10 items-center rounded-lg border border-gray-700 bg-gray-900 px-3 text-sm text-gray-200 transition-colors hover:border-gray-600 disabled:opacity-50"
+            className="inline-flex h-10 items-center rounded-lg border border-[#303036] bg-[#19191d] px-3 text-sm text-[#f2f2f3] transition-colors hover:border-[#33333a] disabled:opacity-50"
           >
             Cancelar
           </button>
@@ -660,7 +660,7 @@ export default function Settings() {
             type="button"
             onClick={() => void saveActive()}
             disabled={saveState === 'saving'}
-            className="inline-flex h-10 items-center gap-2 rounded-lg bg-cyan-500 px-4 text-sm font-medium text-gray-950 transition-colors hover:bg-cyan-400 disabled:opacity-60"
+            className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#6f55d9] px-4 text-sm font-medium text-gray-950 transition-colors hover:bg-[#9a8cff] disabled:opacity-60"
           >
             {saveState === 'saving' ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -693,8 +693,8 @@ export default function Settings() {
               onClick={() => setActiveTab(tab.id)}
               className={`flex min-h-10 w-full items-center rounded-lg px-3 text-left text-sm transition-colors ${
                 activeTab === tab.id
-                  ? 'bg-cyan-500 text-gray-950'
-                  : 'border border-gray-800 bg-gray-950/40 text-gray-300 hover:border-gray-700'
+                  ? 'bg-[#6f55d9] text-gray-950'
+                  : 'border border-[#2f2f35] bg-[#1e1e22] text-[#dcddde] hover:border-[#303036]'
               }`}
             >
               {tab.label}
@@ -702,7 +702,7 @@ export default function Settings() {
           ))}
         </aside>
 
-        <section className="rounded-xl border border-gray-800 bg-gray-950/40 p-4 md:p-5">
+        <section className="rounded-xl border border-[#2f2f35] bg-[#1e1e22] p-4 md:p-5">
           {activeTab === 'general' ? (
             <SectionShell
               title="Geral"
@@ -953,8 +953,8 @@ function HeroForm({
           })
         }
       />
-      <div className="rounded-xl border border-gray-800 bg-black/20 p-4">
-        <h4 className="mb-4 text-sm font-medium text-gray-200">
+      <div className="rounded-xl border border-[#2f2f35] bg-black/20 p-4">
+        <h4 className="mb-4 text-sm font-medium text-[#f2f2f3]">
           Preview do dashboard
         </h4>
         <div className="grid gap-4 md:grid-cols-2">
@@ -1202,8 +1202,8 @@ function ServicesForm({
         services={services.services}
         onChange={(items) => onChange({ ...services, services: items })}
       />
-      <div className="rounded-xl border border-gray-800 bg-black/20 p-4">
-        <h4 className="mb-4 text-sm font-medium text-gray-200">CTA final</h4>
+      <div className="rounded-xl border border-[#2f2f35] bg-black/20 p-4">
+        <h4 className="mb-4 text-sm font-medium text-[#f2f2f3]">CTA final</h4>
         <div className="grid gap-4 md:grid-cols-2">
           <Field
             label="Título"
@@ -1303,8 +1303,8 @@ function ProcessForm({
         steps={process.steps}
         onChange={(steps) => onChange({ ...process, steps })}
       />
-      <div className="rounded-xl border border-gray-800 bg-black/20 p-4">
-        <h4 className="mb-4 text-sm font-medium text-gray-200">CTA final</h4>
+      <div className="rounded-xl border border-[#2f2f35] bg-black/20 p-4">
+        <h4 className="mb-4 text-sm font-medium text-[#f2f2f3]">CTA final</h4>
         <div className="grid gap-4 md:grid-cols-2">
           <Field
             label="Título"

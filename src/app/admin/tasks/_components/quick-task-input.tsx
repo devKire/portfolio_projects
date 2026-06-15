@@ -124,10 +124,10 @@ export function QuickTaskInput({
   return (
     <form
       onSubmit={handleSubmit}
-      className="animate-in slide-in-from-top-2 mb-4 rounded-lg border border-blue-500/30 bg-[#141414] p-3 shadow-xl shadow-black/20"
+      className="animate-in slide-in-from-top-2 mb-4 rounded-lg border border-[#6f55d9]/30 bg-[#141414] p-3 shadow-xl shadow-black/20"
     >
       <div className="flex items-center gap-3">
-        <Plus className="h-4 w-4 text-blue-300" />
+        <Plus className="h-4 w-4 text-[#c9b8ff]" />
         <input
           ref={inputRef}
           type="text"
@@ -143,7 +143,7 @@ export function QuickTaskInput({
           size="sm"
           onClick={onClose}
           disabled={loading}
-          className="text-xs text-gray-400"
+          className="text-xs text-[#9b9ba3]"
         >
           Cancelar
         </Button>
@@ -167,29 +167,29 @@ export function QuickTaskInput({
       {(input.trim() || error) && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5 pl-7 text-xs">
           {parsed.title && (
-            <span className="max-w-full truncate rounded-md bg-gray-900 px-2 py-1 text-gray-300">
+            <span className="max-w-full truncate rounded-md bg-[#19191d] px-2 py-1 text-[#dcddde]">
               {parsed.title}
             </span>
           )}
           {parsed.dueDate && (
-            <span className="inline-flex items-center gap-1 rounded-md border border-gray-800 bg-[#101010] px-2 py-1 text-gray-400">
+            <span className="inline-flex items-center gap-1 rounded-md border border-[#2f2f35] bg-[#101010] px-2 py-1 text-[#9b9ba3]">
               <Calendar className="h-3 w-3" />
               {formatPreviewDate(parsed.dueDate)}
             </span>
           )}
           {parsed.priority && (
-            <span className="inline-flex items-center rounded-md border border-blue-500/20 bg-blue-500/10 px-2 py-1 text-blue-300">
+            <span className="inline-flex items-center rounded-md border border-[#6f55d9]/20 bg-[#6f55d9]/10 px-2 py-1 text-[#c9b8ff]">
               {parsed.priority}
             </span>
           )}
           {parsed.estimatedHours !== undefined && (
-            <span className="inline-flex items-center gap-1 rounded-md border border-gray-800 bg-[#101010] px-2 py-1 text-gray-400">
+            <span className="inline-flex items-center gap-1 rounded-md border border-[#2f2f35] bg-[#101010] px-2 py-1 text-[#9b9ba3]">
               <Clock3 className="h-3 w-3" />
               {parsed.estimatedHours}h
             </span>
           )}
           {parsed.projectLabel && (
-            <span className="inline-flex items-center gap-1 rounded-md border border-purple-500/20 bg-purple-500/10 px-2 py-1 text-purple-300">
+            <span className="inline-flex items-center gap-1 rounded-md border border-[#9a8cff]/20 bg-[#9a8cff]/10 px-2 py-1 text-[#c9b8ff]">
               <Target className="h-3 w-3" />
               {parsed.projectLabel}
             </span>
@@ -205,7 +205,7 @@ export function QuickTaskInput({
           {parsed.tags.map((tag) => (
             <span
               key={tag}
-              className="inline-flex items-center gap-1 rounded-md border border-gray-800 bg-[#101010] px-2 py-1 text-gray-400"
+              className="inline-flex items-center gap-1 rounded-md border border-[#2f2f35] bg-[#101010] px-2 py-1 text-[#9b9ba3]"
             >
               <Hash className="h-3 w-3" />
               {tag}
@@ -222,7 +222,7 @@ export function QuickTaskInput({
               key={tag}
               type="button"
               onClick={() => replaceActiveToken(`#${tag}`)}
-              className="rounded-md border border-gray-800 bg-[#101010] px-2 py-1 text-gray-300 hover:border-blue-500/40 hover:text-white"
+              className="rounded-md border border-[#2f2f35] bg-[#101010] px-2 py-1 text-[#dcddde] hover:border-[#6f55d9]/40 hover:text-white"
             >
               #{tag}
             </button>
@@ -234,7 +234,7 @@ export function QuickTaskInput({
               onClick={() =>
                 replaceActiveToken(`@${project.title.replace(/\s+/g, '')}`)
               }
-              className="rounded-md border border-purple-500/20 bg-purple-500/10 px-2 py-1 text-purple-300 hover:border-purple-400/50"
+              className="rounded-md border border-[#9a8cff]/20 bg-[#9a8cff]/10 px-2 py-1 text-[#c9b8ff] hover:border-[#c9b8ff]/50"
             >
               @{project.title}
             </button>
@@ -244,19 +244,19 @@ export function QuickTaskInput({
 
       <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 pl-7 text-[11px] text-gray-600">
         <span>
-          <strong className="text-gray-500">#tag</strong> adiciona categoria
+          <strong className="text-[#777780]">#tag</strong> adiciona categoria
         </span>
         <span>
-          <strong className="text-gray-500">@projeto</strong> atrela projeto
+          <strong className="text-[#777780]">@projeto</strong> atrela projeto
         </span>
         <span>
-          <strong className="text-gray-500">amanha/13-03</strong> define data
+          <strong className="text-[#777780]">amanha/13-03</strong> define data
         </span>
         <span>
-          <strong className="text-gray-500">!alta</strong> define prioridade
+          <strong className="text-[#777780]">!alta</strong> define prioridade
         </span>
         <span>
-          <strong className="text-gray-500">2h</strong> estima horas
+          <strong className="text-[#777780]">2h</strong> estima horas
         </span>
       </div>
     </form>

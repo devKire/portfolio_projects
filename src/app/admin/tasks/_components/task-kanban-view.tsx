@@ -19,12 +19,12 @@ interface TaskKanbanViewProps {
 }
 
 const columns = [
-  { id: 'pending', title: 'Pendente', icon: '📋', color: 'border-gray-700' },
+  { id: 'pending', title: 'Pendente', icon: '📋', color: 'border-[#303036]' },
   {
     id: 'in-progress',
     title: 'Em Andamento',
     icon: '🔄',
-    color: 'border-blue-500/30',
+    color: 'border-[#6f55d9]/30',
   },
   {
     id: 'completed',
@@ -103,7 +103,9 @@ export const TaskKanbanView = memo(function TaskKanbanView({
           <div
             key={column.id}
             className={`rounded-lg border ${column.color} min-h-[500px] bg-[#1a1a1a]/50 p-4 transition-colors ${
-              dragOverColumn === column.id ? 'border-blue-500 bg-[#1e1e1e]' : ''
+              dragOverColumn === column.id
+                ? 'border-[#6f55d9] bg-[#1e1e1e]'
+                : ''
             }`}
             onDragOver={(e) => handleDragOver(e, column.id)}
             onDragLeave={handleDragLeave}
@@ -116,7 +118,7 @@ export const TaskKanbanView = memo(function TaskKanbanView({
                   {column.title}
                 </h3>
               </div>
-              <span className="rounded-full bg-gray-800 px-2 py-0.5 text-xs text-gray-400">
+              <span className="rounded-full bg-[#24242a] px-2 py-0.5 text-xs text-[#9b9ba3]">
                 {columnTasks.length}
               </span>
             </div>
@@ -139,7 +141,7 @@ export const TaskKanbanView = memo(function TaskKanbanView({
               ))}
 
               {columnTasks.length === 0 && (
-                <div className="flex h-32 items-center justify-center rounded-lg border border-dashed border-gray-800">
+                <div className="flex h-32 items-center justify-center rounded-lg border border-dashed border-[#2f2f35]">
                   <p className="text-sm text-gray-600">Arraste tarefas aqui</p>
                 </div>
               )}

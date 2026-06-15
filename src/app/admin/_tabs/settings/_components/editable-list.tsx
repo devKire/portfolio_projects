@@ -43,11 +43,11 @@ export function EditableList({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
-        <label className="text-sm font-medium text-gray-200">{label}</label>
+        <label className="text-sm font-medium text-[#f2f2f3]">{label}</label>
         <button
           type="button"
           onClick={addItem}
-          className="inline-flex h-9 items-center gap-2 rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-3 text-xs text-cyan-100 transition-colors hover:bg-cyan-400/15"
+          className="inline-flex h-9 items-center gap-2 rounded-lg border border-[#9a8cff]/30 bg-[#9a8cff]/10 px-3 text-xs text-cyan-100 transition-colors hover:bg-[#9a8cff]/15"
         >
           <Plus className="h-3.5 w-3.5" />
           Adicionar
@@ -56,7 +56,7 @@ export function EditableList({
 
       <div className="space-y-2">
         {values.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-gray-700 bg-black/20 px-3 py-4 text-sm text-gray-500">
+          <div className="rounded-lg border border-dashed border-[#303036] bg-black/20 px-3 py-4 text-sm text-[#777780]">
             Nenhum item cadastrado.
           </div>
         ) : null}
@@ -67,13 +67,13 @@ export function EditableList({
               value={value}
               placeholder={placeholder}
               onChange={(event) => updateItem(index, event.target.value)}
-              className="min-h-10 flex-1 rounded-lg border border-gray-700 bg-gray-950/60 px-3 text-sm text-white transition-colors outline-none placeholder:text-gray-600 focus:border-cyan-400/50"
+              className="min-h-10 flex-1 rounded-lg border border-[#303036] bg-[#19191d]/60 px-3 text-sm text-white transition-colors outline-none placeholder:text-[#777780] focus:border-[#9a8cff]/50"
             />
             <button
               type="button"
               onClick={() => moveItem(index, -1)}
               disabled={index === 0}
-              className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-700 bg-gray-900 text-gray-300 transition-colors hover:border-gray-600 disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#303036] bg-[#19191d] text-[#dcddde] transition-colors hover:border-[#33333a] disabled:cursor-not-allowed disabled:opacity-40"
               aria-label="Mover para cima"
             >
               <ArrowUp className="h-4 w-4" />
@@ -82,7 +82,7 @@ export function EditableList({
               type="button"
               onClick={() => moveItem(index, 1)}
               disabled={index === values.length - 1}
-              className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-700 bg-gray-900 text-gray-300 transition-colors hover:border-gray-600 disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#303036] bg-[#19191d] text-[#dcddde] transition-colors hover:border-[#33333a] disabled:cursor-not-allowed disabled:opacity-40"
               aria-label="Mover para baixo"
             >
               <ArrowDown className="h-4 w-4" />

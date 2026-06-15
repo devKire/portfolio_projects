@@ -22,10 +22,10 @@ export default function TabButton({
     <button
       onClick={onClick}
       title={isCollapsed ? label : undefined}
-      className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-all duration-200 ${
+      className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-left transition-colors ${
         isActive
-          ? 'bg-gradient-to-r from-blue-500/15 to-purple-500/20 text-white'
-          : 'text-gray-400 hover:bg-gray-800/50 hover:text-white'
+          ? 'bg-[#2d2940] text-[#c9b8ff]'
+          : 'text-[#9b9ba3] hover:bg-[#24242a] hover:text-white'
       } ${isCollapsed ? 'justify-center px-2' : ''} `}
     >
       <Icon size={20} className="flex-shrink-0" />
@@ -33,7 +33,7 @@ export default function TabButton({
         <span className="truncate text-sm font-medium">{label}</span>
       )}
       {isActive && !isCollapsed && (
-        <div className="ml-auto h-2 w-2 rounded-full bg-blue-500" />
+        <div className="ml-auto h-1.5 w-1.5 rounded-full bg-[#9a8cff]" />
       )}
     </button>
   );

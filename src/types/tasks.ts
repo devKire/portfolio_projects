@@ -35,6 +35,8 @@ export interface TaskWithRelations {
   tags: string[];
   projectId?: string | null;
   project?: TaskProjectRef | null;
+  noteId?: string | null;
+  noteTaskKey?: string | null;
   featureId?: string | null;
   feature?: TaskFeatureRef | null;
   sprintId?: string | null;
@@ -61,6 +63,8 @@ export interface TaskPatch {
   tags?: string[];
   projectId?: string | null;
   project?: TaskProjectRef | null;
+  noteId?: string | null;
+  noteTaskKey?: string | null;
   featureId?: string | null;
   feature?: TaskFeatureRef | null;
   sprintId?: string | null;

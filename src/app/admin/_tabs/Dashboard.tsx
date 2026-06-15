@@ -92,8 +92,8 @@ export default function Dashboard({ stats: initialStats }: DashboardProps) {
     return (
       <div className="flex h-64 items-center justify-center">
         <div className="text-center">
-          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
-          <p className="text-gray-400">Carregando dados do dashboard...</p>
+          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-[#6f55d9] border-t-transparent"></div>
+          <p className="text-[#9b9ba3]">Carregando dados do dashboard...</p>
         </div>
       </div>
     );
@@ -101,13 +101,13 @@ export default function Dashboard({ stats: initialStats }: DashboardProps) {
 
   if (!stats) {
     return (
-      <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-8 text-center">
-        <p className="text-gray-400">
+      <div className="rounded-lg border border-[#2f2f35] bg-[#1e1e22] p-4 text-center">
+        <p className="text-[#9b9ba3]">
           Não foi possível carregar os dados do dashboard.
         </p>
         <button
           onClick={loadStats}
-          className="mt-4 rounded-lg bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+          className="mt-4 rounded-lg bg-[#6f55d9] px-4 py-2 text-white hover:bg-[#7c66df]"
         >
           Tentar novamente
         </button>
@@ -125,7 +125,7 @@ export default function Dashboard({ stats: initialStats }: DashboardProps) {
       value: stats.portfolioViews.toLocaleString('pt-BR'),
       change: calculateChange(stats.portfolioViews, 1000),
       icon: Eye,
-      color: 'from-blue-500 to-blue-600',
+      color: 'from-[#6f55d9] to-[#7c66df]',
       description: `Últimos 30 dias`,
     },
     {
@@ -133,7 +133,7 @@ export default function Dashboard({ stats: initialStats }: DashboardProps) {
       value: stats.linkedinFollowers.toLocaleString('pt-BR'),
       change: calculateChange(stats.linkedinFollowers, 500),
       icon: Linkedin,
-      color: 'from-blue-400 to-blue-500',
+      color: 'from-[#9a8cff] to-[#6f55d9]',
       description: 'Perfil profissional',
       link: '#',
     },
@@ -151,7 +151,7 @@ export default function Dashboard({ stats: initialStats }: DashboardProps) {
       value: stats.socialMediaComments.toLocaleString('pt-BR'),
       change: calculateChange(stats.socialMediaComments, 50),
       icon: MessageSquare,
-      color: 'from-purple-500 to-purple-600',
+      color: 'from-[#9a8cff] to-[#7c66df]',
       description: 'Interações sociais',
     },
     {
@@ -167,27 +167,27 @@ export default function Dashboard({ stats: initialStats }: DashboardProps) {
   return (
     <div>
       {/* Header com controles */}
-      <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+      <div className="mb-5 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <h2 className="text-2xl font-bold text-white">Dashboard</h2>
-          <p className="text-gray-400">
+          <h2 className="text-2xl font-semibold text-white">Dashboard</h2>
+          <p className="text-[#9b9ba3]">
             Visão geral das suas redes e portfólio
-            <span className="ml-2 text-sm text-gray-500">
+            <span className="ml-2 text-sm text-[#777780]">
               • Atualizado: {stats.lastUpdated}
             </span>
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex rounded-lg border border-gray-700 bg-gray-900/50 p-1">
+          <div className="flex rounded-lg border border-[#303036] bg-[#202024] p-1">
             {(['7d', '30d', '90d'] as const).map((range) => (
               <button
                 key={range}
                 onClick={() => setTimeRange(range)}
                 className={`rounded-md px-3 py-1 text-sm transition-colors ${
                   timeRange === range
-                    ? 'bg-blue-500 text-white'
-                    : 'text-gray-400 hover:text-white'
+                    ? 'bg-[#6f55d9] text-white'
+                    : 'text-[#9b9ba3] hover:text-white'
                 }`}
               >
                 {range}
@@ -198,7 +198,7 @@ export default function Dashboard({ stats: initialStats }: DashboardProps) {
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="flex items-center gap-2 rounded-lg border border-gray-700 bg-gray-900/50 px-3 py-2 text-sm text-gray-400 transition-colors hover:bg-gray-800 hover:text-white disabled:opacity-50"
+            className="flex items-center gap-2 rounded-lg border border-[#303036] bg-[#202024] px-3 py-2 text-sm text-[#9b9ba3] transition-colors hover:bg-[#24242a] hover:text-white disabled:opacity-50"
           >
             <RefreshCw
               className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`}
@@ -209,26 +209,26 @@ export default function Dashboard({ stats: initialStats }: DashboardProps) {
       </div>
 
       {/* Stats Grid Responsivo */}
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {statCards.map((card, index) => {
           const Icon = card.icon;
           return (
             <div
               key={index}
-              className="rounded-xl border border-gray-800 bg-gray-900/50 p-4 backdrop-blur-sm transition-all hover:border-gray-700 sm:p-6"
+              className="rounded-lg border border-[#2f2f35] bg-[#202024] p-3 transition-all hover:border-[#303036] sm:p-4"
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <p className="text-xs text-gray-400 sm:text-sm">
+                  <p className="text-xs text-[#9b9ba3] sm:text-sm">
                     {card.title}
                   </p>
-                  <p className="mt-2 text-xl font-bold text-white sm:text-2xl">
+                  <p className="mt-2 text-xl font-semibold text-white sm:text-xl">
                     {card.value}
                   </p>
                   <div className="mt-2 flex flex-wrap items-center gap-1 text-xs sm:text-sm">
                     <TrendingUp className="h-3 w-3 text-green-400 sm:h-4 sm:w-4" />
                     <span className="text-green-400">{card.change}</span>
-                    <span className="truncate text-gray-500">
+                    <span className="truncate text-[#777780]">
                       {card.description}
                     </span>
                   </div>
@@ -245,7 +245,7 @@ export default function Dashboard({ stats: initialStats }: DashboardProps) {
                   href={card.link}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-3 flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
+                  className="mt-3 flex items-center gap-1 text-xs text-[#9a8cff] hover:text-[#c9b8ff]"
                 >
                   <ExternalLink className="h-3 w-3" />
                   Ver perfil
@@ -256,14 +256,14 @@ export default function Dashboard({ stats: initialStats }: DashboardProps) {
         })}
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Gráfico de Visualizações */}
-        <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-6 backdrop-blur-sm">
+        <div className="rounded-lg border border-[#2f2f35] bg-[#202024] p-4">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="font-semibold text-white">
               Visualizações do Portfólio
             </h3>
-            <span className="text-sm text-gray-400">Últimos 7 dias</span>
+            <span className="text-sm text-[#9b9ba3]">Últimos 7 dias</span>
           </div>
 
           {pageViewsByDay.length > 0 ? (
@@ -283,11 +283,11 @@ export default function Dashboard({ stats: initialStats }: DashboardProps) {
                     >
                       <div className="w-full max-w-12">
                         <div
-                          className="w-full rounded-t-lg bg-gradient-to-t from-blue-500 to-blue-600 transition-all hover:from-blue-400 hover:to-blue-500"
+                          className="w-full rounded-t-lg bg-gradient-to-t from-[#6f55d9] to-[#7c66df] transition-all hover:from-[#9a8cff] hover:to-[#6f55d9]"
                           style={{ height: `${height}%` }}
                         />
                       </div>
-                      <div className="mt-2 text-xs text-gray-400">
+                      <div className="mt-2 text-xs text-[#9b9ba3]">
                         {day.date}
                       </div>
                       <div className="text-xs font-medium text-white">
@@ -301,9 +301,11 @@ export default function Dashboard({ stats: initialStats }: DashboardProps) {
           ) : (
             <div className="flex h-48 items-center justify-center">
               <div className="text-center">
-                <Eye className="mx-auto mb-2 h-8 w-8 text-gray-600" />
-                <p className="text-gray-400">Sem dados de visualização ainda</p>
-                <p className="text-sm text-gray-500">
+                <Eye className="mx-auto mb-2 h-8 w-8 text-[#777780]" />
+                <p className="text-[#9b9ba3]">
+                  Sem dados de visualização ainda
+                </p>
+                <p className="text-sm text-[#777780]">
                   As visualizações serão registradas automaticamente quando
                   visitarem seu site
                 </p>
@@ -314,7 +316,7 @@ export default function Dashboard({ stats: initialStats }: DashboardProps) {
           <div className="mt-4 flex justify-center">
             <Link
               href="/admin"
-              className="text-sm text-blue-400 hover:text-blue-300"
+              className="text-sm text-[#9a8cff] hover:text-[#c9b8ff]"
               onClick={(e) => {
                 e.preventDefault();
                 // Aqui você precisaria de uma forma de mudar a aba para 'projects'
@@ -328,10 +330,10 @@ export default function Dashboard({ stats: initialStats }: DashboardProps) {
         </div>
 
         {/* Últimas Atividades */}
-        <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-6 backdrop-blur-sm">
+        <div className="rounded-lg border border-[#2f2f35] bg-[#202024] p-4">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="font-semibold text-white">Atividades Recentes</h3>
-            <div className="flex items-center gap-2 text-sm text-gray-400">
+            <div className="flex items-center gap-2 text-sm text-[#9b9ba3]">
               <Calendar className="h-4 w-4" />
               <span>Últimas 24h</span>
             </div>
@@ -342,25 +344,25 @@ export default function Dashboard({ stats: initialStats }: DashboardProps) {
               recentActivities.map((activity, index) => (
                 <div
                   key={index}
-                  className="flex items-center justify-between border-b border-gray-800/50 pb-4 last:border-0"
+                  className="flex items-center justify-between border-b border-[#2f2f35] pb-4 last:border-0"
                 >
                   <div className="flex items-start gap-3">
                     <div
                       className={`mt-1 rounded-full p-2 ${
                         activity.type === 'comment'
-                          ? 'bg-blue-500/20'
+                          ? 'bg-[#6f55d9]/20'
                           : activity.type === 'view'
-                            ? 'bg-purple-500/20'
+                            ? 'bg-[#9a8cff]/20'
                             : activity.type === 'follower'
                               ? 'bg-green-500/20'
                               : 'bg-yellow-500/20'
                       }`}
                     >
                       {activity.type === 'comment' && (
-                        <MessageSquare className="h-4 w-4 text-blue-400" />
+                        <MessageSquare className="h-4 w-4 text-[#9a8cff]" />
                       )}
                       {activity.type === 'view' && (
-                        <Eye className="h-4 w-4 text-purple-400" />
+                        <Eye className="h-4 w-4 text-[#c9b8ff]" />
                       )}
                       {activity.type === 'follower' && (
                         <Users className="h-4 w-4 text-green-400" />
@@ -373,15 +375,15 @@ export default function Dashboard({ stats: initialStats }: DashboardProps) {
                       <p className="line-clamp-2 font-medium text-white">
                         {activity.title}
                       </p>
-                      <p className="text-sm text-gray-400">{activity.time}</p>
+                      <p className="text-sm text-[#9b9ba3]">{activity.time}</p>
                     </div>
                   </div>
                 </div>
               ))
             ) : (
               <div className="py-8 text-center">
-                <p className="text-gray-400">Nenhuma atividade recente</p>
-                <p className="mt-1 text-sm text-gray-500">
+                <p className="text-[#9b9ba3]">Nenhuma atividade recente</p>
+                <p className="mt-1 text-sm text-[#777780]">
                   As atividades aparecerão aqui automaticamente
                 </p>
               </div>
@@ -392,14 +394,14 @@ export default function Dashboard({ stats: initialStats }: DashboardProps) {
 
       {/* Estatísticas Detalhadas */}
       {detailedStats && (
-        <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
           {/* Páginas Mais Visitadas */}
-          <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-6 backdrop-blur-sm">
+          <div className="rounded-lg border border-[#2f2f35] bg-[#202024] p-4">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="font-semibold text-white">
                 Páginas Mais Visitadas
               </h3>
-              <span className="text-sm text-gray-400">{timeRange}</span>
+              <span className="text-sm text-[#9b9ba3]">{timeRange}</span>
             </div>
 
             <div className="space-y-3">
@@ -410,19 +412,19 @@ export default function Dashboard({ stats: initialStats }: DashboardProps) {
                     className="flex items-center justify-between"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-800">
-                        <span className="text-xs font-medium text-gray-300">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#24242a]">
+                        <span className="text-xs font-medium text-[#dcddde]">
                           {index + 1}
                         </span>
                       </div>
                       <div>
                         <p className="font-medium text-white">{page.page}</p>
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-[#9b9ba3]">
                           {page.views} visualizações
                         </p>
                       </div>
                     </div>
-                    <div className="text-sm text-gray-400">
+                    <div className="text-sm text-[#9b9ba3]">
                       {((page.views / detailedStats.totalViews) * 100).toFixed(
                         1
                       )}
@@ -432,18 +434,18 @@ export default function Dashboard({ stats: initialStats }: DashboardProps) {
                 ))
               ) : (
                 <div className="py-8 text-center">
-                  <Globe className="mx-auto mb-2 h-8 w-8 text-gray-600" />
-                  <p className="text-gray-400">Sem dados de páginas</p>
+                  <Globe className="mx-auto mb-2 h-8 w-8 text-[#777780]" />
+                  <p className="text-[#9b9ba3]">Sem dados de páginas</p>
                 </div>
               )}
             </div>
           </div>
 
           {/* Interações Sociais */}
-          <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-6 backdrop-blur-sm">
+          <div className="rounded-lg border border-[#2f2f35] bg-[#202024] p-4">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="font-semibold text-white">Interações Sociais</h3>
-              <span className="text-sm text-gray-400">{timeRange}</span>
+              <span className="text-sm text-[#9b9ba3]">{timeRange}</span>
             </div>
 
             <div className="space-y-3">
@@ -458,14 +460,14 @@ export default function Dashboard({ stats: initialStats }: DashboardProps) {
                         className="flex items-center justify-between"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="rounded-lg bg-gray-800 p-2">
+                          <div className="rounded-lg bg-[#24242a] p-2">
                             <Icon className="h-4 w-4 text-white" />
                           </div>
                           <div>
                             <p className="font-medium text-white capitalize">
                               {interaction.platform} - {interaction.type}
                             </p>
-                            <p className="text-xs text-gray-400">
+                            <p className="text-xs text-[#9b9ba3]">
                               {interaction.count} interações
                             </p>
                           </div>
@@ -476,11 +478,11 @@ export default function Dashboard({ stats: initialStats }: DashboardProps) {
                 )
               ) : (
                 <div className="py-8 text-center">
-                  <BarChart3 className="mx-auto mb-2 h-8 w-8 text-gray-600" />
-                  <p className="text-gray-400">
+                  <BarChart3 className="mx-auto mb-2 h-8 w-8 text-[#777780]" />
+                  <p className="text-[#9b9ba3]">
                     Sem interações sociais registradas
                   </p>
-                  <p className="mt-1 text-sm text-gray-500">
+                  <p className="mt-1 text-sm text-[#777780]">
                     Use a API para registrar interações
                   </p>
                 </div>

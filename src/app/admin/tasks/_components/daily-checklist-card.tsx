@@ -333,16 +333,16 @@ export function DailyChecklistCard() {
   const summary = data?.summary || { completed: 0, total: 0, percentage: 0 };
 
   return (
-    <section className="rounded-lg border border-gray-800 bg-[#121212] p-4 shadow-xl shadow-black/20">
-      <div className="flex flex-col gap-3 border-b border-gray-800 pb-4 lg:flex-row lg:items-center lg:justify-between">
+    <section className="rounded-lg border border-[#2f2f35] bg-[#121212] p-4 shadow-xl shadow-black/20">
+      <div className="flex flex-col gap-3 border-b border-[#2f2f35] pb-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <CalendarDays className="h-4 w-4 text-blue-300" />
+            <CalendarDays className="h-4 w-4 text-[#c9b8ff]" />
             <h2 className="text-base font-semibold text-white">
               Checklist Diario
             </h2>
             {saveState === 'saving' && (
-              <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-500" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-[#777780]" />
             )}
             {saveState === 'saved' && (
               <span className="text-xs text-green-300">salvo</span>
@@ -351,7 +351,7 @@ export function DailyChecklistCard() {
               <span className="text-xs text-red-300">erro</span>
             )}
           </div>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-[#777780]">
             Rotina separada das tasks normais, com historico por dia.
           </p>
         </div>
@@ -368,13 +368,13 @@ export function DailyChecklistCard() {
             }}
             className={cn(
               'text-xs',
-              !editMode && 'border border-gray-700 bg-[#1a1a1a] text-gray-300'
+              !editMode && 'border border-[#303036] bg-[#1a1a1a] text-[#dcddde]'
             )}
           >
             <Settings className="h-3.5 w-3.5" />
             {editMode ? 'Concluir edicao' : 'Editar rotina'}
           </Button>
-          <label className="inline-flex h-9 items-center gap-2 rounded-md border border-gray-700 bg-[#0d0d0d] px-3 text-sm text-gray-300">
+          <label className="inline-flex h-9 items-center gap-2 rounded-md border border-[#303036] bg-[#0d0d0d] px-3 text-sm text-[#dcddde]">
             <span className="sr-only">Selecionar dia</span>
             <input
               type="date"
@@ -388,7 +388,7 @@ export function DailyChecklistCard() {
             variant="secondary"
             size="sm"
             onClick={() => setSelectedDate(getTodayInputValue())}
-            className="border border-gray-700 bg-[#1a1a1a] text-gray-300"
+            className="border border-[#303036] bg-[#1a1a1a] text-[#dcddde]"
           >
             <RotateCcw className="h-3.5 w-3.5" />
             Hoje
@@ -398,26 +398,26 @@ export function DailyChecklistCard() {
 
       <div className="grid gap-4 py-4 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-4">
-          <div className="rounded-md border border-gray-800 bg-[#0d0d0d] p-3">
+          <div className="rounded-md border border-[#2f2f35] bg-[#0d0d0d] p-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-white">
                   {formatShortDate(selectedDate)}: {summary.completed}/
                   {summary.total} concluidos · {summary.percentage}%
                 </p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-[#777780]">
                   {editMode
                     ? 'Edite a rotina sem alterar o historico diario.'
                     : 'Marque apenas o que foi feito no dia selecionado.'}
                 </p>
               </div>
               {loading && (
-                <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
+                <Loader2 className="h-4 w-4 animate-spin text-[#777780]" />
               )}
             </div>
-            <div className="mt-3 h-2 overflow-hidden rounded-full bg-gray-900">
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#19191d]">
               <div
-                className="h-full rounded-full bg-blue-500 transition-all duration-300"
+                className="h-full rounded-full bg-[#6f55d9] transition-all duration-300"
                 style={{ width: `${summary.percentage}%` }}
               />
             </div>
@@ -429,12 +429,12 @@ export function DailyChecklistCard() {
                   onClick={() => setSelectedDate(day.date)}
                   title={`${formatShortDate(day.date)} · ${day.percentage}%`}
                   className={cn(
-                    'flex h-12 w-8 items-end rounded border border-gray-800 bg-gray-950 p-1 transition-colors hover:border-blue-500/60',
-                    day.date === selectedDate && 'border-blue-500/70'
+                    'flex h-12 w-8 items-end rounded border border-[#2f2f35] bg-[#19191d] p-1 transition-colors hover:border-[#6f55d9]/60',
+                    day.date === selectedDate && 'border-[#6f55d9]/70'
                   )}
                 >
                   <span
-                    className="w-full rounded-sm bg-blue-500/80"
+                    className="w-full rounded-sm bg-[#6f55d9]/80"
                     style={{ height: `${Math.max(day.percentage, 8)}%` }}
                   />
                 </button>
@@ -452,10 +452,10 @@ export function DailyChecklistCard() {
             {periods.map((period) => (
               <div
                 key={period}
-                className="rounded-md border border-gray-800 bg-[#0d0d0d] p-3"
+                className="rounded-md border border-[#2f2f35] bg-[#0d0d0d] p-3"
               >
                 <div className="mb-3 flex items-center justify-between gap-2">
-                  <h3 className="text-sm font-semibold text-gray-200">
+                  <h3 className="text-sm font-semibold text-[#f2f2f3]">
                     {period}
                   </h3>
                   {editMode && (
@@ -468,7 +468,7 @@ export function DailyChecklistCard() {
                         setCreateDraft(emptyDraft(period));
                         cancelEditing();
                       }}
-                      className="h-7 px-2 text-xs text-gray-400 hover:text-white"
+                      className="h-7 px-2 text-xs text-[#9b9ba3] hover:text-white"
                     >
                       <Plus className="h-3.5 w-3.5" />
                       Adicionar item
@@ -521,15 +521,15 @@ export function DailyChecklistCard() {
         </div>
 
         <aside className="space-y-3">
-          <div className="rounded-md border border-gray-800 bg-[#0d0d0d] p-3">
-            <h3 className="text-sm font-semibold text-gray-200">
+          <div className="rounded-md border border-[#2f2f35] bg-[#0d0d0d] p-3">
+            <h3 className="text-sm font-semibold text-[#f2f2f3]">
               Lembretes essenciais
             </h3>
             <div className="mt-3 space-y-2">
               {DAILY_CHECKLIST_REMINDERS.map((reminder) => (
                 <div
                   key={reminder}
-                  className="rounded-md border border-gray-800 bg-[#141414] px-2 py-1.5 text-xs text-gray-400"
+                  className="rounded-md border border-[#2f2f35] bg-[#141414] px-2 py-1.5 text-xs text-[#9b9ba3]"
                 >
                   {reminder}
                 </div>
@@ -537,26 +537,26 @@ export function DailyChecklistCard() {
             </div>
           </div>
 
-          <div className="rounded-md border border-gray-800 bg-[#0d0d0d] p-3">
+          <div className="rounded-md border border-[#2f2f35] bg-[#0d0d0d] p-3">
             <div className="flex items-center gap-2">
-              <Activity className="h-4 w-4 text-blue-300" />
-              <h3 className="text-sm font-semibold text-gray-200">
+              <Activity className="h-4 w-4 text-[#c9b8ff]" />
+              <h3 className="text-sm font-semibold text-[#f2f2f3]">
                 Log do Dia
               </h3>
             </div>
             <div className="mt-3 max-h-[420px] space-y-2 overflow-y-auto pr-1">
               {(data?.logs || []).length === 0 ? (
-                <p className="rounded-md border border-dashed border-gray-800 px-3 py-6 text-center text-xs text-gray-600">
+                <p className="rounded-md border border-dashed border-[#2f2f35] px-3 py-6 text-center text-xs text-gray-600">
                   Nenhuma atividade registrada nesse dia.
                 </p>
               ) : (
                 data?.logs.map((log) => (
                   <div
                     key={log.id}
-                    className="rounded-md border border-gray-800 bg-[#141414] px-2 py-2"
+                    className="rounded-md border border-[#2f2f35] bg-[#141414] px-2 py-2"
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-medium text-gray-300">
+                      <span className="text-xs font-medium text-[#dcddde]">
                         {log.message}
                       </span>
                       <span className="shrink-0 text-[11px] text-gray-600">
@@ -596,7 +596,7 @@ function ChecklistItemRow({
 }) {
   const rowContent = (
     <div className="flex items-start gap-2">
-      <span className="mt-0.5 text-gray-500">
+      <span className="mt-0.5 text-[#777780]">
         {saving ? (
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : item.completed ? (
@@ -611,7 +611,7 @@ function ChecklistItemRow({
             className={cn(
               'text-sm font-medium text-white',
               item.completed && 'text-green-200',
-              !item.active && 'text-gray-500 line-through'
+              !item.active && 'text-[#777780] line-through'
             )}
           >
             {item.title}
@@ -622,12 +622,12 @@ function ChecklistItemRow({
               sagrado
             </span>
           )}
-          <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+          <span className="inline-flex items-center gap-1 text-xs text-[#777780]">
             <Clock3 className="h-3 w-3" />
             {item.timeRange || buildTimeRange(item.startTime, item.endTime)}
           </span>
         </span>
-        <span className="mt-1 block text-xs leading-5 text-gray-500">
+        <span className="mt-1 block text-xs leading-5 text-[#777780]">
           {item.description}
         </span>
       </span>
@@ -645,7 +645,7 @@ function ChecklistItemRow({
           onEdit();
         }}
         className={cn(
-          'w-full rounded-md border border-gray-800 bg-[#141414] p-2 text-left transition-colors hover:border-gray-700 focus:ring-2 focus:ring-blue-500/30 focus:outline-none',
+          'w-full rounded-md border border-[#2f2f35] bg-[#141414] p-2 text-left transition-colors hover:border-[#303036] focus:ring-2 focus:ring-[#6f55d9]/30 focus:outline-none',
           item.completed && 'border-green-500/30 bg-green-500/10',
           item.isSacred && 'border-amber-500/25'
         )}
@@ -659,7 +659,7 @@ function ChecklistItemRow({
     <div
       onDoubleClick={onEdit}
       className={cn(
-        'group rounded-md border border-gray-800 bg-[#141414] p-2 transition-colors hover:border-gray-700',
+        'group rounded-md border border-[#2f2f35] bg-[#141414] p-2 transition-colors hover:border-[#303036]',
         !item.active && 'opacity-60',
         item.isSacred && 'border-amber-500/25'
       )}
@@ -671,7 +671,7 @@ function ChecklistItemRow({
           size="sm"
           variant="ghost"
           onClick={onEdit}
-          className="h-7 px-2 text-xs text-gray-400 hover:text-white"
+          className="h-7 px-2 text-xs text-[#9b9ba3] hover:text-white"
         >
           <Pencil className="h-3.5 w-3.5" />
           Editar
@@ -681,7 +681,7 @@ function ChecklistItemRow({
           size="icon"
           variant="ghost"
           onClick={onMoveUp}
-          className="h-7 w-7 text-gray-500 hover:text-white"
+          className="h-7 w-7 text-[#777780] hover:text-white"
           title="Mover para cima"
         >
           <ArrowUp className="h-3.5 w-3.5" />
@@ -691,7 +691,7 @@ function ChecklistItemRow({
           size="icon"
           variant="ghost"
           onClick={onMoveDown}
-          className="h-7 w-7 text-gray-500 hover:text-white"
+          className="h-7 w-7 text-[#777780] hover:text-white"
           title="Mover para baixo"
         >
           <ArrowDown className="h-3.5 w-3.5" />
@@ -701,7 +701,7 @@ function ChecklistItemRow({
           size="sm"
           variant="ghost"
           onClick={onArchiveToggle}
-          className="h-7 px-2 text-xs text-gray-400 hover:text-amber-300"
+          className="h-7 px-2 text-xs text-[#9b9ba3] hover:text-amber-300"
         >
           <Archive className="h-3.5 w-3.5" />
           {item.active ? 'Arquivar' : 'Reativar'}
@@ -743,7 +743,7 @@ function ChecklistItemForm({
   };
 
   return (
-    <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2">
+    <div className="rounded-md border border-[#6f55d9]/30 bg-[#6f55d9]/5 p-2">
       <div className="grid gap-2">
         <input
           ref={titleInputRef}
@@ -753,7 +753,7 @@ function ChecklistItemForm({
           }
           onKeyDown={handleKeyDown}
           placeholder="Titulo"
-          className="h-8 rounded-md border border-gray-700 bg-[#101010] px-2 text-sm text-white outline-none focus:border-blue-500/60"
+          className="h-8 rounded-md border border-[#303036] bg-[#101010] px-2 text-sm text-white outline-none focus:border-[#6f55d9]/60"
         />
         <textarea
           value={draft.description || ''}
@@ -763,7 +763,7 @@ function ChecklistItemForm({
           onKeyDown={handleKeyDown}
           placeholder="Descricao"
           rows={2}
-          className="resize-none rounded-md border border-gray-700 bg-[#101010] px-2 py-1 text-xs text-gray-200 outline-none focus:border-blue-500/60"
+          className="resize-none rounded-md border border-[#303036] bg-[#101010] px-2 py-1 text-xs text-[#f2f2f3] outline-none focus:border-[#6f55d9]/60"
         />
         <div className="grid grid-cols-2 gap-2">
           <select
@@ -771,7 +771,7 @@ function ChecklistItemForm({
             onChange={(event) =>
               onDraftChange({ ...draft, period: event.target.value })
             }
-            className="h-8 rounded-md border border-gray-700 bg-[#101010] px-2 text-xs text-gray-200 outline-none"
+            className="h-8 rounded-md border border-[#303036] bg-[#101010] px-2 text-xs text-[#f2f2f3] outline-none"
           >
             {periods.map((period) => (
               <option key={period} value={period}>
@@ -788,7 +788,7 @@ function ChecklistItemForm({
                 position: Number(event.target.value) || 0,
               })
             }
-            className="h-8 rounded-md border border-gray-700 bg-[#101010] px-2 text-xs text-gray-200 outline-none"
+            className="h-8 rounded-md border border-[#303036] bg-[#101010] px-2 text-xs text-[#f2f2f3] outline-none"
             placeholder="Posicao"
           />
           <input
@@ -797,7 +797,7 @@ function ChecklistItemForm({
               onDraftChange({ ...draft, startTime: event.target.value })
             }
             onKeyDown={handleKeyDown}
-            className="h-8 rounded-md border border-gray-700 bg-[#101010] px-2 text-xs text-gray-200 outline-none"
+            className="h-8 rounded-md border border-[#303036] bg-[#101010] px-2 text-xs text-[#f2f2f3] outline-none"
             placeholder="Inicio"
           />
           <input
@@ -806,30 +806,30 @@ function ChecklistItemForm({
               onDraftChange({ ...draft, endTime: event.target.value })
             }
             onKeyDown={handleKeyDown}
-            className="h-8 rounded-md border border-gray-700 bg-[#101010] px-2 text-xs text-gray-200 outline-none"
+            className="h-8 rounded-md border border-[#303036] bg-[#101010] px-2 text-xs text-[#f2f2f3] outline-none"
             placeholder="Fim"
           />
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <label className="inline-flex items-center gap-2 text-xs text-gray-400">
+          <label className="inline-flex items-center gap-2 text-xs text-[#9b9ba3]">
             <input
               type="checkbox"
               checked={!!draft.isSacred}
               onChange={(event) =>
                 onDraftChange({ ...draft, isSacred: event.target.checked })
               }
-              className="h-4 w-4 rounded border-gray-700 bg-[#101010]"
+              className="h-4 w-4 rounded border-[#303036] bg-[#101010]"
             />
             Sagrado/destaque
           </label>
-          <label className="inline-flex items-center gap-2 text-xs text-gray-400">
+          <label className="inline-flex items-center gap-2 text-xs text-[#9b9ba3]">
             <input
               type="checkbox"
               checked={draft.active !== false}
               onChange={(event) =>
                 onDraftChange({ ...draft, active: event.target.checked })
               }
-              className="h-4 w-4 rounded border-gray-700 bg-[#101010]"
+              className="h-4 w-4 rounded border-[#303036] bg-[#101010]"
             />
             Ativo
           </label>
@@ -840,7 +840,7 @@ function ChecklistItemForm({
               variant="ghost"
               onClick={onCancel}
               disabled={saving}
-              className="h-7 px-2 text-xs text-gray-400"
+              className="h-7 px-2 text-xs text-[#9b9ba3]"
             >
               <X className="h-3.5 w-3.5" />
               Cancelar

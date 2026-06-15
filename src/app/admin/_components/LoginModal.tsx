@@ -37,35 +37,37 @@ export default function LoginModal({ onLoginSuccess }: LoginModalProps) {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-900 to-black p-4">
+    <div className="flex min-h-screen items-center justify-center bg-[#161619] p-4">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-r from-blue-500 to-purple-600">
-            <Lock className="h-8 w-8 text-white" />
+          <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-md border border-[#33333a] bg-[#202024]">
+            <Lock className="h-6 w-6 text-[#9a8cff]" />
           </div>
-          <h1 className="mb-2 text-3xl font-bold text-white">
-            Admin Dashboard
+          <h1 className="mb-2 text-2xl font-semibold text-white">
+            Admin Workspace
           </h1>
-          <p className="text-gray-400">Acesse o painel de administração</p>
+          <p className="text-sm text-[#9b9ba3]">
+            Acesse o painel de administração
+          </p>
         </div>
 
-        <div className="rounded-2xl border border-gray-700/50 bg-gray-800/50 p-6 shadow-2xl backdrop-blur-sm">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="rounded-lg border border-[#33333a] bg-[#1e1e22] p-5 shadow-2xl">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-500">
+              <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
                 {error}
               </div>
             )}
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-300">
+              <label className="mb-2 block text-xs font-medium text-[#dcddde]">
                 Usuário
               </label>
               <input
                 type="text"
                 name="username"
                 defaultValue="admin"
-                className="w-full rounded-lg border border-gray-700 bg-gray-900/50 px-4 py-3 text-white placeholder-gray-500 focus:border-transparent focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                className="h-10 w-full rounded-md border border-[#303036] bg-[#19191d] px-3 text-sm text-white outline-none placeholder:text-[#777780] focus:border-[#6f55d9]"
                 placeholder="Digite seu usuário"
                 required
                 autoComplete="username"
@@ -73,7 +75,7 @@ export default function LoginModal({ onLoginSuccess }: LoginModalProps) {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-300">
+              <label className="mb-2 block text-xs font-medium text-[#dcddde]">
                 Senha
               </label>
               <div className="relative">
@@ -81,7 +83,7 @@ export default function LoginModal({ onLoginSuccess }: LoginModalProps) {
                   type={showPassword ? 'text' : 'password'}
                   name="password"
                   defaultValue="admin123"
-                  className="w-full rounded-lg border border-gray-700 bg-gray-900/50 px-4 py-3 pr-12 text-white placeholder-gray-500 focus:border-transparent focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="h-10 w-full rounded-md border border-[#303036] bg-[#19191d] px-3 pr-10 text-sm text-white outline-none placeholder:text-[#777780] focus:border-[#6f55d9]"
                   placeholder="Digite sua senha"
                   required
                   autoComplete="current-password"
@@ -89,7 +91,7 @@ export default function LoginModal({ onLoginSuccess }: LoginModalProps) {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute top-1/2 right-3 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                  className="absolute top-1/2 right-3 -translate-y-1/2 text-[#777780] hover:text-[#dcddde]"
                 >
                   {showPassword ? (
                     <EyeOff className="h-5 w-5" />
@@ -103,7 +105,7 @@ export default function LoginModal({ onLoginSuccess }: LoginModalProps) {
             <button
               type="submit"
               disabled={loading}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 px-4 py-3 font-semibold text-white hover:from-blue-600 hover:to-purple-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-10 w-full items-center justify-center gap-2 rounded-md bg-[#6f55d9] px-4 text-sm font-medium text-white hover:bg-[#7c66df] focus:ring-2 focus:ring-[#9a8cff]/40 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading ? (
                 <>

@@ -33,22 +33,22 @@ export default function Sidebar({
 
   return (
     <aside
-      className={`flex h-screen flex-col border-r border-gray-800 bg-gray-900/95 backdrop-blur-sm ${isCollapsed && !isMobile ? 'w-16' : 'w-64'} ${isMobile ? 'w-full' : ''} transition-all duration-300`}
+      className={`flex h-screen flex-col border-r border-[#2f2f35] bg-[#19191d] ${isCollapsed && !isMobile ? 'w-16' : 'w-64'} ${isMobile ? 'w-full' : ''} transition-all duration-300`}
     >
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-gray-800 p-4">
+      <div className="flex items-center justify-between border-b border-[#2f2f35] p-3">
         {(!isCollapsed || isMobile) && (
           <div className="overflow-hidden">
-            <h2 className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-lg font-bold text-transparent">
-              Admin Panel
+            <h2 className="text-sm font-semibold text-[#f2f2f3]">
+              Admin Workspace
             </h2>
-            <p className="text-xs text-gray-400">Dashboard</p>
+            <p className="text-[11px] text-[#777780]">Portfolio OS</p>
           </div>
         )}
         {!isMobile && (
           <button
             onClick={onToggleCollapse}
-            className="rounded-lg p-1.5 transition-colors hover:bg-gray-800"
+            className="rounded-md p-1.5 text-[#9b9ba3] transition-colors hover:bg-[#24242a] hover:text-white"
             aria-label={isCollapsed ? 'Expandir' : 'Recolher'}
           >
             {isCollapsed ? (
@@ -77,10 +77,10 @@ export default function Sidebar({
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-gray-800 p-2">
+      <div className="border-t border-[#2f2f35] p-2">
         <button
           onClick={onLogout}
-          className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-red-400 transition-colors hover:bg-red-500/10 ${isCollapsed && !isMobile ? 'justify-center' : ''} `}
+          className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-red-300 transition-colors hover:bg-red-500/10 ${isCollapsed && !isMobile ? 'justify-center' : ''} `}
           title="Sair"
         >
           <LogOut size={20} className="flex-shrink-0" />

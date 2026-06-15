@@ -106,7 +106,7 @@ function statusClass(status: string) {
     return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200';
   if (status === 'in-progress')
     return 'border-amber-500/30 bg-amber-500/10 text-amber-200';
-  return 'border-sky-500/30 bg-sky-500/10 text-sky-200';
+  return 'border-[#6f55d9]/30 bg-[#6f55d9]/10 text-sky-200';
 }
 
 function uniqueValues(values: string[]) {
@@ -481,23 +481,23 @@ export default function Projects() {
   if (loading && !projects.length) {
     return (
       <div className="flex min-h-[420px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-sky-400" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#9a8cff]" />
       </div>
     );
   }
 
   return (
     <div className="space-y-5">
-      <section className="rounded-lg border border-slate-800 bg-slate-950/40 p-4">
+      <section className="rounded-lg border border-[#2f2f35] bg-[#1e1e22] p-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">
+            <p className="text-xs font-medium tracking-wide text-[#777780] uppercase">
               Portfolio workspace
             </p>
-            <h2 className="mt-1 text-2xl font-semibold text-slate-100">
+            <h2 className="mt-1 text-2xl font-semibold text-[#f2f2f3]">
               Projects
             </h2>
-            <p className="mt-1 text-sm text-slate-400">
+            <p className="mt-1 text-sm text-[#9b9ba3]">
               Organize portfolio, clientes e trabalhos sem perder vínculo com
               tasks.
             </p>
@@ -506,7 +506,7 @@ export default function Projects() {
           <button
             type="button"
             onClick={startCreate}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-sky-500 px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-sky-400 focus:ring-2 focus:ring-sky-300 focus:outline-none"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-[#6f55d9] px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-[#9a8cff] focus:ring-2 focus:ring-[#c9b8ff] focus:outline-none"
           >
             <Plus className="h-4 w-4" />
             Novo Projeto
@@ -527,16 +527,16 @@ export default function Projects() {
         </div>
       </section>
 
-      <section className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
+      <section className="rounded-lg border border-[#2f2f35] bg-[#1e1e22] p-3">
         <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_repeat(4,minmax(140px,180px))_auto]">
           <label className="relative">
             <span className="sr-only">Buscar projetos</span>
-            <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[#777780]" />
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Buscar por título, categoria, tecnologia..."
-              className="h-11 w-full rounded-md border border-slate-800 bg-slate-900/70 pr-3 pl-9 text-sm text-slate-100 transition outline-none placeholder:text-slate-500 focus:border-sky-500"
+              className="h-11 w-full rounded-md border border-[#2f2f35] bg-[#19191d] pr-3 pl-9 text-sm text-[#f2f2f3] transition outline-none placeholder:text-[#777780] focus:border-[#6f55d9]"
             />
           </label>
 
@@ -591,7 +591,7 @@ export default function Projects() {
             type="button"
             onClick={resetFilters}
             disabled={!hasFilters}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-slate-800 px-3 text-sm text-slate-300 transition hover:border-slate-600 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-[#2f2f35] px-3 text-sm text-[#dcddde] transition hover:border-[#33333a] hover:bg-[#24242a] disabled:cursor-not-allowed disabled:opacity-40"
           >
             <RotateCcw className="h-4 w-4" />
             Limpar
@@ -602,7 +602,7 @@ export default function Projects() {
       {showForm && (
         <section
           onKeyDown={handleFormKeyDown}
-          className="rounded-lg border border-sky-500/30 bg-slate-950 p-4 shadow-xl shadow-sky-950/20"
+          className="rounded-lg border border-[#6f55d9]/30 bg-[#19191d] p-4 shadow-xl shadow-sky-950/20"
         >
           <ProjectForm
             advancedOpen={advancedOpen}
@@ -631,7 +631,7 @@ export default function Projects() {
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-[#9b9ba3]">
             {filteredProjects.length} de {projects.length} projetos
             {isReordering && (
               <span className="ml-2 text-amber-300">Salvando ordem...</span>
@@ -640,15 +640,15 @@ export default function Projects() {
         </div>
 
         {filteredProjects.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-slate-700 bg-slate-950/40 p-8 text-center">
-            <p className="text-sm text-slate-300">
+          <div className="rounded-lg border border-dashed border-[#303036] bg-[#1e1e22] p-8 text-center">
+            <p className="text-sm text-[#dcddde]">
               Nenhum projeto encontrado com os filtros atuais.
             </p>
             {hasFilters && (
               <button
                 type="button"
                 onClick={resetFilters}
-                className="mt-3 text-sm font-medium text-sky-300 hover:text-sky-200"
+                className="mt-3 text-sm font-medium text-[#c9b8ff] hover:text-sky-200"
               >
                 Limpar filtros
               </button>
@@ -683,11 +683,11 @@ export default function Projects() {
 
       {deletingId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-md rounded-lg border border-slate-700 bg-slate-950 p-5 shadow-2xl">
-            <h3 className="text-lg font-semibold text-slate-100">
+          <div className="w-full max-w-md rounded-lg border border-[#303036] bg-[#19191d] p-5 shadow-2xl">
+            <h3 className="text-lg font-semibold text-[#f2f2f3]">
               Excluir projeto
             </h3>
-            <p className="mt-2 text-sm text-slate-400">
+            <p className="mt-2 text-sm text-[#9b9ba3]">
               Exclusão é bloqueada quando há tasks, features ou sprints
               vinculadas. Para remover da rotina, inative o projeto.
             </p>
@@ -708,7 +708,7 @@ export default function Projects() {
               <button
                 type="button"
                 onClick={() => setDeletingId(null)}
-                className="h-10 flex-1 rounded-md border border-slate-700 px-3 text-sm font-medium text-slate-300 transition hover:bg-slate-800"
+                className="h-10 flex-1 rounded-md border border-[#303036] px-3 text-sm font-medium text-[#dcddde] transition hover:bg-[#24242a]"
               >
                 Cancelar
               </button>
@@ -734,12 +734,12 @@ function StatCard({
     green: 'text-emerald-200',
     amber: 'text-amber-200',
     yellow: 'text-yellow-200',
-    slate: 'text-slate-200',
+    slate: 'text-[#f2f2f3]',
   }[tone];
 
   return (
-    <div className="rounded-md border border-slate-800 bg-slate-900/50 p-3">
-      <p className="text-xs text-slate-500">{label}</p>
+    <div className="rounded-md border border-[#2f2f35] bg-[#202024] p-3">
+      <p className="text-xs text-[#777780]">{label}</p>
       <p className={`mt-1 text-xl font-semibold ${toneClass}`}>{value}</p>
     </div>
   );
@@ -762,7 +762,7 @@ function FilterSelect({
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-11 w-full rounded-md border border-slate-800 bg-slate-900/70 px-3 text-sm text-slate-100 transition outline-none focus:border-sky-500"
+        className="h-11 w-full rounded-md border border-[#2f2f35] bg-[#19191d] px-3 text-sm text-[#f2f2f3] transition outline-none focus:border-[#6f55d9]"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -817,10 +817,10 @@ function ProjectForm({
     >
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-slate-100">
+          <h3 className="text-lg font-semibold text-[#f2f2f3]">
             {editing ? 'Editar projeto' : 'Novo projeto'}
           </h3>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 text-sm text-[#9b9ba3]">
             Campos principais primeiro. Salve com Ctrl/Cmd + Enter ou cancele
             com Esc.
           </p>
@@ -836,7 +836,7 @@ function ProjectForm({
           <button
             type="button"
             onClick={onCancel}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-700 px-3 text-sm text-slate-300 transition hover:bg-slate-800"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-[#303036] px-3 text-sm text-[#dcddde] transition hover:bg-[#24242a]"
           >
             <X className="h-4 w-4" />
             Cancelar
@@ -964,7 +964,7 @@ function ProjectForm({
             <button
               type="button"
               onClick={onAddTechnology}
-              className="h-11 rounded-md border border-slate-700 px-3 text-sm text-slate-200 transition hover:bg-slate-800"
+              className="h-11 rounded-md border border-[#303036] px-3 text-sm text-[#f2f2f3] transition hover:bg-[#24242a]"
             >
               Adicionar
             </button>
@@ -975,13 +975,13 @@ function ProjectForm({
               {draft.technologies.map((technology) => (
                 <span
                   key={technology}
-                  className="inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-200"
+                  className="inline-flex items-center gap-1 rounded-md border border-[#303036] bg-[#19191d] px-2 py-1 text-xs text-[#f2f2f3]"
                 >
                   {technology}
                   <button
                     type="button"
                     onClick={() => onRemoveTechnology(technology)}
-                    className="rounded text-slate-500 hover:text-red-300"
+                    className="rounded text-[#777780] hover:text-red-300"
                     aria-label={`Remover ${technology}`}
                   >
                     <X className="h-3 w-3" />
@@ -996,13 +996,13 @@ function ProjectForm({
       <button
         type="button"
         onClick={() => onSetAdvancedOpen(!advancedOpen)}
-        className="text-sm font-medium text-sky-300 hover:text-sky-200"
+        className="text-sm font-medium text-[#c9b8ff] hover:text-sky-200"
       >
         {advancedOpen ? 'Ocultar campos avançados' : 'Mostrar campos avançados'}
       </button>
 
       {advancedOpen && (
-        <div className="grid gap-3 border-t border-slate-800 pt-4 lg:grid-cols-2">
+        <div className="grid gap-3 border-t border-[#2f2f35] pt-4 lg:grid-cols-2">
           <Field label="Descrição completa" className="lg:col-span-2">
             <textarea
               value={draft.fullDescription}
@@ -1031,7 +1031,7 @@ function ProjectForm({
             />
           </Field>
 
-          <div className="overflow-hidden rounded-md border border-slate-800 bg-slate-900">
+          <div className="overflow-hidden rounded-md border border-[#2f2f35] bg-[#19191d]">
             <div className="relative h-28">
               {draft.image ? (
                 <Image
@@ -1042,7 +1042,7 @@ function ProjectForm({
                   className="object-cover"
                 />
               ) : (
-                <div className="flex h-full items-center justify-center text-slate-500">
+                <div className="flex h-full items-center justify-center text-[#777780]">
                   <ImageIcon className="h-6 w-6" />
                 </div>
               )}
@@ -1120,7 +1120,7 @@ function Field({
 }) {
   return (
     <label className={className}>
-      <span className="mb-1 block text-xs font-medium text-slate-400">
+      <span className="mb-1 block text-xs font-medium text-[#9b9ba3]">
         {label}
       </span>
       {children}
@@ -1138,13 +1138,13 @@ function ToggleField({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="flex h-full min-h-11 items-center justify-between gap-3 rounded-md border border-slate-800 bg-slate-900/70 px-3">
-      <span className="text-sm text-slate-200">{label}</span>
+    <label className="flex h-full min-h-11 items-center justify-between gap-3 rounded-md border border-[#2f2f35] bg-[#19191d] px-3">
+      <span className="text-sm text-[#f2f2f3]">{label}</span>
       <input
         type="checkbox"
         checked={checked}
         onChange={(event) => onChange(event.target.checked)}
-        className="h-4 w-4 rounded border-slate-600 bg-slate-950 text-sky-500 focus:ring-sky-400"
+        className="h-4 w-4 rounded border-slate-600 bg-[#19191d] text-[#6f55d9] focus:ring-[#9a8cff]"
       />
     </label>
   );
@@ -1176,10 +1176,10 @@ function ProjectCard({
   return (
     <article
       onDoubleClick={onEdit}
-      className="group rounded-lg border border-slate-800 bg-slate-950/60 p-3 transition hover:border-slate-700 hover:bg-slate-950"
+      className="group rounded-lg border border-[#2f2f35] bg-[#19191d]/60 p-3 transition hover:border-[#303036] hover:bg-[#19191d]"
     >
       <div className="flex gap-3">
-        <div className="relative h-24 w-28 shrink-0 overflow-hidden rounded-md border border-slate-800 bg-slate-900">
+        <div className="relative h-24 w-28 shrink-0 overflow-hidden rounded-md border border-[#2f2f35] bg-[#19191d]">
           <Image
             src={project.image || FALLBACK_PROJECT_IMAGE}
             alt={project.title}
@@ -1193,7 +1193,7 @@ function ProjectCard({
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="truncate text-base font-semibold text-slate-100">
+                <h3 className="truncate text-base font-semibold text-[#f2f2f3]">
                   {project.title}
                 </h3>
                 {project.featured && (
@@ -1203,7 +1203,7 @@ function ProjectCard({
                   </span>
                 )}
               </div>
-              <p className="mt-1 line-clamp-2 text-sm text-slate-400">
+              <p className="mt-1 line-clamp-2 text-sm text-[#9b9ba3]">
                 {project.description}
               </p>
             </div>
@@ -1238,7 +1238,7 @@ function ProjectCard({
               className={
                 project.isActive
                   ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
-                  : 'border-slate-600 bg-slate-800 text-slate-400'
+                  : 'border-slate-600 bg-[#24242a] text-[#9b9ba3]'
               }
             >
               {project.isActive ? 'Ativo' : 'Inativo'}
@@ -1251,21 +1251,21 @@ function ProjectCard({
               {project.technologies.slice(0, 6).map((technology) => (
                 <span
                   key={technology}
-                  className="rounded-md bg-slate-900 px-2 py-1 text-xs text-slate-300"
+                  className="rounded-md bg-[#19191d] px-2 py-1 text-xs text-[#dcddde]"
                 >
                   {technology}
                 </span>
               ))}
               {project.technologies.length > 6 && (
-                <span className="rounded-md bg-slate-900 px-2 py-1 text-xs text-slate-500">
+                <span className="rounded-md bg-[#19191d] px-2 py-1 text-xs text-[#777780]">
                   +{project.technologies.length - 6}
                 </span>
               )}
             </div>
           )}
 
-          <div className="mt-3 flex flex-col gap-3 border-t border-slate-800 pt-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-wrap gap-3 text-xs text-slate-500">
+          <div className="mt-3 flex flex-col gap-3 border-t border-[#2f2f35] pt-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap gap-3 text-xs text-[#777780]">
               <span>{project._count?.tasks || 0} tasks</span>
               <span>{project._count?.features || 0} features</span>
               <span>{project._count?.sprints || 0} sprints</span>
@@ -1277,7 +1277,7 @@ function ProjectCard({
                   href={project.liveUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex h-9 items-center justify-center gap-1 rounded-md border border-slate-800 px-2 text-xs text-slate-300 transition hover:border-sky-500/50 hover:text-sky-200"
+                  className="inline-flex h-9 items-center justify-center gap-1 rounded-md border border-[#2f2f35] px-2 text-xs text-[#dcddde] transition hover:border-[#6f55d9]/50 hover:text-sky-200"
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
                   Live
@@ -1288,7 +1288,7 @@ function ProjectCard({
                   href={project.githubUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex h-9 items-center justify-center gap-1 rounded-md border border-slate-800 px-2 text-xs text-slate-300 transition hover:border-slate-500 hover:text-slate-100"
+                  className="inline-flex h-9 items-center justify-center gap-1 rounded-md border border-[#2f2f35] px-2 text-xs text-[#dcddde] transition hover:border-slate-500 hover:text-[#f2f2f3]"
                 >
                   <Github className="h-3.5 w-3.5" />
                   GitHub
@@ -1330,7 +1330,7 @@ function ProjectCard({
 
 function Badge({
   children,
-  className = 'border-slate-700 bg-slate-900 text-slate-300',
+  className = 'border-[#303036] bg-[#19191d] text-[#dcddde]',
 }: {
   children: ReactNode;
   className?: string;
@@ -1370,7 +1370,7 @@ function IconButton({
       className={`inline-flex h-9 w-9 items-center justify-center rounded-md border transition disabled:cursor-not-allowed disabled:opacity-35 ${
         danger
           ? 'border-red-500/20 text-red-300 hover:bg-red-500/10'
-          : 'border-slate-800 text-slate-400 hover:border-slate-600 hover:bg-slate-800 hover:text-slate-100'
+          : 'border-[#2f2f35] text-[#9b9ba3] hover:border-[#33333a] hover:bg-[#24242a] hover:text-[#f2f2f3]'
       }`}
     >
       {children}

@@ -47,7 +47,7 @@ export const TaskListView = memo(function TaskListView({
   return (
     <div className="space-y-1">
       {/* Select All Header */}
-      <div className="flex items-center gap-3 px-4 py-2 text-sm text-gray-400">
+      <div className="flex items-center gap-3 px-4 py-2 text-sm text-[#9b9ba3]">
         <input
           type="checkbox"
           checked={selectedIds.size === tasks.length && tasks.length > 0}
@@ -58,7 +58,7 @@ export const TaskListView = memo(function TaskListView({
               onSelectAll(tasks.map((t) => t.id));
             }
           }}
-          className="h-4 w-4 cursor-pointer rounded border-gray-700 bg-[#2a2a2a]"
+          className="h-4 w-4 cursor-pointer rounded border-[#303036] bg-[#2a2a2a]"
         />
         <span>
           {selectedIds.size > 0

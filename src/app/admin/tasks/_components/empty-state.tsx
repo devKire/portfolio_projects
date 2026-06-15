@@ -20,8 +20,8 @@ export const EmptyState = memo(function EmptyState({
   return (
     <div className="flex flex-col items-center justify-center px-4 py-16">
       <div className="mb-4 text-6xl opacity-30">📋</div>
-      <h3 className="mb-2 text-lg font-medium text-gray-300">{title}</h3>
-      <p className="mb-6 max-w-md text-center text-sm text-gray-500">
+      <h3 className="mb-2 text-lg font-medium text-[#dcddde]">{title}</h3>
+      <p className="mb-6 max-w-md text-center text-sm text-[#777780]">
         {description}
       </p>
       {actionLabel && onAction && (

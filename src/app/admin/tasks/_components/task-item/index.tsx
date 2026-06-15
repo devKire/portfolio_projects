@@ -107,10 +107,10 @@ export const TaskItem = memo(function TaskItem({
     <div
       className={`relative rounded-lg transition-all duration-200 ${
         isSelected
-          ? 'border border-blue-500/30 bg-blue-500/10'
-          : 'border border-gray-800 bg-[#1a1a1a] hover:border-gray-700'
+          ? 'border border-[#6f55d9]/30 bg-[#6f55d9]/10'
+          : 'border border-[#2f2f35] bg-[#1a1a1a] hover:border-[#303036]'
       } ${task.status === 'completed' ? 'opacity-75' : ''} ${
-        isEditing ? 'ring-2 ring-blue-500/50' : ''
+        isEditing ? 'ring-2 ring-[#6f55d9]/50' : ''
       }`}
     >
       {isEditing ? (

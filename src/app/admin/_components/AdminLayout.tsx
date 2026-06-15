@@ -32,7 +32,7 @@ export default function AdminLayout({
   isMobile,
 }: AdminLayoutProps) {
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-[#161619] text-[#dcddde]">
       {/* Sidebar Desktop */}
       <div className="hidden lg:block">
         <Sidebar
@@ -56,8 +56,8 @@ export default function AdminLayout({
         />
 
         {/* Content */}
-        <main className="flex-1 p-4 md:p-6 lg:p-8">
-          <div className="mx-auto max-w-7xl">{children}</div>
+        <main className="min-w-0 flex-1 overflow-x-hidden p-3 md:p-4 lg:p-6">
+          <div className="h-full w-full min-w-0">{children}</div>
         </main>
       </div>
 

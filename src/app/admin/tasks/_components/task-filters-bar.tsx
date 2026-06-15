@@ -2,6 +2,7 @@
 'use client';
 
 import { memo, useEffect, useState } from 'react';
+import { KanbanSquare, ListChecks, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TaskFilters } from '@/lib/task-service';
 import type { TaskProjectOption } from '@/types/tasks';
@@ -71,7 +72,7 @@ export const TaskFiltersBar = memo(function TaskFiltersBar({
                 onFilterChange(key as keyof TaskFilters, value);
               });
             }}
-            className="border border-gray-700 bg-[#1e1e1e] text-xs text-gray-400 transition-colors hover:border-gray-600 hover:text-white"
+            className="rounded-md border border-[#303036] bg-[#202024] text-xs text-[#9b9ba3] transition-colors hover:border-[#33333a] hover:bg-[#24242a] hover:text-white"
           >
             {qf.label}
           </Button>
@@ -81,16 +82,14 @@ export const TaskFiltersBar = memo(function TaskFiltersBar({
       {/* Main Filters */}
       <div className="flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">
-          <span className="absolute top-1/2 left-3 -translate-y-1/2 text-sm text-gray-500">
-            🔍
-          </span>
+          <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[#777780]" />
           <input
             ref={searchInputRef}
             type="text"
             placeholder="Buscar tarefas... (Ctrl+K)"
             value={filters.search || ''}
             onChange={(e) => onFilterChange('search', e.target.value)}
-            className="w-full rounded-lg border border-gray-700 bg-[#1a1a1a] py-2 pr-4 pl-9 text-sm text-white placeholder-gray-500 transition-colors focus:border-blue-500 focus:outline-none"
+            className="h-10 w-full rounded-md border border-[#303036] bg-[#19191d] pr-3 pl-9 text-sm text-white transition-colors outline-none placeholder:text-[#777780] focus:border-[#6f55d9]"
           />
         </div>
 
@@ -99,7 +98,7 @@ export const TaskFiltersBar = memo(function TaskFiltersBar({
           onChange={(e) =>
             onFilterChange('status', e.target.value || undefined)
           }
-          className="rounded-lg border border-gray-700 bg-[#1a1a1a] px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none"
+          className="h-10 rounded-md border border-[#303036] bg-[#19191d] px-3 text-sm text-white outline-none focus:border-[#6f55d9]"
         >
           <option value="">Todos os Status</option>
           <option value="pending">Pendente</option>
@@ -112,7 +111,7 @@ export const TaskFiltersBar = memo(function TaskFiltersBar({
           onChange={(e) =>
             onFilterChange('priority', e.target.value || undefined)
           }
-          className="rounded-lg border border-gray-700 bg-[#1a1a1a] px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none"
+          className="h-10 rounded-md border border-[#303036] bg-[#19191d] px-3 text-sm text-white outline-none focus:border-[#6f55d9]"
         >
           <option value="">Todas Prioridades</option>
           <option value="low">Baixa</option>
@@ -126,7 +125,7 @@ export const TaskFiltersBar = memo(function TaskFiltersBar({
           onChange={(e) =>
             onFilterChange('projectId', e.target.value || undefined)
           }
-          className="rounded-lg border border-gray-700 bg-[#1a1a1a] px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none"
+          className="h-10 rounded-md border border-[#303036] bg-[#19191d] px-3 text-sm text-white outline-none focus:border-[#6f55d9]"
         >
           <option value="">Todos os Projetos</option>
           {projects.map((project) => (
@@ -139,7 +138,7 @@ export const TaskFiltersBar = memo(function TaskFiltersBar({
         <select
           value={filters.tag || ''}
           onChange={(e) => onFilterChange('tag', e.target.value || undefined)}
-          className="rounded-lg border border-gray-700 bg-[#1a1a1a] px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none"
+          className="h-10 rounded-md border border-[#303036] bg-[#19191d] px-3 text-sm text-white outline-none focus:border-[#6f55d9]"
         >
           <option value="">Todas Tags</option>
           {tags.map((tag) => (
@@ -155,7 +154,7 @@ export const TaskFiltersBar = memo(function TaskFiltersBar({
             onChange={(e) =>
               onFilterChange('sprintId', e.target.value || undefined)
             }
-            className="rounded-lg border border-gray-700 bg-[#1a1a1a] px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none"
+            className="h-10 rounded-md border border-[#303036] bg-[#19191d] px-3 text-sm text-white outline-none focus:border-[#6f55d9]"
           >
             <option value="">Todas as Sprints</option>
             {sprints.map((sprint) => (
@@ -167,26 +166,32 @@ export const TaskFiltersBar = memo(function TaskFiltersBar({
         )}
 
         {/* View Mode Toggle */}
-        <div className="flex overflow-hidden rounded-lg border border-gray-700">
+        <div className="flex overflow-hidden rounded-md border border-[#303036]">
           <button
             onClick={() => onViewModeChange('list')}
             className={`px-3 py-2 text-sm transition-colors ${
               viewMode === 'list'
-                ? 'bg-blue-500/20 text-blue-400'
-                : 'bg-[#1a1a1a] text-gray-400 hover:text-white'
+                ? 'bg-[#2d2940] text-[#c9b8ff]'
+                : 'bg-[#19191d] text-[#9b9ba3] hover:bg-[#24242a] hover:text-white'
             }`}
           >
-            📋 Lista
+            <span className="inline-flex items-center gap-1.5">
+              <ListChecks className="h-3.5 w-3.5" />
+              Lista
+            </span>
           </button>
           <button
             onClick={() => onViewModeChange('kanban')}
             className={`px-3 py-2 text-sm transition-colors ${
               viewMode === 'kanban'
-                ? 'bg-blue-500/20 text-blue-400'
-                : 'bg-[#1a1a1a] text-gray-400 hover:text-white'
+                ? 'bg-[#2d2940] text-[#c9b8ff]'
+                : 'bg-[#19191d] text-[#9b9ba3] hover:bg-[#24242a] hover:text-white'
             }`}
           >
-            🎯 Kanban
+            <span className="inline-flex items-center gap-1.5">
+              <KanbanSquare className="h-3.5 w-3.5" />
+              Kanban
+            </span>
           </button>
         </div>
       </div>

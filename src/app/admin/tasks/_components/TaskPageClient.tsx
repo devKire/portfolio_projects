@@ -123,7 +123,7 @@ export function TaskPageClient() {
   });
 
   return (
-    <div className="min-h-screen space-y-6 bg-[#0a0a0a] p-8">
+    <div className="min-w-0 space-y-4">
       <TaskHeader stats={stats} onNewTask={() => setIsQuickInputOpen(true)} />
 
       <TaskFiltersBar
@@ -174,8 +174,8 @@ export function TaskPageClient() {
       {/* Estado de loading inicial */}
       {loading && tasks.length === 0 && (
         <div className="flex flex-col items-center justify-center py-12">
-          <div className="mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-blue-500"></div>
-          <div className="text-gray-400">Carregando tarefas...</div>
+          <div className="mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-[#6f55d9]"></div>
+          <div className="text-[#9b9ba3]">Carregando tarefas...</div>
         </div>
       )}
 
@@ -211,7 +211,7 @@ export function TaskPageClient() {
       {/* Loading overlay para refetch */}
       {loading && tasks.length > 0 && (
         <div className="fixed top-0 right-0 left-0 z-50">
-          <div className="h-1 animate-pulse bg-gradient-to-r from-blue-500 to-purple-500"></div>
+          <div className="h-1 animate-pulse bg-gradient-to-r from-[#6f55d9] to-[#9a8cff]"></div>
         </div>
       )}
     </div>

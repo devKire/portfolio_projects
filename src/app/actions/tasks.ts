@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import type { TaskPatch } from '@/types/tasks';
+import { updateMarkdownTaskStatus } from '@/lib/note-task-sync';
 
 // Types
 export interface CreateTaskInput {
@@ -16,6 +17,8 @@ export interface CreateTaskInput {
   actualHours?: number;
   tags?: string[];
   projectId?: string | null;
+  noteId?: string | null;
+  noteTaskKey?: string | null;
   featureId?: string | null;
   sprintId?: string | null;
   parentId?: string | null;
@@ -73,6 +76,33 @@ async function createTaskActivityLog(data: {
   }
 }
 
+async function syncTaskStatusToNote(task: {
+  noteId?: string | null;
+  noteTaskKey?: string | null;
+  status?: string | null;
+}) {
+  if (!task.noteId || !task.noteTaskKey || !task.status) return;
+
+  const note = await db.note.findUnique({
+    where: { id: task.noteId },
+    select: { id: true, content: true },
+  });
+  if (!note) return;
+
+  const nextContent = updateMarkdownTaskStatus(
+    note.content,
+    task.noteTaskKey,
+    task.status === 'completed'
+  );
+
+  if (nextContent !== note.content) {
+    await db.note.update({
+      where: { id: note.id },
+      data: { content: nextContent },
+    });
+  }
+}
+
 export async function createTask(data: CreateTaskInput) {
   try {
     const createData: Prisma.TaskUncheckedCreateInput = {
@@ -90,6 +120,10 @@ export async function createTask(data: CreateTaskInput) {
     if (data.projectId && data.projectId.trim() !== '') {
       createData.projectId = data.projectId;
     }
+    if (data.noteId && data.noteId.trim() !== '') {
+      createData.noteId = data.noteId;
+      createData.noteTaskKey = data.noteTaskKey || null;
+    }
     if (data.featureId && data.featureId.trim() !== '') {
       createData.featureId = data.featureId;
     }
@@ -104,6 +138,7 @@ export async function createTask(data: CreateTaskInput) {
       data: createData,
       include: {
         project: true,
+        note: { select: { id: true, title: true, slug: true } },
         feature: true,
         sprint: true,
       },
@@ -121,6 +156,7 @@ export async function createTask(data: CreateTaskInput) {
     });
 
     revalidatePath('/admin/tasks');
+    revalidatePath('/admin');
     return { success: true, data: task };
   } catch (error) {
     console.error('Error creating task:', error);
@@ -158,6 +194,13 @@ export async function updateTask(id: string, data: TaskPatch) {
       updateData.projectId =
         data.projectId && data.projectId.trim() !== '' ? data.projectId : null;
     }
+    if (data.noteId !== undefined) {
+      updateData.noteId =
+        data.noteId && data.noteId.trim() !== '' ? data.noteId : null;
+    }
+    if (data.noteTaskKey !== undefined) {
+      updateData.noteTaskKey = data.noteTaskKey || null;
+    }
     if (data.featureId !== undefined) {
       updateData.featureId =
         data.featureId && data.featureId.trim() !== '' ? data.featureId : null;
@@ -182,10 +225,15 @@ export async function updateTask(id: string, data: TaskPatch) {
       data: updateData,
       include: {
         project: true,
+        note: { select: { id: true, title: true, slug: true } },
         feature: true,
         sprint: true,
       },
     });
+
+    if (data.status !== undefined) {
+      await syncTaskStatusToNote(task);
+    }
 
     if (data.status !== undefined && data.status !== existingTask.status) {
       await createTaskActivityLog({
@@ -206,6 +254,7 @@ export async function updateTask(id: string, data: TaskPatch) {
     }
 
     revalidatePath('/admin/tasks');
+    revalidatePath('/admin');
     return { success: true, data: task };
   } catch (error) {
     console.error('Error updating task:', error);
@@ -237,6 +286,7 @@ export async function deleteTask(id: string) {
     }
 
     revalidatePath('/admin/tasks');
+    revalidatePath('/admin');
     return { success: true };
   } catch (error) {
     console.error('Error deleting task:', error);
@@ -559,6 +609,7 @@ export async function getTasksWithFilters(filters?: {
         where,
         include: {
           project: { select: { id: true, title: true } },
+          note: { select: { id: true, title: true, slug: true } },
           feature: { select: { id: true, name: true } },
           sprint: { select: { id: true, name: true } },
           subtasks: { select: { id: true, title: true, status: true } },
@@ -612,6 +663,7 @@ export async function getTasks(filters?: {
       where,
       include: {
         project: true,
+        note: { select: { id: true, title: true, slug: true } },
         feature: true,
         sprint: true,
         subtasks: true,

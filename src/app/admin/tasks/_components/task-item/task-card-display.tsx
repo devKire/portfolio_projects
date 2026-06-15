@@ -45,8 +45,8 @@ const priorityLabels: Record<TaskPriority, string> = {
 };
 
 const priorityClasses: Record<TaskPriority, string> = {
-  low: 'border-gray-700 bg-gray-900/50 text-gray-400',
-  medium: 'border-blue-500/25 bg-blue-500/10 text-blue-300',
+  low: 'border-[#303036] bg-[#202024] text-[#9b9ba3]',
+  medium: 'border-[#6f55d9]/25 bg-[#6f55d9]/10 text-[#c9b8ff]',
   high: 'border-amber-500/25 bg-amber-500/10 text-amber-300',
   urgent: 'border-red-500/30 bg-red-500/10 text-red-300',
 };
@@ -232,7 +232,7 @@ export const TaskCardDisplay = memo(function TaskCardDisplay({
           checked={isSelected}
           onChange={() => onToggleSelect(task.id)}
           onClick={(event) => event.stopPropagation()}
-          className="mt-2 h-4 w-4 cursor-pointer rounded border-gray-700 bg-[#2a2a2a] focus:ring-2 focus:ring-blue-500"
+          className="mt-2 h-4 w-4 cursor-pointer rounded border-[#303036] bg-[#2a2a2a] focus:ring-2 focus:ring-[#6f55d9]"
         />
 
         <button
@@ -243,7 +243,7 @@ export const TaskCardDisplay = memo(function TaskCardDisplay({
             event.stopPropagation();
             onStatusChange(isCompleted ? 'pending' : 'completed');
           }}
-          className="mt-1.5 rounded text-gray-500 transition-colors hover:text-green-300 focus:ring-2 focus:ring-green-500/50 focus:outline-none"
+          className="mt-1.5 rounded text-[#777780] transition-colors hover:text-green-300 focus:ring-2 focus:ring-green-500/50 focus:outline-none"
         >
           {isCompleted ? (
             <CheckCircle2 className="h-4 w-4 text-green-400" />
@@ -267,7 +267,7 @@ export const TaskCardDisplay = memo(function TaskCardDisplay({
                     setEditingField(null);
                   })
                 }
-                className="min-w-[220px] flex-1 rounded-md border border-blue-500/40 bg-[#111] px-2 py-1 text-sm font-medium text-white outline-none focus:ring-2 focus:ring-blue-500/30"
+                className="min-w-[220px] flex-1 rounded-md border border-[#6f55d9]/40 bg-[#111] px-2 py-1 text-sm font-medium text-white outline-none focus:ring-2 focus:ring-[#6f55d9]/30"
               />
             ) : (
               <button
@@ -275,8 +275,8 @@ export const TaskCardDisplay = memo(function TaskCardDisplay({
                 type="button"
                 onClick={() => setEditingField('title')}
                 className={cn(
-                  'min-w-0 rounded px-1 py-0.5 text-left text-sm font-medium text-white transition-colors outline-none hover:bg-white/5 focus:ring-2 focus:ring-blue-500/40',
-                  isCompleted && 'text-gray-500 line-through'
+                  'min-w-0 rounded px-1 py-0.5 text-left text-sm font-medium text-white transition-colors outline-none hover:bg-white/5 focus:ring-2 focus:ring-[#6f55d9]/40',
+                  isCompleted && 'text-[#777780] line-through'
                 )}
               >
                 <span className="line-clamp-1">{task.title}</span>
@@ -319,14 +319,14 @@ export const TaskCardDisplay = memo(function TaskCardDisplay({
                     commitDescription();
                   }
                 }}
-                className="w-full resize-none rounded-md border border-gray-700 bg-[#111] px-2 py-1 text-sm text-gray-200 outline-none focus:border-blue-500/50"
+                className="w-full resize-none rounded-md border border-[#303036] bg-[#111] px-2 py-1 text-sm text-[#f2f2f3] outline-none focus:border-[#6f55d9]/50"
               />
             ) : (
               <button
                 data-inline-control
                 type="button"
                 onClick={() => setEditingField('description')}
-                className="line-clamp-1 rounded px-1 py-0.5 text-left text-xs text-gray-500 transition-colors outline-none hover:bg-white/5 hover:text-gray-300 focus:ring-2 focus:ring-blue-500/30"
+                className="line-clamp-1 rounded px-1 py-0.5 text-left text-xs text-[#777780] transition-colors outline-none hover:bg-white/5 hover:text-[#dcddde] focus:ring-2 focus:ring-[#6f55d9]/30"
               >
                 {task.description || 'Adicionar descricao'}
               </button>
@@ -339,7 +339,7 @@ export const TaskCardDisplay = memo(function TaskCardDisplay({
               aria-label="Status"
               value={task.status}
               onChange={(event) => onStatusChange(event.target.value)}
-              className="h-7 cursor-pointer rounded-md border border-gray-800 bg-[#111] px-2 text-xs text-gray-300 outline-none hover:border-gray-700 focus:border-blue-500"
+              className="h-7 cursor-pointer rounded-md border border-[#2f2f35] bg-[#111] px-2 text-xs text-[#dcddde] outline-none hover:border-[#303036] focus:border-[#6f55d9]"
             >
               <option value="pending">Pendente</option>
               <option value="in-progress">Em andamento</option>
@@ -357,7 +357,7 @@ export const TaskCardDisplay = memo(function TaskCardDisplay({
                 )
               }
               className={cn(
-                'h-7 cursor-pointer rounded-md border px-2 text-xs outline-none focus:border-blue-500',
+                'h-7 cursor-pointer rounded-md border px-2 text-xs outline-none focus:border-[#6f55d9]',
                 priorityClasses[priority] || priorityClasses.medium
               )}
             >
@@ -370,7 +370,7 @@ export const TaskCardDisplay = memo(function TaskCardDisplay({
 
             <label
               data-inline-control
-              className="inline-flex h-7 items-center gap-1 rounded-md border border-gray-800 bg-[#111] px-2 text-gray-400 hover:border-gray-700"
+              className="inline-flex h-7 items-center gap-1 rounded-md border border-[#2f2f35] bg-[#111] px-2 text-[#9b9ba3] hover:border-[#303036]"
             >
               <Calendar className="h-3.5 w-3.5" />
               <span className="sr-only">Data</span>
@@ -389,13 +389,13 @@ export const TaskCardDisplay = memo(function TaskCardDisplay({
                     }
                   )
                 }
-                className="w-[116px] bg-transparent text-xs text-gray-300 outline-none"
+                className="w-[116px] bg-transparent text-xs text-[#dcddde] outline-none"
               />
             </label>
 
             <label
               data-inline-control
-              className="inline-flex h-7 items-center gap-1 rounded-md border border-gray-800 bg-[#111] px-2 text-gray-400 hover:border-gray-700"
+              className="inline-flex h-7 items-center gap-1 rounded-md border border-[#2f2f35] bg-[#111] px-2 text-[#9b9ba3] hover:border-[#303036]"
             >
               <Clock3 className="h-3.5 w-3.5" />
               <span className="sr-only">Horas estimadas</span>
@@ -410,14 +410,14 @@ export const TaskCardDisplay = memo(function TaskCardDisplay({
                     { estimatedHours: task.estimatedHours || 0 }
                   )
                 }
-                className="w-12 bg-transparent text-xs text-gray-300 outline-none"
+                className="w-12 bg-transparent text-xs text-[#dcddde] outline-none"
               />
               <span>h</span>
             </label>
 
             <label
               data-inline-control
-              className="inline-flex h-7 items-center gap-1 rounded-md border border-gray-800 bg-[#111] px-2 text-gray-400 hover:border-gray-700"
+              className="inline-flex h-7 items-center gap-1 rounded-md border border-[#2f2f35] bg-[#111] px-2 text-[#9b9ba3] hover:border-[#303036]"
             >
               <span className="text-[10px] font-medium">real</span>
               <input
@@ -431,7 +431,7 @@ export const TaskCardDisplay = memo(function TaskCardDisplay({
                     { actualHours: task.actualHours || 0 }
                   )
                 }
-                className="w-12 bg-transparent text-xs text-gray-300 outline-none"
+                className="w-12 bg-transparent text-xs text-[#dcddde] outline-none"
               />
               <span>h</span>
             </label>
@@ -449,14 +449,14 @@ export const TaskCardDisplay = memo(function TaskCardDisplay({
                     setEditingField(null);
                   })
                 }
-                className="h-7 min-w-[160px] rounded-md border border-gray-700 bg-[#111] px-2 text-xs text-gray-200 outline-none focus:border-blue-500/50"
+                className="h-7 min-w-[160px] rounded-md border border-[#303036] bg-[#111] px-2 text-xs text-[#f2f2f3] outline-none focus:border-[#6f55d9]/50"
               />
             ) : (
               <button
                 data-inline-control
                 type="button"
                 onClick={() => setEditingField('tags')}
-                className="inline-flex h-7 max-w-full items-center gap-1 rounded-md border border-gray-800 bg-[#111] px-2 text-gray-400 outline-none hover:border-gray-700 hover:text-gray-200 focus:ring-2 focus:ring-blue-500/30"
+                className="inline-flex h-7 max-w-full items-center gap-1 rounded-md border border-[#2f2f35] bg-[#111] px-2 text-[#9b9ba3] outline-none hover:border-[#303036] hover:text-[#f2f2f3] focus:ring-2 focus:ring-[#6f55d9]/30"
               >
                 <Tag className="h-3.5 w-3.5" />
                 <span className="truncate">
@@ -475,7 +475,7 @@ export const TaskCardDisplay = memo(function TaskCardDisplay({
 
             <label
               data-inline-control
-              className="inline-flex h-7 items-center gap-1 rounded-md border border-purple-500/20 bg-purple-500/10 px-2 text-purple-300 hover:border-purple-400/40"
+              className="inline-flex h-7 items-center gap-1 rounded-md border border-[#9a8cff]/20 bg-[#9a8cff]/10 px-2 text-[#c9b8ff] hover:border-[#c9b8ff]/40"
             >
               <Briefcase className="h-3.5 w-3.5" />
               <span className="sr-only">Projeto</span>
@@ -507,7 +507,7 @@ export const TaskCardDisplay = memo(function TaskCardDisplay({
             </label>
 
             {task.subtasks && task.subtasks.length > 0 && (
-              <span className="inline-flex h-7 items-center rounded-md border border-gray-800 bg-[#111] px-2 text-gray-500">
+              <span className="inline-flex h-7 items-center rounded-md border border-[#2f2f35] bg-[#111] px-2 text-[#777780]">
                 {completedSubtasks}/{task.subtasks.length} subtasks
               </span>
             )}
@@ -537,7 +537,7 @@ export const TaskCardDisplay = memo(function TaskCardDisplay({
               event.stopPropagation();
               onEditStart();
             }}
-            className="h-7 w-7 text-gray-500 hover:text-gray-200"
+            className="h-7 w-7 text-[#777780] hover:text-[#f2f2f3]"
             title="Abrir edicao completa"
           >
             <span className="sr-only">Abrir edicao completa</span>
@@ -553,7 +553,7 @@ export const TaskCardDisplay = memo(function TaskCardDisplay({
               onDelete();
             }}
             disabled={isDeleting}
-            className="h-7 w-7 text-gray-500 hover:text-red-300"
+            className="h-7 w-7 text-[#777780] hover:text-red-300"
             title="Excluir tarefa"
           >
             <span className="sr-only">Excluir tarefa</span>
@@ -567,9 +567,9 @@ export const TaskCardDisplay = memo(function TaskCardDisplay({
       </div>
 
       {(task.estimatedHours || 0) > 0 && (
-        <div className="mt-2 ml-14 h-1 overflow-hidden rounded-full bg-gray-900">
+        <div className="mt-2 ml-14 h-1 overflow-hidden rounded-full bg-[#19191d]">
           <div
-            className="h-full rounded-full bg-blue-500 transition-all duration-300"
+            className="h-full rounded-full bg-[#6f55d9] transition-all duration-300"
             style={{
               width: `${Math.min(((task.actualHours || 0) / (task.estimatedHours || 1)) * 100, 100)}%`,
             }}

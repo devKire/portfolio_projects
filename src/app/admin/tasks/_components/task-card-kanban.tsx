@@ -21,7 +21,7 @@ interface TaskCardProps {
 
 const priorityColors: Record<TaskPriority, string> = {
   low: 'border-l-gray-500',
-  medium: 'border-l-blue-500',
+  medium: 'border-l-[#6f55d9]',
   high: 'border-l-yellow-500',
   urgent: 'border-l-red-500',
 };
@@ -96,7 +96,7 @@ export const TaskCard = memo(function TaskCard({
   return (
     <div
       className={cn(
-        'group relative rounded-lg border border-l-2 border-gray-800 bg-[#1e1e1e] p-3 transition-colors hover:border-gray-700',
+        'group relative rounded-lg border border-l-2 border-[#2f2f35] bg-[#1e1e1e] p-3 transition-colors hover:border-[#303036]',
         priorityColors[priority] || priorityColors.medium,
         isOverdue && 'bg-red-500/5'
       )}
@@ -126,7 +126,7 @@ export const TaskCard = memo(function TaskCard({
                 setIsEditingTitle(false);
               }
             }}
-            className="min-w-0 flex-1 rounded-md border border-blue-500/40 bg-[#111] px-2 py-1 text-sm font-medium text-white outline-none"
+            className="min-w-0 flex-1 rounded-md border border-[#6f55d9]/40 bg-[#111] px-2 py-1 text-sm font-medium text-white outline-none"
           />
         ) : (
           <button
@@ -134,8 +134,8 @@ export const TaskCard = memo(function TaskCard({
             type="button"
             onClick={() => setIsEditingTitle(true)}
             className={cn(
-              'line-clamp-2 flex-1 rounded px-1 py-0.5 text-left text-sm font-medium text-white outline-none hover:bg-white/5 focus:ring-2 focus:ring-blue-500/30',
-              task.status === 'completed' && 'text-gray-500 line-through'
+              'line-clamp-2 flex-1 rounded px-1 py-0.5 text-left text-sm font-medium text-white outline-none hover:bg-white/5 focus:ring-2 focus:ring-[#6f55d9]/30',
+              task.status === 'completed' && 'text-[#777780] line-through'
             )}
           >
             {task.title}
@@ -147,7 +147,7 @@ export const TaskCard = memo(function TaskCard({
           size="icon"
           variant="ghost"
           onClick={handleDelete}
-          className="h-6 w-6 text-gray-500 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 hover:text-red-300"
+          className="h-6 w-6 text-[#777780] opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 hover:text-red-300"
         >
           <span className="sr-only">Excluir tarefa</span>
           <Trash2 className="h-3.5 w-3.5" />
@@ -158,14 +158,14 @@ export const TaskCard = memo(function TaskCard({
         {task.tags?.map((tag) => (
           <span
             key={tag}
-            className="inline-flex items-center rounded bg-gray-800/50 px-1.5 py-0.5 text-xs text-gray-400"
+            className="inline-flex items-center rounded bg-[#24242a] px-1.5 py-0.5 text-xs text-[#9b9ba3]"
           >
             #{tag}
           </span>
         ))}
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
+      <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-[#777780]">
         <select
           data-kanban-control
           value={priority}
@@ -175,7 +175,7 @@ export const TaskCard = memo(function TaskCard({
               { priority: task.priority }
             )
           }
-          className="h-7 rounded-md border border-gray-800 bg-[#111] px-2 text-xs text-gray-300 outline-none focus:border-blue-500"
+          className="h-7 rounded-md border border-[#2f2f35] bg-[#111] px-2 text-xs text-[#dcddde] outline-none focus:border-[#6f55d9]"
         >
           <option value="low">Baixa</option>
           <option value="medium">Media</option>
@@ -185,7 +185,7 @@ export const TaskCard = memo(function TaskCard({
 
         <label
           data-kanban-control
-          className="inline-flex h-7 items-center gap-1 rounded-md border border-gray-800 bg-[#111] px-2"
+          className="inline-flex h-7 items-center gap-1 rounded-md border border-[#2f2f35] bg-[#111] px-2"
         >
           <Calendar className="h-3.5 w-3.5" />
           <input
@@ -201,13 +201,13 @@ export const TaskCard = memo(function TaskCard({
                 { dueDate: task.dueDate ? new Date(task.dueDate) : null }
               )
             }
-            className="w-[104px] bg-transparent text-xs text-gray-300 outline-none"
+            className="w-[104px] bg-transparent text-xs text-[#dcddde] outline-none"
           />
         </label>
 
         <label
           data-kanban-control
-          className="inline-flex h-7 items-center gap-1 rounded-md border border-gray-800 bg-[#111] px-2"
+          className="inline-flex h-7 items-center gap-1 rounded-md border border-[#2f2f35] bg-[#111] px-2"
         >
           <input
             type="number"
@@ -220,14 +220,14 @@ export const TaskCard = memo(function TaskCard({
                 { estimatedHours: task.estimatedHours || 0 }
               )
             }
-            className="w-10 bg-transparent text-xs text-gray-300 outline-none"
+            className="w-10 bg-transparent text-xs text-[#dcddde] outline-none"
           />
           <span>h</span>
         </label>
 
         <label
           data-kanban-control
-          className="inline-flex h-7 items-center gap-1 rounded-md border border-purple-500/20 bg-purple-500/10 px-2 text-purple-300"
+          className="inline-flex h-7 items-center gap-1 rounded-md border border-[#9a8cff]/20 bg-[#9a8cff]/10 px-2 text-[#c9b8ff]"
         >
           <Briefcase className="h-3.5 w-3.5" />
           <select
@@ -257,13 +257,13 @@ export const TaskCard = memo(function TaskCard({
         </label>
 
         {task.feature && (
-          <span className="text-purple-300">{task.feature.name}</span>
+          <span className="text-[#c9b8ff]">{task.feature.name}</span>
         )}
         {isOverdue && (
           <span className="font-medium text-red-300">Atrasada</span>
         )}
         {saving && (
-          <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-500" />
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-[#777780]" />
         )}
       </div>
     </div>

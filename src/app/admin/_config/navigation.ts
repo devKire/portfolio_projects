@@ -1,6 +1,7 @@
 // app/admin/_config/navigation.ts
 import {
   BarChart3,
+  BookOpen,
   Folder,
   Globe,
   MessageSquare,
@@ -13,6 +14,7 @@ export const TAB_CONFIG = [
   { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
   { id: 'tasks', label: 'Tasks', icon: Pen },
   { id: 'projects', label: 'Projetos', icon: Folder },
+  { id: 'notes', label: 'Notas', icon: BookOpen },
   { id: 'social', label: 'Redes Sociais', icon: Users },
   { id: 'comments', label: 'Comentários', icon: MessageSquare },
   { id: 'analytics', label: 'Analytics', icon: Globe },

@@ -13,7 +13,7 @@ interface StatCardProps {
 const colorMap = {
   gray: 'text-white',
   yellow: 'text-yellow-400',
-  blue: 'text-blue-400',
+  blue: 'text-[#9a8cff]',
   green: 'text-green-400',
 };
 
@@ -24,9 +24,9 @@ const StatCard = memo(function StatCard({
   icon,
 }: StatCardProps) {
   return (
-    <div className="group rounded-lg border border-gray-800 bg-[#1a1a1a] p-4 transition-all hover:border-gray-700 hover:bg-[#1e1e1e]">
+    <div className="group rounded-lg border border-[#2f2f35] bg-[#1a1a1a] p-4 transition-all hover:border-[#303036] hover:bg-[#1e1e1e]">
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-sm text-gray-500">{label}</span>
+        <span className="text-sm text-[#777780]">{label}</span>
         <span className="text-sm">{icon}</span>
       </div>
       <div className={`text-2xl font-bold ${colorMap[color]} tabular-nums`}>

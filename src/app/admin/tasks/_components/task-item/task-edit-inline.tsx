@@ -99,7 +99,7 @@ export function TaskEditInline({
           }
           onKeyDown={handleKeyDown}
           placeholder="Título da tarefa"
-          className="w-full rounded-lg border border-gray-700 bg-[#2a2a2a] px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+          className="w-full rounded-lg border border-[#303036] bg-[#2a2a2a] px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-[#6f55d9] focus:ring-1 focus:ring-[#6f55d9] focus:outline-none"
           required
         />
       </div>
@@ -118,14 +118,14 @@ export function TaskEditInline({
           }}
           placeholder="Descrição (opcional)"
           rows={3}
-          className="w-full resize-none rounded-lg border border-gray-700 bg-[#2a2a2a] px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+          className="w-full resize-none rounded-lg border border-[#303036] bg-[#2a2a2a] px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-[#6f55d9] focus:ring-1 focus:ring-[#6f55d9] focus:outline-none"
         />
       </div>
 
       {/* Grid de campos secundários */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-400">
+          <label className="mb-1 block text-xs font-medium text-[#9b9ba3]">
             Status
           </label>
           <select
@@ -133,7 +133,7 @@ export function TaskEditInline({
             onChange={(e) =>
               setFormData((prev) => ({ ...prev, status: e.target.value }))
             }
-            className="w-full rounded-lg border border-gray-700 bg-[#2a2a2a] px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none"
+            className="w-full rounded-lg border border-[#303036] bg-[#2a2a2a] px-3 py-2 text-sm text-white focus:border-[#6f55d9] focus:outline-none"
           >
             <option value="pending">📋 Pendente</option>
             <option value="in-progress">🔄 Em Andamento</option>
@@ -142,7 +142,7 @@ export function TaskEditInline({
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-400">
+          <label className="mb-1 block text-xs font-medium text-[#9b9ba3]">
             Prioridade
           </label>
           <select
@@ -150,7 +150,7 @@ export function TaskEditInline({
             onChange={(e) =>
               setFormData((prev) => ({ ...prev, priority: e.target.value }))
             }
-            className="w-full rounded-lg border border-gray-700 bg-[#2a2a2a] px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none"
+            className="w-full rounded-lg border border-[#303036] bg-[#2a2a2a] px-3 py-2 text-sm text-white focus:border-[#6f55d9] focus:outline-none"
           >
             <option value="low">🔽 Baixa</option>
             <option value="medium">📌 Média</option>
@@ -160,7 +160,7 @@ export function TaskEditInline({
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-400">
+          <label className="mb-1 block text-xs font-medium text-[#9b9ba3]">
             Data de Vencimento
           </label>
           <input
@@ -169,12 +169,12 @@ export function TaskEditInline({
             onChange={(e) =>
               setFormData((prev) => ({ ...prev, dueDate: e.target.value }))
             }
-            className="w-full rounded-lg border border-gray-700 bg-[#2a2a2a] px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none"
+            className="w-full rounded-lg border border-[#303036] bg-[#2a2a2a] px-3 py-2 text-sm text-white focus:border-[#6f55d9] focus:outline-none"
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-400">
+          <label className="mb-1 block text-xs font-medium text-[#9b9ba3]">
             Horas Estimadas
           </label>
           <input
@@ -188,12 +188,12 @@ export function TaskEditInline({
                 estimatedHours: parseFloat(e.target.value) || 0,
               }))
             }
-            className="w-full rounded-lg border border-gray-700 bg-[#2a2a2a] px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none"
+            className="w-full rounded-lg border border-[#303036] bg-[#2a2a2a] px-3 py-2 text-sm text-white focus:border-[#6f55d9] focus:outline-none"
           />
         </div>
 
         <div className="col-span-2">
-          <label className="mb-1 block text-xs font-medium text-gray-400">
+          <label className="mb-1 block text-xs font-medium text-[#9b9ba3]">
             Projeto
           </label>
           <select
@@ -201,7 +201,7 @@ export function TaskEditInline({
             onChange={(e) =>
               setFormData((prev) => ({ ...prev, projectId: e.target.value }))
             }
-            className="w-full rounded-lg border border-gray-700 bg-[#2a2a2a] px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none"
+            className="w-full rounded-lg border border-[#303036] bg-[#2a2a2a] px-3 py-2 text-sm text-white focus:border-[#6f55d9] focus:outline-none"
           >
             <option value="">Sem projeto</option>
             {projects.map((project) => (
@@ -214,13 +214,13 @@ export function TaskEditInline({
       </div>
 
       {/* Botões de ação */}
-      <div className="flex items-center justify-between border-t border-gray-800 pt-2">
-        <div className="text-xs text-gray-500">
-          <kbd className="rounded bg-gray-800 px-1.5 py-0.5 font-mono text-[10px] text-gray-400">
+      <div className="flex items-center justify-between border-t border-[#2f2f35] pt-2">
+        <div className="text-xs text-[#777780]">
+          <kbd className="rounded bg-[#24242a] px-1.5 py-0.5 font-mono text-[10px] text-[#9b9ba3]">
             Esc
           </kbd>{' '}
           para cancelar •{' '}
-          <kbd className="rounded bg-gray-800 px-1.5 py-0.5 font-mono text-[10px] text-gray-400">
+          <kbd className="rounded bg-[#24242a] px-1.5 py-0.5 font-mono text-[10px] text-[#9b9ba3]">
             Ctrl+Enter
           </kbd>{' '}
           para salvar

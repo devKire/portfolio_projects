@@ -66,6 +66,7 @@ export async function getFilteredTasks(
         where,
         include: {
           project: { select: { id: true, title: true } },
+          note: { select: { id: true, title: true, slug: true } },
           feature: { select: { id: true, name: true } },
           sprint: { select: { id: true, name: true } },
           subtasks: { select: { id: true, title: true, status: true } },

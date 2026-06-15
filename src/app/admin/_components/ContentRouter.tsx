@@ -19,6 +19,10 @@ const Projects = dynamic(() => import('../_tabs/Projects'), {
   loading: () => <ContentLoader />,
 });
 
+const Notes = dynamic(() => import('../_tabs/Notes'), {
+  loading: () => <ContentLoader />,
+});
+
 const SettingsTab = dynamic(() => import('../_tabs/Settings'), {
   loading: () => <ContentLoader />,
 });
@@ -33,11 +37,11 @@ function ComingSoon({
 }) {
   return (
     <div className="flex flex-col items-center justify-center py-12">
-      <div className="mb-4 rounded-full bg-gray-800/50 p-4">
-        <Icon className="h-8 w-8 text-gray-400" />
+      <div className="mb-4 rounded-md border border-[#303036] bg-[#202024] p-4">
+        <Icon className="h-8 w-8 text-[#9a8cff]" />
       </div>
-      <h3 className="mb-2 text-xl font-semibold">{title}</h3>
-      <p className="text-gray-400">Em breve...</p>
+      <h3 className="mb-2 text-lg font-semibold text-white">{title}</h3>
+      <p className="text-sm text-[#9b9ba3]">Em breve...</p>
     </div>
   );
 }
@@ -55,6 +59,8 @@ export default function ContentRouter({ activeTab }: ContentRouterProps) {
         return <Tasks />;
       case 'projects':
         return <Projects />;
+      case 'notes':
+        return <Notes />;
       case 'social':
         return <ComingSoon icon={Users} title="Redes Sociais" />;
       case 'comments':
@@ -69,12 +75,12 @@ export default function ContentRouter({ activeTab }: ContentRouterProps) {
   };
 
   return (
-    <div className="rounded-xl border border-gray-800/50 bg-gray-900/40 p-4 backdrop-blur-sm md:p-6">
+    <div className="h-full w-full min-w-0">
       <Suspense fallback={<ContentLoader />}>
         {/* Breadcrumb */}
-        <div className="mb-6 hidden items-center gap-2 text-sm lg:flex">
-          <span className="text-gray-500">Admin</span>
-          <span className="text-gray-600">/</span>
+        <div className="mb-3 hidden items-center gap-2 text-xs lg:flex">
+          <span className="text-[#777780]">Admin</span>
+          <span className="text-[#55555d]">/</span>
           <span className="font-medium text-white capitalize">{activeTab}</span>
         </div>
 

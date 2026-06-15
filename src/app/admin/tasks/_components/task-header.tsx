@@ -20,22 +20,22 @@ export const TaskHeader = memo(function TaskHeader({
   onNewTask,
 }: TaskHeaderProps) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-white">
+          <h1 className="text-2xl font-semibold tracking-tight text-white">
             Task Manager
           </h1>
-          <p className="mt-1 text-sm text-gray-400">
+          <p className="mt-1 text-sm text-[#9b9ba3]">
             Gerencie suas tarefas com eficiência e clareza
           </p>
         </div>
 
         <Button
           onClick={onNewTask}
-          className="inline-flex items-center gap-2 rounded-lg bg-blue-500 px-4 py-2 text-white transition-colors hover:bg-blue-600"
+          className="inline-flex h-10 items-center gap-2 rounded-md bg-[#6f55d9] px-4 text-sm font-medium text-white transition-colors hover:bg-[#7c66df]"
         >
-          <span className="text-lg">+</span>
+          <span className="text-base">+</span>
           <span>Nova Tarefa</span>
         </Button>
       </div>
