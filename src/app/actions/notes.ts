@@ -30,6 +30,9 @@ export type NoteFormInput = {
   status?: NoteStatus;
   tags?: string[];
   projectId?: string | null;
+  folderId?: string | null;
+  folderPath?: string | null;
+  folderName?: string | null;
 };
 
 export type NoteFilters = {
@@ -1043,6 +1046,8 @@ export async function createNote(input: NoteFormInput) {
     const slug = await createUniqueSlug(title, input.slug);
     const tags = extractNoteTags(content, input.tags);
 
+    const filePath = input.folderPath ? `${input.folderPath}/${slug}.md` : null;
+
     const note = await db.note.create({
       data: {
         title,
@@ -1054,6 +1059,10 @@ export async function createNote(input: NoteFormInput) {
           : 'PRIVATE',
         status: isNoteStatus(input.status) ? input.status : 'DRAFT',
         projectId: input.projectId || null,
+        folderId: input.folderId || null,
+        folderPath: input.folderPath || null,
+        folderName: input.folderName || null,
+        filePath,
       },
     });
 

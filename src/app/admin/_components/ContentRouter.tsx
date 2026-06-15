@@ -75,16 +75,18 @@ export default function ContentRouter({ activeTab }: ContentRouterProps) {
   };
 
   return (
-    <div className="h-full w-full min-w-0">
-      <Suspense fallback={<ContentLoader />}>
-        {/* Breadcrumb */}
-        <div className="mb-3 hidden items-center gap-2 text-xs lg:flex">
-          <span className="text-[#777780]">Admin</span>
-          <span className="text-[#55555d]">/</span>
-          <span className="font-medium text-white capitalize">{activeTab}</span>
-        </div>
+    <div className="flex h-full min-h-0 w-full flex-col">
+      {/* Breadcrumb */}
+      <div className="mb-3 hidden shrink-0 items-center gap-2 text-xs lg:flex">
+        <span className="text-[#777780]">Admin</span>
+        <span className="text-[#55555d]">/</span>
+        <span className="font-medium text-white capitalize">{activeTab}</span>
+      </div>
 
-        {renderContent()}
+      <Suspense fallback={<ContentLoader />}>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          {renderContent()}
+        </div>
       </Suspense>
     </div>
   );

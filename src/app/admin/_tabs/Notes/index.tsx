@@ -25,6 +25,7 @@ import {
   Loader2,
   MoreHorizontal,
   PanelLeftClose,
+  PanelRightClose,
   Plus,
   Search,
   Sparkles,
@@ -69,6 +70,12 @@ import {
   type PreviewAttachment,
   type PreviewNote,
 } from './MarkdownPreview';
+import { useAutoSave, type SaveStatus } from './useAutoSave';
+import {
+  WikiLinkAutocomplete,
+  parseWikilinkAtCursor,
+  estimateCursorPosition,
+} from './WikiLinkAutocomplete';
 
 const GraphFlow = dynamic(
   () => import('./GraphFlow').then((mod) => mod.GraphFlow),
@@ -272,6 +279,7 @@ function FolderTree({
   onMoveNote,
   onReorder,
   onDropState,
+  onCreateNote,
 }: {
   nodes: FolderNode[];
   activeFolder: string | null | undefined;
@@ -293,6 +301,7 @@ function FolderTree({
   onMoveNote: (noteId: string, folderId: string | null) => void;
   onReorder: (folder: FolderNode, direction: -1 | 1) => void;
   onDropState: (folderId: string | null) => void;
+  onCreateNote: (folder: FolderNode) => void;
 }) {
   const handleDrop = (event: ReactDragEvent, folder: FolderNode) => {
     event.preventDefault();
@@ -411,6 +420,13 @@ function FolderTree({
               <div className="mt-1 ml-7 grid grid-cols-2 gap-1 rounded-md border border-[#303036] bg-[#202024] p-1 text-[11px] shadow-xl">
                 <button
                   type="button"
+                  onClick={() => onCreateNote(node)}
+                  className="rounded px-2 py-1 text-left text-[#c9c9d1] hover:bg-[#2a2a30]"
+                >
+                  Nova nota
+                </button>
+                <button
+                  type="button"
                   onClick={() => onStartCreate(node.id)}
                   className="rounded px-2 py-1 text-left text-[#c9c9d1] hover:bg-[#2a2a30]"
                 >
@@ -478,6 +494,7 @@ function FolderTree({
                   onMoveNote={onMoveNote}
                   onReorder={onReorder}
                   onDropState={onDropState}
+                  onCreateNote={onCreateNote}
                 />
               </div>
             )}
@@ -655,6 +672,9 @@ export default function Notes() {
   const [quickCaptureOpen, setQuickCaptureOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [notesListCollapsed, setNotesListCollapsed] = useState(false);
+  const [cursorPos, setCursorPos] = useState(0);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<SaveStatus>('idle');
   const [importing, setImporting] = useState(false);
   const [selectedZip, setSelectedZip] = useState<File | null>(null);
   const [importSummary, setImportSummary] = useState<ImportSummary | null>(
@@ -669,8 +689,167 @@ export default function Notes() {
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
   const [editingFolderName, setEditingFolderName] = useState('');
   const [dropFolderId, setDropFolderId] = useState<string | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+  const selectedNoteRef = useRef(selectedNote);
+  selectedNoteRef.current = selectedNote;
   const [error, setError] = useState('');
   const debouncedSearch = useDebouncedValue(search);
+
+  const autoSave = useAutoSave(
+    JSON.stringify({
+      title: draft.title,
+      content: draft.content,
+      excerpt: draft.excerpt,
+      visibility: draft.visibility,
+      status: draft.status,
+      tags: draft.tags,
+      projectId: draft.projectId,
+      folderId: draft.folderId,
+    }),
+    selectedNote?.id,
+    1000
+  );
+
+  autoSave.onStatusChange(setAutoSaveStatus);
+
+  const loadRef = useRef<() => Promise<void>>(async () => {});
+  const saveNoteFromRef = useCallback(async () => {
+    const currentDraft = draftRef.current;
+    const currentSelected = selectedNoteRef.current;
+    if (!currentSelected) return false;
+    setSaving(true);
+    const result = await updateNote(currentSelected.id, currentDraft);
+    if (result.success) {
+      const payload = result as { success: true; data: { note: NoteDetail } };
+      const detail = payload.data.note;
+      setSelectedNote(detail);
+      setDraft({
+        title: detail.title,
+        slug: detail.slug,
+        content: detail.content,
+        excerpt: detail.excerpt || '',
+        visibility: detail.visibility,
+        status: detail.status,
+        tags: detail.tags.map((tag) => tag.name),
+        projectId: detail.projectId,
+        folderId: detail.folderId,
+      });
+      autoSave.markSaved();
+      await loadRef.current();
+      setSaving(false);
+      return true;
+    } else {
+      const payload = result as { success: false; error: string };
+      setError(payload.error || 'Nao foi possivel salvar.');
+      setSaving(false);
+      return false;
+    }
+  }, [autoSave]);
+
+  autoSave.registerSave(saveNoteFromRef);
+
+  const [wikilinkBlocked, setWikilinkBlocked] = useState(false);
+  const [autocompleteSelectedIndex, setAutocompleteSelectedIndex] = useState(0);
+
+  const wikilinkParse = useMemo(
+    () => parseWikilinkAtCursor(draft.content, cursorPos),
+    [draft.content, cursorPos]
+  );
+
+  const filteredAutocompleteNotes = useMemo(() => {
+    if (!wikilinkParse || wikilinkParse.mode !== 'search') return [];
+    const q = wikilinkParse.query.toLowerCase();
+    if (!q) return linkableNotes.slice(0, 20);
+    return linkableNotes
+      .filter(
+        (n) =>
+          n.title.toLowerCase().includes(q) || n.slug.toLowerCase().includes(q)
+      )
+      .slice(0, 20);
+  }, [wikilinkParse, linkableNotes]);
+
+  const isAutocompleteOpen =
+    !wikilinkBlocked &&
+    wikilinkParse !== null &&
+    wikilinkParse.isInside &&
+    wikilinkParse.mode === 'search' &&
+    filteredAutocompleteNotes.length > 0;
+
+  const autocompletePosition = useMemo(() => {
+    if (!isAutocompleteOpen || !textareaRef.current) return { top: 0, left: 0 };
+    return estimateCursorPosition(textareaRef.current);
+  }, [isAutocompleteOpen, cursorPos, textareaRef]);
+
+  const handleAutocompleteSelect = useCallback(
+    (index: number) => {
+      if (!wikilinkParse) return;
+      const note = filteredAutocompleteNotes[index];
+      if (!note) return;
+      const before = draft.content.slice(0, wikilinkParse.startPos);
+      const after = draft.content.slice(cursorPos);
+      const replacement = `[[${note.title}]]`;
+      setDraft((prev) => ({ ...prev, content: before + replacement + after }));
+      setWikilinkBlocked(true);
+      requestAnimationFrame(() => {
+        const ta = textareaRef.current;
+        if (ta) {
+          const newPos = wikilinkParse.startPos + replacement.length;
+          ta.selectionStart = newPos;
+          ta.selectionEnd = newPos;
+          setCursorPos(newPos);
+        }
+      });
+    },
+    [wikilinkParse, filteredAutocompleteNotes, draft.content, cursorPos]
+  );
+
+  const handleCreateNoteInFolder = async (folder: FolderNode) => {
+    let title = 'Nova Nota';
+    const existingTitles = notes
+      .filter((n) => n.folderId === folder.id)
+      .map((n) => n.title);
+    let counter = 1;
+    while (existingTitles.includes(title)) {
+      counter += 1;
+      title = `Nova Nota ${counter}`;
+    }
+    const slug = slugifyNote(title);
+    const result = await createNote({
+      title,
+      slug,
+      content: '',
+      excerpt: '',
+      visibility: 'PRIVATE',
+      status: 'DRAFT',
+      tags: [],
+      projectId: null,
+      folderId: folder.id,
+      folderPath: folder.path,
+      folderName: folder.name,
+    });
+    if (result.success && result.data) {
+      const detail = result.data.note as NoteDetail;
+      setSelectedNote(detail);
+      setDraft({
+        title: detail.title,
+        slug: detail.slug,
+        content: detail.content,
+        excerpt: detail.excerpt || '',
+        visibility: detail.visibility,
+        status: detail.status,
+        tags: detail.tags.map((tag) => tag.name),
+        projectId: detail.projectId,
+        folderId: detail.folderId,
+      });
+      setMode('edit');
+      setMenuFolderId(null);
+      await load();
+    } else {
+      setError(result.error || 'Nao foi possivel criar a nota.');
+    }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -698,6 +877,8 @@ export default function Notes() {
     if (projectResult.success) setProjects(projectResult.data);
     setLoading(false);
   }, [activeFolder, activeProject, activeTag, debouncedSearch, scope]);
+
+  loadRef.current = load;
 
   useEffect(() => {
     void load();
@@ -899,6 +1080,10 @@ export default function Notes() {
   };
 
   const openNote = async (note: NoteListItem) => {
+    if (selectedNote && autoSaveStatus === 'unsaved') {
+      setWikilinkBlocked(true);
+      await autoSave.triggerSave();
+    }
     const result = await getNote(note.id, { incrementView: true });
     if (!result.success || !result.data) {
       setError(result.error || 'Nao foi possivel abrir nota.');
@@ -915,6 +1100,7 @@ export default function Notes() {
       status: detail.status,
       tags: detail.tags.map((tag) => tag.name),
       projectId: detail.projectId,
+      folderId: detail.folderId,
     });
     setMode((current) => (current === 'graph' ? 'split' : current));
   };
@@ -930,8 +1116,9 @@ export default function Notes() {
     const result = selectedNote
       ? await updateNote(selectedNote.id, draft)
       : await createNote(draft);
-    if (result.success && result.data) {
-      const detail = result.data.note as NoteDetail;
+    if (result.success) {
+      const payload = result as { success: true; data: { note: NoteDetail } };
+      const detail = payload.data.note;
       setSelectedNote(detail);
       setDraft({
         title: detail.title,
@@ -942,11 +1129,13 @@ export default function Notes() {
         status: detail.status,
         tags: detail.tags.map((tag) => tag.name),
         projectId: detail.projectId,
+        folderId: detail.folderId,
       });
       if (options.closeModal) setQuickCaptureOpen(false);
       await load();
     } else {
-      setError(result.error || 'Nao foi possivel salvar.');
+      const payload = result as { success: false; error: string };
+      setError(payload.error || 'Nao foi possivel salvar.');
     }
     setSaving(false);
   };
@@ -970,6 +1159,7 @@ export default function Notes() {
         status: detail.status,
         tags: detail.tags.map((tag) => tag.name),
         projectId: detail.projectId,
+        folderId: detail.folderId,
       });
     }
   };
@@ -1027,9 +1217,35 @@ export default function Notes() {
     }
   };
 
-  const handleEditorShortcut = (
+  const handleEditorKeyDown = (
     event: ReactKeyboardEvent<HTMLTextAreaElement>
   ) => {
+    if (isAutocompleteOpen) {
+      switch (event.key) {
+        case 'ArrowDown':
+          event.preventDefault();
+          setAutocompleteSelectedIndex((prev) =>
+            prev < filteredAutocompleteNotes.length - 1 ? prev + 1 : 0
+          );
+          return;
+        case 'ArrowUp':
+          event.preventDefault();
+          setAutocompleteSelectedIndex((prev) =>
+            prev > 0 ? prev - 1 : filteredAutocompleteNotes.length - 1
+          );
+          return;
+        case 'Enter':
+        case 'Tab':
+          event.preventDefault();
+          handleAutocompleteSelect(autocompleteSelectedIndex);
+          return;
+        case 'Escape':
+          event.preventDefault();
+          setWikilinkBlocked(true);
+          return;
+      }
+    }
+
     const textarea = event.currentTarget;
     const wrapSelection = (before: string, after = before) => {
       const start = textarea.selectionStart;
@@ -1050,7 +1266,7 @@ export default function Notes() {
       wrapSelection('*');
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k')
       wrapSelection('[', '](url)');
-    if (event.key === 'Escape') textarea.blur();
+    if (event.key === 'Escape' && !isAutocompleteOpen) textarea.blur();
   };
 
   const navItems = [
@@ -1083,7 +1299,7 @@ export default function Notes() {
   ] as const;
 
   return (
-    <div className="h-[calc(100vh-6rem)] min-h-[560px] w-full min-w-0 overflow-hidden rounded-lg border border-[#2f2f35] bg-[#1e1e22] text-[#dcddde] md:h-[calc(100vh-5rem)] lg:h-[calc(100vh-3rem)]">
+    <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-[#2f2f35] bg-[#1e1e22] text-[#dcddde]">
       <CommandPalette
         open={paletteOpen}
         notes={notes}
@@ -1145,7 +1361,7 @@ export default function Notes() {
                   content: event.target.value,
                 }))
               }
-              onKeyDown={handleEditorShortcut}
+              onKeyDown={handleEditorKeyDown}
               placeholder="Capture ideias, decisões, links [[wiki]] ou tarefas - [ ] ..."
               className="h-80 w-full resize-none bg-transparent px-5 py-4 font-mono text-sm leading-6 outline-none placeholder:text-[#777780]"
             />
@@ -1155,29 +1371,41 @@ export default function Notes() {
 
       <div className="flex h-full">
         <aside
-          className={`${leftCollapsed ? 'w-12' : 'w-64'} shrink-0 border-r border-[#2f2f35] bg-[#19191d] transition-all`}
+          className={`${leftCollapsed ? 'w-12' : 'w-64'} flex h-full min-h-0 shrink-0 flex-col border-r border-[#2f2f35] bg-[#19191d] transition-all`}
         >
-          <div className="flex h-12 items-center justify-between border-b border-[#2f2f35] px-3">
+          <div className="flex h-12 shrink-0 items-center justify-between border-b border-[#2f2f35] px-3">
             {!leftCollapsed && (
               <span className="text-sm font-semibold text-[#f2f2f3]">
                 Knowledge Vault
               </span>
             )}
-            <button
-              type="button"
-              onClick={() => setLeftCollapsed((value) => !value)}
-              className="rounded p-2 text-[#8f8f98] hover:bg-[#2a2a30] hover:text-white"
-              aria-label="Alternar sidebar"
-            >
-              {leftCollapsed ? (
-                <ChevronRight className="h-4 w-4" />
-              ) : (
-                <PanelLeftClose className="h-4 w-4" />
+            <div className="flex items-center gap-1">
+              {!leftCollapsed && notesListCollapsed && (
+                <button
+                  type="button"
+                  onClick={() => setNotesListCollapsed(false)}
+                  className="rounded p-1.5 text-[#8f8f98] hover:bg-[#2a2a30] hover:text-white"
+                  aria-label="Expandir lista de notas"
+                >
+                  <PanelRightClose className="h-4 w-4" />
+                </button>
               )}
-            </button>
+              <button
+                type="button"
+                onClick={() => setLeftCollapsed((value) => !value)}
+                className="rounded p-2 text-[#8f8f98] hover:bg-[#2a2a30] hover:text-white"
+                aria-label="Alternar sidebar"
+              >
+                {leftCollapsed ? (
+                  <ChevronRight className="h-4 w-4" />
+                ) : (
+                  <PanelLeftClose className="h-4 w-4" />
+                )}
+              </button>
+            </div>
           </div>
           {!leftCollapsed && (
-            <div className="space-y-5 p-3">
+            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-3">
               <button
                 type="button"
                 onClick={startNewNote}
@@ -1387,6 +1615,9 @@ export default function Notes() {
                     void reorderFolder(folder, direction)
                   }
                   onDropState={setDropFolderId}
+                  onCreateNote={(folder) =>
+                    void handleCreateNoteInFolder(folder)
+                  }
                 />
               </div>
               {scope === 'tags' && (
@@ -1462,113 +1693,128 @@ export default function Notes() {
           )}
         </aside>
 
-        <section className="w-80 shrink-0 border-r border-[#2f2f35] bg-[#202024]">
-          <div className="border-b border-[#2f2f35] p-3">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-[#f2f2f3]">Notas</h2>
-              <button
-                type="button"
-                onClick={() => setPaletteOpen(true)}
-                className="rounded p-1.5 text-[#8f8f98] hover:bg-[#2a2a30]"
-                aria-label="Command palette"
-              >
-                <Command className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="relative">
-              <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[#777780]" />
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Buscar"
-                className="h-10 w-full rounded-md border border-[#303036] bg-[#19191d] pr-3 pl-9 text-sm outline-none placeholder:text-[#777780] focus:border-[#6f55d9]"
-              />
-            </div>
-          </div>
-          <div className="h-[calc(100%-89px)] overflow-y-auto">
-            {loading && (
-              <div className="flex items-center gap-2 p-4 text-sm text-[#8f8f98]">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Carregando
+        <section
+          className={`${notesListCollapsed ? 'w-0 overflow-hidden' : 'w-80'} shrink-0 border-r border-[#2f2f35] bg-[#202024] transition-all duration-200`}
+        >
+          <div className="flex h-full min-h-0 flex-col">
+            <div className="shrink-0 border-b border-[#2f2f35] p-3">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-[#f2f2f3]">Notas</h2>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setNotesListCollapsed((v) => !v)}
+                    className="rounded p-1.5 text-[#8f8f98] hover:bg-[#2a2a30]"
+                    aria-label="Recolher lista"
+                    title="Recolher lista"
+                  >
+                    <PanelRightClose className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaletteOpen(true)}
+                    className="rounded p-1.5 text-[#8f8f98] hover:bg-[#2a2a30]"
+                    aria-label="Command palette"
+                  >
+                    <Command className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
-            )}
-            {!loading &&
-              filteredNotes.map((note) => (
-                <div
-                  key={note.id}
-                  draggable
-                  onDragStart={(event) => {
-                    event.dataTransfer.setData(
-                      'application/x-note-id',
-                      note.id
-                    );
-                    event.dataTransfer.effectAllowed = 'move';
-                  }}
-                  className={`group border-b border-[#2a2a30] hover:bg-[#282830] ${selectedNote?.id === note.id ? 'bg-[#2d2940]' : ''}`}
-                >
-                  <div className="flex items-start gap-1 p-3">
-                    <button
-                      type="button"
-                      onClick={() => void openNote(note)}
-                      className="min-w-0 flex-1 text-left"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <h3 className="line-clamp-1 text-sm font-medium text-[#f2f2f3]">
-                          {note.title}
-                        </h3>
-                        {note.isFavorite && (
-                          <Star className="h-3.5 w-3.5 fill-[#d6a94a] text-[#d6a94a]" />
-                        )}
-                      </div>
-                      {note.folderPath && (
-                        <div className="mt-1 truncate text-[11px] text-[#777780]">
-                          {note.folderPath}
+              <div className="relative">
+                <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[#777780]" />
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Buscar"
+                  className="h-10 w-full rounded-md border border-[#303036] bg-[#19191d] pr-3 pl-9 text-sm outline-none placeholder:text-[#777780] focus:border-[#6f55d9]"
+                />
+              </div>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              {loading && (
+                <div className="flex items-center gap-2 p-4 text-sm text-[#8f8f98]">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Carregando
+                </div>
+              )}
+              {!loading &&
+                filteredNotes.map((note) => (
+                  <div
+                    key={note.id}
+                    draggable
+                    onDragStart={(event) => {
+                      event.dataTransfer.setData(
+                        'application/x-note-id',
+                        note.id
+                      );
+                      event.dataTransfer.effectAllowed = 'move';
+                    }}
+                    className={`group border-b border-[#2a2a30] hover:bg-[#282830] ${selectedNote?.id === note.id ? 'bg-[#2d2940]' : ''}`}
+                  >
+                    <div className="flex items-start gap-1 p-3">
+                      <button
+                        type="button"
+                        onClick={() => void openNote(note)}
+                        className="min-w-0 flex-1 text-left"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <h3 className="line-clamp-1 text-sm font-medium text-[#f2f2f3]">
+                            {note.title}
+                          </h3>
+                          {note.isFavorite && (
+                            <Star className="h-3.5 w-3.5 fill-[#d6a94a] text-[#d6a94a]" />
+                          )}
                         </div>
-                      )}
-                      <p className="mt-1 line-clamp-2 text-xs text-[#8f8f98]">
-                        {note.excerpt || 'Sem resumo'}
-                      </p>
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {note.tags.slice(0, 3).map((tag) => (
-                          <span
-                            key={tag.slug}
-                            className="rounded bg-[#292936] px-1.5 py-0.5 text-[11px] text-[#b8a9ff]"
-                          >
-                            #{tag.name}
-                          </span>
-                        ))}
-                      </div>
-                      <div className="mt-2 flex items-center justify-between text-[11px] text-[#777780]">
-                        <span>{formatDate(note.updatedAt)}</span>
-                        <span>{note._count?.incoming || 0} backlinks</span>
-                      </div>
-                    </button>
-                    <div className="flex shrink-0 flex-col opacity-0 group-focus-within:opacity-100 group-hover:opacity-100">
-                      <button
-                        type="button"
-                        onClick={() => void reorderNote(note, -1)}
-                        className="grid h-6 w-6 place-items-center rounded text-[#777780] hover:bg-[#33333a] hover:text-white"
-                        aria-label="Mover nota para cima"
-                      >
-                        <ArrowUp className="h-3 w-3" />
+                        {note.folderPath && (
+                          <div className="mt-1 truncate text-[11px] text-[#777780]">
+                            {note.folderPath}
+                          </div>
+                        )}
+                        <p className="mt-1 line-clamp-2 text-xs text-[#8f8f98]">
+                          {note.excerpt || 'Sem resumo'}
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {note.tags.slice(0, 3).map((tag) => (
+                            <span
+                              key={tag.slug}
+                              className="rounded bg-[#292936] px-1.5 py-0.5 text-[11px] text-[#b8a9ff]"
+                            >
+                              #{tag.name}
+                            </span>
+                          ))}
+                        </div>
+                        <div className="mt-2 flex items-center justify-between text-[11px] text-[#777780]">
+                          <span>{formatDate(note.updatedAt)}</span>
+                          <span>{note._count?.incoming || 0} backlinks</span>
+                        </div>
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => void reorderNote(note, 1)}
-                        className="grid h-6 w-6 place-items-center rounded text-[#777780] hover:bg-[#33333a] hover:text-white"
-                        aria-label="Mover nota para baixo"
-                      >
-                        <ArrowDown className="h-3 w-3" />
-                      </button>
+                      <div className="flex shrink-0 flex-col opacity-0 group-focus-within:opacity-100 group-hover:opacity-100">
+                        <button
+                          type="button"
+                          onClick={() => void reorderNote(note, -1)}
+                          className="grid h-6 w-6 place-items-center rounded text-[#777780] hover:bg-[#33333a] hover:text-white"
+                          aria-label="Mover nota para cima"
+                        >
+                          <ArrowUp className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void reorderNote(note, 1)}
+                          className="grid h-6 w-6 place-items-center rounded text-[#777780] hover:bg-[#33333a] hover:text-white"
+                          aria-label="Mover nota para baixo"
+                        >
+                          <ArrowDown className="h-3 w-3" />
+                        </button>
+                      </div>
                     </div>
                   </div>
+                ))}
+              {!loading && filteredNotes.length === 0 && (
+                <div className="p-6 text-center text-sm text-[#8f8f98]">
+                  Nenhuma nota encontrada.
                 </div>
-              ))}
-            {!loading && filteredNotes.length === 0 && (
-              <div className="p-6 text-center text-sm text-[#8f8f98]">
-                Nenhuma nota encontrada.
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </section>
 
@@ -1581,6 +1827,39 @@ export default function Notes() {
               </span>
             </div>
             <div className="flex items-center gap-1">
+              {notesListCollapsed && (
+                <button
+                  type="button"
+                  onClick={() => setNotesListCollapsed(false)}
+                  className="rounded p-1.5 text-[#8f8f98] hover:bg-[#2a2a30]"
+                  aria-label="Expandir lista"
+                  title="Expandir lista"
+                >
+                  <PanelLeftClose className="h-4 w-4" />
+                </button>
+              )}
+              {selectedNote && autoSaveStatus !== 'idle' && (
+                <span
+                  className={`hidden items-center gap-1 rounded px-2 py-1 text-[11px] md:inline-flex ${
+                    autoSaveStatus === 'saved'
+                      ? 'text-emerald-300'
+                      : autoSaveStatus === 'saving'
+                        ? 'text-amber-300'
+                        : autoSaveStatus === 'error'
+                          ? 'text-red-300'
+                          : 'text-[#8f8f98]'
+                  }`}
+                >
+                  {autoSaveStatus === 'saved' && <span>Salvo</span>}
+                  {autoSaveStatus === 'saving' && (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin" /> Salvando
+                    </>
+                  )}
+                  {autoSaveStatus === 'error' && <span>Erro ao salvar</span>}
+                  {autoSaveStatus === 'unsaved' && <span>Nao salvo</span>}
+                </span>
+              )}
               {(['edit', 'preview', 'split', 'graph'] as WorkspaceMode[]).map(
                 (item) => (
                   <button
@@ -1698,32 +1977,59 @@ export default function Notes() {
                     </button>
                   </div>
 
-                  {(mode === 'edit' || mode === 'split') && (
-                    <textarea
-                      value={draft.content}
-                      onChange={(event) =>
-                        setDraft((current) => ({
-                          ...current,
-                          content: event.target.value,
-                        }))
-                      }
-                      onKeyDown={handleEditorShortcut}
-                      className={`${mode === 'split' ? 'inline-block w-1/2 border-r border-[#2f2f35]' : 'block w-full'} h-[calc(100%-65px)] resize-none bg-[#1e1e22] px-8 py-7 font-mono text-sm leading-6 text-[#dcddde] outline-none placeholder:text-[#777780]`}
-                      placeholder="# Titulo&#10;&#10;[[Wiki Link]]&#10;- [ ] Task sincronizada"
-                    />
-                  )}
-                  {(mode === 'preview' || mode === 'split') && (
-                    <div
-                      className={`${mode === 'split' ? 'inline-block w-1/2 align-top' : 'block w-full'} h-[calc(100%-65px)] overflow-y-auto`}
-                    >
-                      <MarkdownPreview
-                        content={draft.content || ''}
-                        notes={linkableNotes}
-                        attachments={attachments}
-                        onOpenWikiLink={openWikiLink}
+                  <div className="relative">
+                    {(mode === 'edit' || mode === 'split') && (
+                      <textarea
+                        ref={textareaRef}
+                        value={draft.content}
+                        onChange={(event) => {
+                          setDraft((current) => ({
+                            ...current,
+                            content: event.target.value,
+                          }));
+                          setCursorPos(event.target.selectionStart);
+                          setWikilinkBlocked(false);
+                        }}
+                        onSelect={(event) => {
+                          setCursorPos(event.currentTarget.selectionStart);
+                        }}
+                        onClick={(event) => {
+                          setCursorPos(event.currentTarget.selectionStart);
+                        }}
+                        onKeyUp={(event) => {
+                          setCursorPos(event.currentTarget.selectionStart);
+                        }}
+                        onKeyDown={handleEditorKeyDown}
+                        className={`${mode === 'split' ? 'inline-block w-1/2 border-r border-[#2f2f35]' : 'block w-full'} h-[calc(100%-65px)] resize-none bg-[#1e1e22] px-8 py-7 font-mono text-sm leading-6 text-[#dcddde] outline-none placeholder:text-[#777780]`}
+                        placeholder="# Titulo&#10;&#10;[[Wiki Link]]&#10;- [ ] Task sincronizada"
                       />
-                    </div>
-                  )}
+                    )}
+                    {isAutocompleteOpen && (
+                      <WikiLinkAutocomplete
+                        notes={filteredAutocompleteNotes}
+                        selectedIndex={autocompleteSelectedIndex}
+                        position={autocompletePosition}
+                        onSelect={(index) => {
+                          handleAutocompleteSelect(index);
+                        }}
+                        onMouseEnter={(index) => {
+                          setAutocompleteSelectedIndex(index);
+                        }}
+                      />
+                    )}
+                    {(mode === 'preview' || mode === 'split') && (
+                      <div
+                        className={`${mode === 'split' ? 'inline-block w-1/2 align-top' : 'block w-full'} h-[calc(100%-65px)] overflow-y-auto`}
+                      >
+                        <MarkdownPreview
+                          content={draft.content || ''}
+                          notes={linkableNotes}
+                          attachments={attachments}
+                          onOpenWikiLink={openWikiLink}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
