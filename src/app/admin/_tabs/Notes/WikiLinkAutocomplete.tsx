@@ -1,13 +1,15 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { FileText } from 'lucide-react';
+import { FileText, Hash, Link2 } from 'lucide-react';
 
-export type PreviewNote = {
+export type WikiLinkSuggestion = {
   id: string;
-  title: string;
-  slug: string;
-  filePath?: string | null;
+  label: string;
+  value: string;
+  type: 'note' | 'heading' | 'block' | 'unresolved';
+  detail?: string | null;
+  unresolved?: boolean;
 };
 
 export type AutocompleteMode = 'search' | 'alias' | 'heading' | 'block';
@@ -15,7 +17,10 @@ export type AutocompleteMode = 'search' | 'alias' | 'heading' | 'block';
 export type WikilinkParseResult = {
   isInside: boolean;
   startPos: number;
+  endPos: number;
   query: string;
+  target: string;
+  alias?: string;
   mode: AutocompleteMode;
 } | null;
 
@@ -31,48 +36,76 @@ export function parseWikilinkAtCursor(
   if (lastOpen === -1 || lastClose > lastOpen) return null;
 
   const insideText = textBefore.slice(lastOpen + 2);
-  const hashIndex = insideText.indexOf('#');
-  const caretIndex = insideText.indexOf('^');
+  const lineEnd = content.indexOf('\n', cursorPos);
+  const nextLineEnd = lineEnd === -1 ? content.length : lineEnd;
+  const nextClose = content.indexOf(']]', cursorPos);
+  const nextOpen = content.indexOf('[[', cursorPos);
+  const endPos =
+    nextClose !== -1 &&
+    nextClose <= nextLineEnd &&
+    (nextOpen === -1 || nextClose < nextOpen)
+      ? nextClose + 2
+      : cursorPos;
   const pipeIndex = insideText.indexOf('|');
 
-  if (hashIndex !== -1 && caretIndex > hashIndex) {
-    const blockPart = insideText.slice(caretIndex + 1);
+  if (pipeIndex !== -1) {
+    const targetPart = insideText.slice(0, pipeIndex);
+    const aliasPart = insideText.slice(pipeIndex + 1);
+    if (!targetPart.trim()) {
+      return {
+        isInside: true,
+        startPos: lastOpen,
+        endPos,
+        query: '',
+        target: '',
+        alias: aliasPart,
+        mode: 'search',
+      };
+    }
+
     return {
       isInside: true,
       startPos: lastOpen,
-      query: blockPart,
-      mode: 'block',
+      endPos,
+      query: aliasPart,
+      target: targetPart,
+      alias: aliasPart,
+      mode: 'alias',
     };
   }
+
+  const hashIndex = insideText.indexOf('#');
 
   if (hashIndex !== -1) {
+    const target = insideText.slice(0, hashIndex);
     const headingPart = insideText.slice(hashIndex + 1);
-    const caretInHeading = headingPart.indexOf('^');
-    return {
-      isInside: true,
-      startPos: lastOpen,
-      query:
-        caretInHeading !== -1
-          ? headingPart.slice(0, caretInHeading)
-          : headingPart,
-      mode: 'heading',
-    };
-  }
+    if (headingPart.startsWith('^')) {
+      return {
+        isInside: true,
+        startPos: lastOpen,
+        endPos,
+        query: headingPart.slice(1),
+        target,
+        mode: 'block',
+      };
+    }
 
-  if (pipeIndex !== -1) {
-    const aliasPart = insideText.slice(pipeIndex + 1);
     return {
       isInside: true,
       startPos: lastOpen,
-      query: aliasPart,
-      mode: 'alias',
+      endPos,
+      query: headingPart,
+      target,
+      mode: 'heading',
     };
   }
 
   return {
     isInside: true,
     startPos: lastOpen,
+    endPos,
     query: insideText,
+    target: insideText,
     mode: 'search',
   };
 }
@@ -134,20 +167,17 @@ export function estimateCursorPosition(textarea: HTMLTextAreaElement): {
 }
 
 export function WikiLinkAutocomplete({
-  notes,
+  suggestions,
   selectedIndex,
   position,
+  title = 'Sugestoes',
   onSelect,
   onMouseEnter,
 }: {
-  notes: {
-    id: string;
-    title: string;
-    slug: string;
-    filePath?: string | null;
-  }[];
+  suggestions: WikiLinkSuggestion[];
   selectedIndex: number;
   position: { top: number; left: number };
+  title?: string;
   onSelect: (index: number) => void;
   onMouseEnter: (index: number) => void;
 }) {
@@ -160,49 +190,62 @@ export function WikiLinkAutocomplete({
     }
   }, [selectedIndex]);
 
-  if (notes.length === 0) return null;
+  if (suggestions.length === 0) return null;
 
   const topPos = Math.min(position.top, 320);
+  const IconForType = {
+    note: FileText,
+    heading: Hash,
+    block: Link2,
+    unresolved: FileText,
+  };
 
   return (
     <div
       className="absolute z-50 max-w-[420px] min-w-[280px] rounded-lg border border-[#33333a] bg-[#202024] shadow-2xl"
-      style={{ top: topPos, left: Math.max(position.left, 0) }}
+      style={{ top: topPos, left: Math.max(Math.min(position.left, 420), 0) }}
     >
       <div className="border-b border-[#303036] px-3 py-1.5 text-[11px] text-[#777780]">
-        Notas sugeridas
+        {title}
       </div>
       <div
         ref={listRef}
         className="max-h-48 overflow-y-auto py-1"
         role="listbox"
       >
-        {notes.map((note, index) => (
-          <button
-            key={note.id}
-            type="button"
-            role="option"
-            aria-selected={index === selectedIndex}
-            className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm ${
-              index === selectedIndex
-                ? 'bg-[#2d2940] text-[#c9b8ff]'
-                : 'text-[#dcddde] hover:bg-[#2a2a30]'
-            }`}
-            onMouseDown={(e) => {
-              e.preventDefault();
-              onSelect(index);
-            }}
-            onMouseEnter={() => onMouseEnter(index)}
-          >
-            <FileText className="h-4 w-4 shrink-0 text-[#8f8f98]" />
-            <span className="min-w-0 flex-1 truncate">{note.title}</span>
-            {note.filePath && (
-              <span className="shrink-0 text-[11px] text-[#777780]">
-                {note.filePath.split('/').slice(0, -1).join('/') || 'raiz'}
-              </span>
-            )}
-          </button>
-        ))}
+        {suggestions.map((item, index) => {
+          const Icon = IconForType[item.type];
+          return (
+            <button
+              key={item.id}
+              type="button"
+              role="option"
+              aria-selected={index === selectedIndex}
+              className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm ${
+                index === selectedIndex
+                  ? 'bg-[#2d2940] text-[#c9b8ff]'
+                  : item.unresolved
+                    ? 'text-[#f2c57c] hover:bg-[#2a2a30]'
+                    : 'text-[#dcddde] hover:bg-[#2a2a30]'
+              }`}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onSelect(index);
+              }}
+              onMouseEnter={() => onMouseEnter(index)}
+            >
+              <Icon className="h-4 w-4 shrink-0 text-[#8f8f98]" />
+              <span className="min-w-0 flex-1 truncate">{item.label}</span>
+              {item.detail && (
+                <span
+                  className={`shrink-0 truncate text-[11px] ${item.unresolved ? 'text-[#f2c57c]' : 'text-[#777780]'}`}
+                >
+                  {item.detail}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
       <div className="flex items-center gap-3 border-t border-[#303036] px-3 py-1.5 text-[11px] text-[#55555d]">
         <span className="flex items-center gap-1">

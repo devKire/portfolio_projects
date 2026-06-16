@@ -3,7 +3,7 @@
 
 import dynamic from 'next/dynamic';
 import { Suspense } from 'react';
-import { Globe, MessageSquare, Users } from 'lucide-react';
+import { Globe, MessageSquare, Users, BrainCircuit } from 'lucide-react';
 import ContentLoader from './ContentLoader';
 
 // Lazy loading dos módulos pesados
@@ -61,6 +61,10 @@ export default function ContentRouter({ activeTab }: ContentRouterProps) {
         return <Projects />;
       case 'notes':
         return <Notes />;
+      case 'ia':
+        return (
+          <ComingSoon icon={BrainCircuit} title="Inteligência Artificial" />
+        );
       case 'social':
         return <ComingSoon icon={Users} title="Redes Sociais" />;
       case 'comments':

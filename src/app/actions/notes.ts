@@ -269,6 +269,25 @@ function updateFilePath(folderPath: string | null, fileName: string | null) {
   return folderPath ? `${folderPath}/${fileName}` : fileName;
 }
 
+function fileExtensionFromName(fileName: string | null | undefined) {
+  return fileName?.match(/\.([^.]+)$/)?.[1]?.toLowerCase() || null;
+}
+
+function fileBaseFromName(fileName: string | null | undefined) {
+  if (!fileName) return '';
+  return fileName.replace(/\.[^.]+$/, '');
+}
+
+function normalizeVaultFileBase(value: string) {
+  return (
+    value
+      .trim()
+      .replace(/[\\/]+/g, '-')
+      .replace(/\s+/g, ' ')
+      .replace(/\0/g, '') || 'Nota'
+  );
+}
+
 async function nextFolderPosition(parentId: string | null) {
   const aggregate = await db.noteFolder.aggregate({
     where: { parentId },
@@ -849,6 +868,8 @@ export async function getNotes(filters: NoteFilters = {}) {
     }
     if (filters.status && filters.status !== 'ALL') {
       where.status = filters.status;
+    } else {
+      where.status = { not: 'ARCHIVED' };
     }
     if (filters.projectId) {
       where.projectId = filters.projectId;
@@ -907,13 +928,17 @@ export async function getNotes(filters: NoteFilters = {}) {
     ] = await Promise.all([
       db.note.groupBy({ by: ['status'], _count: { status: true } }),
       db.note.groupBy({ by: ['visibility'], _count: { visibility: true } }),
-      db.note.count({ where: { isFavorite: true } }),
+      db.note.count({
+        where: { isFavorite: true, status: { not: 'ARCHIVED' } },
+      }),
       db.note.findMany({
+        where: { status: { not: 'ARCHIVED' } },
         take: 5,
         orderBy: { updatedAt: 'desc' },
         select: { id: true, title: true, slug: true, updatedAt: true },
       }),
       db.note.findMany({
+        where: { status: { not: 'ARCHIVED' } },
         take: 5,
         orderBy: [{ viewCount: 'desc' }, { updatedAt: 'desc' }],
         select: { id: true, title: true, slug: true, viewCount: true },
@@ -935,10 +960,19 @@ export async function getNotes(filters: NoteFilters = {}) {
           dataUrl: true,
         },
       }),
-      db.note.count({ where: { folderPath: null } }),
+      db.note.count({
+        where: { folderPath: null, status: { not: 'ARCHIVED' } },
+      }),
       db.note.findMany({
         orderBy: { title: 'asc' },
-        select: { id: true, title: true, slug: true, filePath: true },
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          filePath: true,
+          folderId: true,
+          folderPath: true,
+        },
       }),
     ]);
 
@@ -947,7 +981,9 @@ export async function getNotes(filters: NoteFilters = {}) {
       data: {
         notes,
         stats: {
-          total: await db.note.count(),
+          total: await db.note.count({
+            where: { status: { not: 'ARCHIVED' } },
+          }),
           favorites: favoriteCount,
           byStatus: Object.fromEntries(
             statusCounts.map((item) => [item.status, item._count.status])
@@ -1045,8 +1081,19 @@ export async function createNote(input: NoteFormInput) {
     const content = input.content || '';
     const slug = await createUniqueSlug(title, input.slug);
     const tags = extractNoteTags(content, input.tags);
+    const folder = input.folderId
+      ? await db.noteFolder.findUnique({ where: { id: input.folderId } })
+      : input.folderPath
+        ? await ensureNoteFolderPath(input.folderPath)
+        : null;
 
-    const filePath = input.folderPath ? `${input.folderPath}/${slug}.md` : null;
+    if (input.folderId && !folder) {
+      return { success: false, error: 'Pasta nao encontrada.' };
+    }
+
+    const folderPath = folder?.path || input.folderPath || null;
+    const fileName = `${slug}.md`;
+    const filePath = updateFilePath(folderPath, fileName);
 
     const note = await db.note.create({
       data: {
@@ -1059,10 +1106,13 @@ export async function createNote(input: NoteFormInput) {
           : 'PRIVATE',
         status: isNoteStatus(input.status) ? input.status : 'DRAFT',
         projectId: input.projectId || null,
-        folderId: input.folderId || null,
-        folderPath: input.folderPath || null,
-        folderName: input.folderName || null,
+        folderId: folder?.id || null,
+        folderPath,
+        folderName: folderNameFromPath(folderPath) || input.folderName || null,
+        fileName,
         filePath,
+        extension: 'md',
+        position: await nextNotePosition(folder?.id || null),
       },
     });
 
@@ -1096,7 +1146,7 @@ export async function updateNote(id: string, input: Partial<NoteFormInput>) {
         content,
         excerpt:
           input.excerpt !== undefined
-            ? input.excerpt.trim() || null
+            ? input.excerpt.trim() || createExcerpt(content, title)
             : existing.excerpt,
         visibility: isNoteVisibility(input.visibility)
           ? input.visibility
@@ -1119,6 +1169,89 @@ export async function updateNote(id: string, input: Partial<NoteFormInput>) {
   } catch (error) {
     console.error('Error updating note:', error);
     return { success: false, error: 'Nao foi possivel salvar a nota.' };
+  }
+}
+
+export async function renameNote(id: string, titleInput: string) {
+  try {
+    const title = titleInput.trim();
+    if (!title) return { success: false, error: 'Informe um titulo.' };
+
+    const existing = await db.note.findUnique({ where: { id } });
+    if (!existing) return { success: false, error: 'Nota nao encontrada.' };
+
+    const slug = await createUniqueSlug(title, slugifyNote(title), id);
+    const data: Prisma.NoteUpdateInput = {
+      title,
+      slug,
+    };
+
+    if (existing.fileName || existing.filePath) {
+      const extension =
+        existing.extension || fileExtensionFromName(existing.fileName) || 'md';
+      const oldBase = fileBaseFromName(existing.fileName);
+      const usesSlugFileName = Boolean(oldBase && oldBase === existing.slug);
+      const nextBase = usesSlugFileName ? slug : normalizeVaultFileBase(title);
+      const fileName = `${nextBase}.${extension}`;
+      const filePath = updateFilePath(existing.folderPath, fileName);
+
+      if (filePath) {
+        const duplicate = await db.note.findUnique({
+          where: { filePath },
+          select: { id: true },
+        });
+        if (duplicate && duplicate.id !== id) {
+          return {
+            success: false,
+            error: 'Ja existe uma nota com esse caminho.',
+          };
+        }
+      }
+
+      data.fileName = fileName;
+      data.filePath = filePath;
+      data.extension = extension;
+    }
+
+    const note = await db.note.update({
+      where: { id },
+      data,
+      include: noteInclude,
+    });
+
+    await refreshLinksPointingTo(note.id, note.slug);
+    if (existing.slug !== note.slug) await refreshAllLinkTargets();
+
+    revalidateNotes();
+    return { success: true, data: { note } };
+  } catch (error) {
+    console.error('Error renaming note:', error);
+    return { success: false, error: 'Nao foi possivel renomear a nota.' };
+  }
+}
+
+export async function moveNoteToTrash(id: string) {
+  try {
+    const existing = await db.note.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+    if (!existing) return { success: false, error: 'Nota nao encontrada.' };
+
+    const note = await db.note.update({
+      where: { id },
+      data: { status: 'ARCHIVED' },
+      include: noteInclude,
+    });
+
+    revalidateNotes();
+    return { success: true, data: { note } };
+  } catch (error) {
+    console.error('Error moving note to trash:', error);
+    return {
+      success: false,
+      error: 'Nao foi possivel mover a nota para a lixeira.',
+    };
   }
 }
 

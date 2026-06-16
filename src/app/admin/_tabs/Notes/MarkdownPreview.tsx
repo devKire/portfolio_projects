@@ -11,6 +11,8 @@ export type PreviewNote = {
   title: string;
   slug: string;
   filePath?: string | null;
+  folderId?: string | null;
+  folderPath?: string | null;
 };
 
 export type PreviewAttachment = {

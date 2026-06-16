@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 
-export type SaveStatus = 'idle' | 'unsaved' | 'saving' | 'saved' | 'error';
+export type SaveStatus = 'idle' | 'editing' | 'saving' | 'saved' | 'error';
 
 export function useAutoSave(
   draftKey: string,
@@ -11,8 +11,14 @@ export function useAutoSave(
 ) {
   const statusRef = useRef<SaveStatus>('idle');
   const lastSavedRef = useRef(draftKey);
+  const latestDraftKeyRef = useRef(draftKey);
   const saveFnRef = useRef<() => Promise<boolean>>(() => Promise.resolve(true));
   const onStatusChangeRef = useRef<(status: SaveStatus) => void>(() => {});
+  const savingPromiseRef = useRef<Promise<boolean> | null>(null);
+
+  useEffect(() => {
+    latestDraftKeyRef.current = draftKey;
+  }, [draftKey]);
 
   const registerSave = useCallback((fn: () => Promise<boolean>) => {
     saveFnRef.current = fn;
@@ -29,63 +35,98 @@ export function useAutoSave(
 
   const triggerSave = useCallback(async () => {
     if (!selectedNoteId) return true;
+    const keyToSave = latestDraftKeyRef.current;
+    if (keyToSave === lastSavedRef.current) return true;
+
+    if (savingPromiseRef.current) {
+      await savingPromiseRef.current;
+      if (latestDraftKeyRef.current === lastSavedRef.current) return true;
+    }
+
     setStatus('saving');
-    try {
+
+    const promise = (async () => {
       const ok = await saveFnRef.current();
       if (ok) {
-        lastSavedRef.current = draftKey;
-        setStatus('saved');
+        lastSavedRef.current = keyToSave;
+        setStatus(
+          latestDraftKeyRef.current === keyToSave ? 'saved' : 'editing'
+        );
         return true;
-      } else {
-        setStatus('error');
-        return false;
       }
+      setStatus('error');
+      return false;
+    })();
+
+    savingPromiseRef.current = promise;
+    try {
+      return await promise;
     } catch {
       setStatus('error');
       return false;
+    } finally {
+      if (savingPromiseRef.current === promise) savingPromiseRef.current = null;
     }
-  }, [selectedNoteId, draftKey, setStatus]);
+  }, [selectedNoteId, setStatus]);
 
-  const markSaved = useCallback(() => {
-    lastSavedRef.current = draftKey;
-    setStatus('saved');
-  }, [draftKey, setStatus]);
+  const markSaved = useCallback(
+    (status: SaveStatus = 'saved', key = latestDraftKeyRef.current) => {
+      lastSavedRef.current = key;
+      setStatus(status);
+    },
+    [setStatus]
+  );
+
+  const hasPendingChanges = useCallback(() => {
+    return Boolean(
+      selectedNoteId && latestDraftKeyRef.current !== lastSavedRef.current
+    );
+  }, [selectedNoteId]);
 
   useEffect(() => {
     if (!selectedNoteId) {
+      lastSavedRef.current = draftKey;
       setStatus('idle');
       return;
     }
     if (draftKey === lastSavedRef.current) return;
-    setStatus('unsaved');
+    setStatus('editing');
 
     const timer = setTimeout(async () => {
-      setStatus('saving');
-      try {
-        const ok = await saveFnRef.current();
-        if (ok) {
-          lastSavedRef.current = draftKey;
-          setStatus('saved');
-        } else {
-          setStatus('error');
-        }
-      } catch {
-        setStatus('error');
-      }
+      await triggerSave();
     }, debounceMs);
 
     return () => clearTimeout(timer);
-  }, [draftKey, selectedNoteId, debounceMs, setStatus]);
+  }, [draftKey, selectedNoteId, debounceMs, setStatus, triggerSave]);
 
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
-      if (statusRef.current === 'unsaved' || statusRef.current === 'saving') {
+      if (statusRef.current === 'editing' || statusRef.current === 'saving') {
         e.preventDefault();
+        e.returnValue = '';
       }
     };
+    const flush = () => {
+      if (hasPendingChanges()) void triggerSave();
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') flush();
+    };
     window.addEventListener('beforeunload', handler);
-    return () => window.removeEventListener('beforeunload', handler);
-  }, []);
+    window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.removeEventListener('beforeunload', handler);
+      window.removeEventListener('pagehide', flush);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [hasPendingChanges, triggerSave]);
 
-  return { registerSave, onStatusChange, triggerSave, markSaved };
+  return {
+    registerSave,
+    onStatusChange,
+    triggerSave,
+    markSaved,
+    hasPendingChanges,
+  };
 }
