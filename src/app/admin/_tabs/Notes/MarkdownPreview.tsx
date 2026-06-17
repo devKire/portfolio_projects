@@ -1,6 +1,23 @@
 'use client';
 
-import { ChevronDown, ChevronRight, FileText } from 'lucide-react';
+import {
+  AlertTriangle,
+  Bug,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  ClipboardList,
+  FileText,
+  HelpCircle,
+  Info,
+  Lightbulb,
+  MessageSquareQuote,
+  NotebookText,
+  OctagonAlert,
+  Puzzle,
+  XCircle,
+  type LucideIcon,
+} from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';
 
@@ -27,9 +44,8 @@ export type PreviewAttachment = {
 type Footnote = { id: string; content: string };
 
 const calloutAliases: Record<string, string> = {
-  abstract: 'note',
-  summary: 'note',
-  tldr: 'note',
+  summary: 'abstract',
+  tldr: 'abstract',
   hint: 'tip',
   important: 'tip',
   check: 'success',
@@ -44,24 +60,98 @@ const calloutAliases: Record<string, string> = {
   cite: 'quote',
 };
 
-const calloutClasses: Record<string, string> = {
-  note: 'border-[#7c5cff] bg-[#2b2544]/70 text-[#d7ccff]',
-  info: 'border-[#4aa8ff] bg-[#18314a]/70 text-[#bfe2ff]',
-  todo: 'border-[#4aa8ff] bg-[#18314a]/70 text-[#bfe2ff]',
-  tip: 'border-[#43d17a] bg-[#163825]/70 text-[#c7f7d5]',
-  success: 'border-[#43d17a] bg-[#163825]/70 text-[#c7f7d5]',
-  question: 'border-[#d6a94a] bg-[#3b3219]/70 text-[#ffe0a3]',
-  warning: 'border-[#e0a23a] bg-[#3c2c16]/70 text-[#ffdda3]',
-  failure: 'border-[#ff6b6b] bg-[#3b1d24]/70 text-[#ffc7c7]',
-  danger: 'border-[#ff4d6d] bg-[#3b1721]/70 text-[#ffc1cc]',
-  bug: 'border-[#ff4d6d] bg-[#3b1721]/70 text-[#ffc1cc]',
-  example: 'border-[#b78cff] bg-[#2b2042]/70 text-[#e4d6ff]',
-  quote: 'border-[#8f8f98] bg-[#252529]/70 text-[#d4d4d8]',
+const calloutConfig: Record<
+  string,
+  {
+    label: string;
+    Icon: LucideIcon;
+    className: string;
+    titleClassName: string;
+  }
+> = {
+  abstract: {
+    label: 'Abstract',
+    Icon: ClipboardList,
+    className: 'border-violet-400 bg-violet-500/10 text-[#dcddde]',
+    titleClassName: 'text-violet-200',
+  },
+  note: {
+    label: 'Note',
+    Icon: NotebookText,
+    className: 'border-sky-400 bg-sky-500/10 text-[#dcddde]',
+    titleClassName: 'text-sky-200',
+  },
+  info: {
+    label: 'Info',
+    Icon: Info,
+    className: 'border-cyan-400 bg-cyan-500/10 text-[#dcddde]',
+    titleClassName: 'text-cyan-200',
+  },
+  todo: {
+    label: 'Todo',
+    Icon: CheckCircle2,
+    className: 'border-sky-400 bg-sky-500/10 text-[#dcddde]',
+    titleClassName: 'text-sky-200',
+  },
+  tip: {
+    label: 'Tip',
+    Icon: Lightbulb,
+    className: 'border-emerald-400 bg-emerald-500/10 text-[#dcddde]',
+    titleClassName: 'text-emerald-200',
+  },
+  success: {
+    label: 'Success',
+    Icon: CheckCircle2,
+    className: 'border-emerald-400 bg-emerald-500/10 text-[#dcddde]',
+    titleClassName: 'text-emerald-200',
+  },
+  question: {
+    label: 'Question',
+    Icon: HelpCircle,
+    className: 'border-yellow-300 bg-yellow-500/10 text-[#dcddde]',
+    titleClassName: 'text-yellow-100',
+  },
+  warning: {
+    label: 'Warning',
+    Icon: AlertTriangle,
+    className: 'border-amber-400 bg-amber-500/10 text-[#dcddde]',
+    titleClassName: 'text-amber-100',
+  },
+  failure: {
+    label: 'Failure',
+    Icon: XCircle,
+    className: 'border-red-700 bg-red-950/35 text-[#dcddde]',
+    titleClassName: 'text-red-200',
+  },
+  danger: {
+    label: 'Danger',
+    Icon: OctagonAlert,
+    className: 'border-red-500 bg-red-500/10 text-[#dcddde]',
+    titleClassName: 'text-red-100',
+  },
+  bug: {
+    label: 'Bug',
+    Icon: Bug,
+    className: 'border-rose-400 bg-rose-500/10 text-[#dcddde]',
+    titleClassName: 'text-rose-100',
+  },
+  example: {
+    label: 'Example',
+    Icon: Puzzle,
+    className: 'border-purple-400 bg-purple-500/10 text-[#dcddde]',
+    titleClassName: 'text-purple-100',
+  },
+  quote: {
+    label: 'Quote',
+    Icon: MessageSquareQuote,
+    className: 'border-zinc-500 bg-zinc-500/10 text-[#dcddde]',
+    titleClassName: 'text-zinc-200',
+  },
 };
 
 function normalizeCalloutType(type: string) {
   const lower = type.toLowerCase();
-  return calloutClasses[lower] ? lower : calloutAliases[lower] || 'note';
+  return calloutConfig[lower] ? lower : calloutAliases[lower] || 'note';
 }
 
 function sanitizeHtml(html: string) {
@@ -509,7 +599,9 @@ export function MarkdownPreview({
         );
         if (callout) {
           const type = normalizeCalloutType(callout[1]);
-          const title = callout[3]?.trim() || type;
+          const config = calloutConfig[type] || calloutConfig.note;
+          const Icon = config.Icon;
+          const title = callout[3]?.trim() || config.label;
           const fold = callout[2];
           const key = `callout-${index}`;
           const bodyText = block
@@ -521,7 +613,7 @@ export function MarkdownPreview({
           return (
             <div
               key={key}
-              className={`rounded-md border-l-4 px-4 py-3 ${calloutClasses[type]}`}
+              className={`rounded-md border-l-4 px-4 py-3 ${config.className}`}
             >
               <button
                 type="button"
@@ -541,7 +633,8 @@ export function MarkdownPreview({
                     <ChevronDown className="h-4 w-4" />
                   )
                 ) : null}
-                {title}
+                <Icon className={`h-4 w-4 shrink-0 ${config.titleClassName}`} />
+                <span className={config.titleClassName}>{title}</span>
               </button>
               {!closed && bodyText.trim() && (
                 <div className="mt-2 space-y-2 text-[#dcddde]">

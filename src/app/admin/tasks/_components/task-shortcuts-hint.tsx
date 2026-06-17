@@ -11,6 +11,7 @@ export const TaskShortcutsHint = memo(function TaskShortcutsHint() {
   const shortcuts = [
     { key: 'Ctrl+K', action: 'Buscar' },
     { key: 'Ctrl+N', action: 'Nova Tarefa' },
+    { key: 'Ctrl+M', action: 'Multiplas Tarefas' },
     { key: 'Ctrl+A', action: 'Selecionar Todas' },
     { key: 'Delete', action: 'Excluir Selecionadas' },
     { key: 'ESC', action: 'Limpar Seleção' },

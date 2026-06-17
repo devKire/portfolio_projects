@@ -4,12 +4,21 @@ import { Prisma } from '@prisma/client';
 
 export interface TaskFilters {
   projectId?: string;
+  projectIds?: string[];
   sprintId?: string;
   status?: string;
+  statuses?: string[];
   priority?: string;
+  priorities?: string[];
   tag?: string;
+  tags?: string[];
+  tagMatchMode?: 'any' | 'all';
   search?: string;
   dueDateRange?: 'today' | 'week' | 'overdue';
+  dueDateFrom?: string;
+  dueDateTo?: string;
+  withoutProject?: boolean;
+  withoutTags?: boolean;
   sort?: 'dueDate' | 'priority' | 'position' | 'createdAt';
   sortOrder?: 'asc' | 'desc';
 }

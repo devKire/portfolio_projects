@@ -15,18 +15,32 @@ import {
 import { TaskFiltersBar } from './task-filters-bar';
 import { BulkActionsBar } from './bulk-actions-bar';
 import { QuickTaskInput } from './quick-task-input';
+import { BulkTaskInput } from './bulk-task-input';
 import { TaskListView } from './task-list-view';
 import { TaskKanbanView } from './task-kanban-view';
 import { TaskHeader } from './task-header';
 import { DailyChecklistCard } from './daily-checklist-card';
-import type { TaskPatch, TaskProjectOption } from '@/types/tasks';
+import { mergeTaskTags } from '@/lib/task-tags';
+import type {
+  TaskPatch,
+  TaskProjectOption,
+  TaskWithRelations,
+} from '@/types/tasks';
 
 type ViewMode = 'list' | 'kanban';
 
 export function TaskPageClient() {
-  const { filters, resolvedFilters, updateFilter } = useTaskFilters({});
-  const { tasks, stats, loading, error, refetch, updateTaskInCache } =
-    useTasks(resolvedFilters);
+  const { filters, resolvedFilters, updateFilter, resetFilters } =
+    useTaskFilters({});
+  const {
+    tasks,
+    stats,
+    loading,
+    error,
+    refetch,
+    updateTaskInCache,
+    addTasksToCache,
+  } = useTasks(resolvedFilters);
   const {
     selectedIds,
     count: selectionCount,
@@ -36,6 +50,7 @@ export function TaskPageClient() {
   } = useTaskSelection();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [isQuickInputOpen, setIsQuickInputOpen] = useState(false);
+  const [isBulkInputOpen, setIsBulkInputOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [projects, setProjects] = useState<TaskProjectOption[]>([]);
@@ -65,19 +80,6 @@ export function TaskPageClient() {
     };
   }, [loadTags]);
 
-  // Debug para ver o que está acontecendo
-  useEffect(() => {
-    console.log('📋 Current state:', {
-      tasksCount: tasks.length,
-      loading,
-      error,
-      filtersCount: Object.keys(resolvedFilters).filter(
-        (k) => resolvedFilters[k as keyof typeof resolvedFilters]
-      ).length,
-      stats,
-    });
-  }, [tasks, loading, error, resolvedFilters, stats]);
-
   // Métodos de ação
   const handleBulkDelete = async () => {
     if (selectionCount === 0) return;
@@ -104,16 +106,35 @@ export function TaskPageClient() {
   };
 
   const closeQuickInput = useCallback(() => setIsQuickInputOpen(false), []);
+  const closeBulkInput = useCallback(() => setIsBulkInputOpen(false), []);
   const handleTaskPatch = useCallback(
     (id: string, patch: TaskPatch) => {
       updateTaskInCache(id, patch);
     },
     [updateTaskInCache]
   );
+  const mergeAvailableTags = useCallback((nextTags: string[]) => {
+    setAvailableTags((current) => mergeTaskTags([...current, ...nextTags]));
+  }, []);
+
+  const handleCreatedTasks = useCallback(
+    (createdTasks: TaskWithRelations[]) => {
+      addTasksToCache(createdTasks);
+      mergeAvailableTags(createdTasks.flatMap((task) => task.tags || []));
+    },
+    [addTasksToCache, mergeAvailableTags]
+  );
 
   // Atalhos de teclado
   useKeyboardShortcuts({
-    onNewTask: () => setIsQuickInputOpen(true),
+    onNewTask: () => {
+      setIsBulkInputOpen(false);
+      setIsQuickInputOpen(true);
+    },
+    onNewBulkTasks: () => {
+      setIsQuickInputOpen(false);
+      setIsBulkInputOpen(true);
+    },
     onSearchFocus: () => searchInputRef.current?.focus(),
     onSelectAll: () => selectAll(tasks.map((t) => t.id)),
     onClearSelection: clearSelection,
@@ -124,11 +145,22 @@ export function TaskPageClient() {
 
   return (
     <div className="min-w-0 space-y-4">
-      <TaskHeader stats={stats} onNewTask={() => setIsQuickInputOpen(true)} />
+      <TaskHeader
+        stats={stats}
+        onNewTask={() => {
+          setIsBulkInputOpen(false);
+          setIsQuickInputOpen(true);
+        }}
+        onNewBulkTasks={() => {
+          setIsQuickInputOpen(false);
+          setIsBulkInputOpen(true);
+        }}
+      />
 
       <TaskFiltersBar
         filters={filters}
         onFilterChange={updateFilter}
+        onClearFilters={resetFilters}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         searchInputRef={searchInputRef}
@@ -150,10 +182,21 @@ export function TaskPageClient() {
           onClose={closeQuickInput}
           projects={projects}
           tags={availableTags}
-          onSuccess={() => {
+          onSuccess={(task) => {
+            handleCreatedTasks([task]);
             closeQuickInput();
-            refetch();
-            void loadTags();
+          }}
+        />
+      )}
+
+      {isBulkInputOpen && (
+        <BulkTaskInput
+          onClose={closeBulkInput}
+          projects={projects}
+          tags={availableTags}
+          onSuccess={(createdTasks) => {
+            handleCreatedTasks(createdTasks);
+            closeBulkInput();
           }}
         />
       )}
@@ -196,6 +239,8 @@ export function TaskPageClient() {
             }}
             onTaskPatch={handleTaskPatch}
             projects={projects}
+            availableTags={availableTags}
+            onAvailableTagsChange={mergeAvailableTags}
           />
         ) : (
           <TaskKanbanView
@@ -203,6 +248,8 @@ export function TaskPageClient() {
             onTaskUpdate={() => refetch()}
             onTaskPatch={handleTaskPatch}
             projects={projects}
+            availableTags={availableTags}
+            onAvailableTagsChange={mergeAvailableTags}
           />
         ))}
 

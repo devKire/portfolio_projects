@@ -5,6 +5,8 @@ import { Briefcase, Calendar, Loader2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { deleteTask, updateTask } from '@/app/actions/tasks';
 import { cn } from '@/lib/utils';
+import { haveSameTaskTags } from '@/lib/task-tags';
+import { TaskTagsMenu } from './task-tags-menu';
 import type {
   TaskPatch,
   TaskPriority,
@@ -17,6 +19,8 @@ interface TaskCardProps {
   onUpdate: () => void;
   onTaskPatch: (patch: TaskPatch) => void;
   projects: TaskProjectOption[];
+  availableTags: string[];
+  onAvailableTagsChange: (tags: string[]) => void;
 }
 
 const priorityColors: Record<TaskPriority, string> = {
@@ -38,6 +42,8 @@ export const TaskCard = memo(function TaskCard({
   onUpdate,
   onTaskPatch,
   projects,
+  availableTags,
+  onAvailableTagsChange,
 }: TaskCardProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [draftTitle, setDraftTitle] = useState(task.title);
@@ -62,13 +68,28 @@ export const TaskCard = memo(function TaskCard({
   const commitPatch = async (patch: TaskPatch, rollback?: TaskPatch) => {
     onTaskPatch(patch);
     setSaving(true);
-    const result = await updateTask(task.id, patch);
-    setSaving(false);
-    if (result.success) {
-      onUpdate();
-      return;
+    try {
+      const result = await updateTask(task.id, patch);
+      if (result.success) {
+        if (result.data) onTaskPatch(result.data as TaskPatch);
+        return true;
+      }
+      if (rollback) onTaskPatch(rollback);
+      return false;
+    } catch (error) {
+      if (rollback) onTaskPatch(rollback);
+      console.error('Kanban task update failed:', error);
+      return false;
+    } finally {
+      setSaving(false);
     }
-    if (rollback) onTaskPatch(rollback);
+  };
+
+  const handleTagsChange = async (nextTags: string[]) => {
+    if (haveSameTaskTags(nextTags, task.tags)) return true;
+    const success = await commitPatch({ tags: nextTags }, { tags: task.tags });
+    if (success) onAvailableTagsChange(nextTags);
+    return success;
   };
 
   const commitTitle = () => {
@@ -154,15 +175,29 @@ export const TaskCard = memo(function TaskCard({
         </Button>
       </div>
 
-      <div className="mt-2 flex flex-wrap gap-1">
-        {task.tags?.map((tag) => (
-          <span
-            key={tag}
-            className="inline-flex items-center rounded bg-[#24242a] px-1.5 py-0.5 text-xs text-[#9b9ba3]"
-          >
-            #{tag}
-          </span>
-        ))}
+      <div
+        data-kanban-control
+        className="mt-2 flex flex-wrap items-center gap-1"
+      >
+        {task.tags?.length ? (
+          task.tags.map((tag) => (
+            <span
+              key={tag}
+              className="inline-flex items-center rounded bg-[#24242a] px-1.5 py-0.5 text-xs text-[#9b9ba3]"
+            >
+              #{tag}
+            </span>
+          ))
+        ) : (
+          <span className="text-xs text-[#777780]">sem tag</span>
+        )}
+        <TaskTagsMenu
+          tags={task.tags || []}
+          availableTags={availableTags}
+          controlAttribute="data-kanban-control"
+          onChange={handleTagsChange}
+          onAvailableTagsChange={onAvailableTagsChange}
+        />
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-[#777780]">

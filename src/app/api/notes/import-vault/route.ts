@@ -11,6 +11,22 @@ import {
 
 const MAX_ZIP_SIZE = 50 * 1024 * 1024;
 const MAX_INLINE_ATTACHMENT_SIZE = 8 * 1024 * 1024;
+const SUPPORTED_ATTACHMENT_EXTENSIONS = new Set([
+  'png',
+  'jpg',
+  'jpeg',
+  'gif',
+  'webp',
+  'svg',
+  'pdf',
+  'mp3',
+  'wav',
+  'm4a',
+  'ogg',
+  'mp4',
+  'webm',
+  'mov',
+]);
 const ZIP_MIME_TYPES = new Set([
   'application/zip',
   'application/x-zip-compressed',
@@ -40,6 +56,10 @@ function mimeFor(path: string) {
     mp3: 'audio/mpeg',
     wav: 'audio/wav',
     m4a: 'audio/mp4',
+    ogg: 'audio/ogg',
+    mp4: 'video/mp4',
+    webm: 'video/webm',
+    mov: 'video/quicktime',
   };
 
   return extension
@@ -49,6 +69,35 @@ function mimeFor(path: string) {
 
 function toDataUrl(bytes: Uint8Array, mimeType: string) {
   return `data:${mimeType};base64,${Buffer.from(bytes).toString('base64')}`;
+}
+
+function toTextDataUrl(text: string, mimeType: string) {
+  return `data:${mimeType};base64,${Buffer.from(text, 'utf8').toString('base64')}`;
+}
+
+function sanitizeSvg(svg: string) {
+  return svg
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+    .replace(/\son\w+=(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '')
+    .replace(/\s(?:href|xlink:href)=(["'])\s*javascript:[\s\S]*?\1/gi, '');
+}
+
+function stripCommonRoot(paths: string[]) {
+  const normalized = paths.map(normalizeVaultPath).filter(Boolean);
+  if (normalized.length === 0) return new Map<string, string>();
+  const firstSegments = normalized.map((path) => path.split('/')[0]);
+  const commonRoot = firstSegments[0];
+  const hasCommonRoot =
+    commonRoot &&
+    firstSegments.every((segment) => segment === commonRoot) &&
+    normalized.every((path) => path.includes('/'));
+
+  return new Map(
+    normalized.map((path) => [
+      path,
+      hasCommonRoot ? path.split('/').slice(1).join('/') : path,
+    ])
+  );
 }
 
 export async function POST(request: Request) {
@@ -81,10 +130,21 @@ export async function POST(request: Request) {
     const folders = new Set<string>();
     let ignored = 0;
     let unsafe = 0;
+    const partialErrors: string[] = [];
+    const entries = Object.values(zip.files);
+    const safeFilePaths = entries
+      .filter((entry) => !entry.dir)
+      .map((entry) => normalizeVaultPath(entry.name))
+      .filter((path) => !isUnsafeVaultPath(path) && !isIgnoredVaultPath(path));
+    const pathWithoutRoot = stripCommonRoot(safeFilePaths);
 
-    for (const entry of Object.values(zip.files)) {
+    for (const entry of entries) {
+      const normalizedEntryPath = normalizeVaultPath(entry.name);
+      const path =
+        pathWithoutRoot.get(normalizedEntryPath) || normalizedEntryPath;
+
       if (entry.dir) {
-        const folderPath = normalizeVaultPath(entry.name).replace(/\/$/, '');
+        const folderPath = normalizeVaultPath(path).replace(/\/$/, '');
         if (
           folderPath &&
           !isUnsafeVaultPath(folderPath) &&
@@ -105,7 +165,6 @@ export async function POST(request: Request) {
         continue;
       }
 
-      const path = normalizeVaultPath(entry.name);
       const metadata = getVaultFileMetadata(path);
       if (metadata.folderPath) folders.add(metadata.folderPath);
 
@@ -114,22 +173,48 @@ export async function POST(request: Request) {
         continue;
       }
 
+      if (
+        !metadata.extension ||
+        !SUPPORTED_ATTACHMENT_EXTENSIONS.has(metadata.extension)
+      ) {
+        ignored += 1;
+        partialErrors.push(`${metadata.fileName}: tipo de anexo ignorado.`);
+        continue;
+      }
+
       const uint8Array = await entry.async('uint8array');
       const mimeType = mimeFor(path);
+      if (uint8Array.byteLength > MAX_INLINE_ATTACHMENT_SIZE) {
+        ignored += 1;
+        partialErrors.push(
+          `${metadata.fileName}: excede ${formatMegabytes(MAX_INLINE_ATTACHMENT_SIZE)}.`
+        );
+        continue;
+      }
+
+      if (metadata.extension === 'svg') {
+        const sanitized = sanitizeSvg(await entry.async('string'));
+        importFiles.push({
+          path,
+          size: Buffer.byteLength(sanitized, 'utf8'),
+          mimeType,
+          dataUrl: toTextDataUrl(sanitized, mimeType),
+        });
+        continue;
+      }
+
       importFiles.push({
         path,
         size: uint8Array.byteLength,
         mimeType,
-        dataUrl:
-          uint8Array.byteLength <= MAX_INLINE_ATTACHMENT_SIZE
-            ? toDataUrl(uint8Array, mimeType)
-            : undefined,
+        dataUrl: toDataUrl(uint8Array, mimeType),
       });
     }
 
     if (unsafe > 0) {
-      return errorResponse(
-        'O ZIP contem caminhos inseguros e foi recusado para evitar path traversal.'
+      ignored += unsafe;
+      partialErrors.push(
+        `${unsafe} arquivo(s) ignorado(s) por caminho inseguro.`
       );
     }
 
@@ -151,7 +236,13 @@ export async function POST(request: Request) {
         updated,
         ignored,
         folders: folders.size,
-        attachments: data.attachments,
+        attachments: data.attachments.total,
+        attachmentsCreated: data.attachments.created,
+        attachmentsUpdated: data.attachments.updated,
+        attachmentsIgnored: data.attachments.ignored,
+        imagesImported: data.attachments.images,
+        otherAttachmentsImported: data.attachments.other,
+        partialErrors,
         totalNotes: data.imported,
       },
     });

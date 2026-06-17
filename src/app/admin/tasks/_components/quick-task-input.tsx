@@ -5,13 +5,14 @@ import { Calendar, Clock3, Hash, Loader2, Plus, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { createTask } from '@/app/actions/tasks';
 import { parseQuickTaskInput } from '@/lib/task-quick-add-parser';
-import type { TaskProjectOption } from '@/types/tasks';
+import { taskTagKey } from '@/lib/task-tags';
+import type { TaskProjectOption, TaskWithRelations } from '@/types/tasks';
 
 interface QuickTaskInputProps {
   onClose: () => void;
-  onSuccess: () => void;
   projects: TaskProjectOption[];
   tags: string[];
+  onSuccess: (task: TaskWithRelations) => void;
 }
 
 function formatPreviewDate(date?: Date) {
@@ -52,9 +53,10 @@ export function QuickTaskInput({
   const tagSuggestions = useMemo(() => {
     if (!activeToken.startsWith('#')) return [];
     const query = activeToken.slice(1).toLowerCase();
+    const parsedTagKeys = new Set(parsed.tags.map(taskTagKey));
     return tags
       .filter((tag) => tag.toLowerCase().startsWith(query))
-      .filter((tag) => !parsed.tags.includes(tag.toLowerCase()))
+      .filter((tag) => !parsedTagKeys.has(taskTagKey(tag)))
       .slice(0, 6);
   }, [activeToken, parsed.tags, tags]);
 
@@ -91,6 +93,10 @@ export function QuickTaskInput({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!parsed.title.trim()) return;
+    if (parsed.invalidDateTokens.length > 0) {
+      setError('Corrija a data antes de criar.');
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -107,7 +113,7 @@ export function QuickTaskInput({
 
     if (result.success) {
       setInput('');
-      onSuccess();
+      onSuccess(result.data as TaskWithRelations);
     } else {
       setError(result.error || 'Erro ao criar tarefa');
     }
@@ -123,6 +129,7 @@ export function QuickTaskInput({
 
   return (
     <form
+      data-keyboard-scope="quick-input"
       onSubmit={handleSubmit}
       className="animate-in slide-in-from-top-2 mb-4 rounded-lg border border-[#6f55d9]/30 bg-[#141414] p-3 shadow-xl shadow-black/20"
     >
@@ -133,7 +140,10 @@ export function QuickTaskInput({
           type="text"
           placeholder="Revisar layout amanhã #design !alta 2h"
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={(e) => {
+            setInput(e.target.value);
+            setError(null);
+          }}
           onKeyDown={handleKeyDown}
           className="min-h-10 flex-1 border-none bg-transparent text-sm text-white placeholder-gray-500 outline-none"
         />
@@ -150,7 +160,11 @@ export function QuickTaskInput({
         <Button
           type="submit"
           size="sm"
-          disabled={!parsed.title.trim() || loading}
+          disabled={
+            !parsed.title.trim() ||
+            parsed.invalidDateTokens.length > 0 ||
+            loading
+          }
           className="text-xs"
         >
           {loading ? (
@@ -200,6 +214,14 @@ export function QuickTaskInput({
               className="inline-flex items-center gap-1 rounded-md border border-amber-500/20 bg-amber-500/10 px-2 py-1 text-amber-300"
             >
               @{label} nao encontrado
+            </span>
+          ))}
+          {parsed.invalidDateTokens.map((token) => (
+            <span
+              key={token}
+              className="inline-flex items-center gap-1 rounded-md border border-amber-500/20 bg-amber-500/10 px-2 py-1 text-amber-300"
+            >
+              {token} invalida
             </span>
           ))}
           {parsed.tags.map((tag) => (

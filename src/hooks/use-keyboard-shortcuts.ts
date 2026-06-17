@@ -1,8 +1,10 @@
 // src/hooks/use-keyboard-shortcuts.ts
 import { useEffect } from 'react';
+import { hasKeyboardScope, isEditableTarget } from '@/lib/keyboard';
 
 interface ShortcutConfig {
   onNewTask: () => void;
+  onNewBulkTasks: () => void;
   onSearchFocus: () => void;
   onSelectAll: () => void;
   onClearSelection: () => void;
@@ -15,16 +17,25 @@ export function useKeyboardShortcuts(config: ShortcutConfig) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isCtrlOrCmd = e.ctrlKey || e.metaKey;
+      const key = e.key.toLowerCase();
+      const isEditing = isEditableTarget(e.target);
+      const isScoped = hasKeyboardScope(e.target);
 
-      if (isCtrlOrCmd && e.key === 'k') {
+      if (isEditing || isScoped) return;
+
+      if (isCtrlOrCmd && key === 'k' && !e.repeat) {
         e.preventDefault();
         config.onSearchFocus();
       }
-      if (isCtrlOrCmd && e.key === 'n') {
+      if (isCtrlOrCmd && key === 'n' && !e.repeat) {
         e.preventDefault();
         config.onNewTask();
       }
-      if (isCtrlOrCmd && e.key === 'a') {
+      if (isCtrlOrCmd && key === 'm' && !e.repeat) {
+        e.preventDefault();
+        config.onNewBulkTasks();
+      }
+      if (isCtrlOrCmd && key === 'a' && !e.repeat) {
         e.preventDefault();
         config.onSelectAll();
       }

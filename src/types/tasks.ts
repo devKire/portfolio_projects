@@ -71,3 +71,26 @@ export interface TaskPatch {
   sprint?: TaskSprintRef | null;
   parentId?: string | null;
 }
+
+export type TaskTagMatchMode = 'any' | 'all';
+
+export interface BulkTaskInput {
+  clientId: string;
+  title: string;
+  description?: string;
+  status?: TaskStatus | string;
+  priority?: TaskPriority | string;
+  dueDate?: Date | null;
+  estimatedHours?: number;
+  actualHours?: number;
+  tags: string[];
+  projectId?: string | null;
+}
+
+export interface BulkTaskResult {
+  clientId: string;
+  success: boolean;
+  taskId?: string;
+  task?: TaskWithRelations;
+  error?: string;
+}

@@ -3,6 +3,11 @@ import type {
   TaskProjectOption,
   TaskStatus,
 } from '@/types/tasks';
+import {
+  mergeTaskTags,
+  normalizeTaskTag,
+  stripSimpleMarkdownToken,
+} from '@/lib/task-tags';
 
 export interface ParsedQuickTask {
   title: string;
@@ -13,6 +18,7 @@ export interface ParsedQuickTask {
   projectId?: string;
   projectLabel?: string;
   unmatchedProjectLabels: string[];
+  invalidDateTokens: string[];
   status?: TaskStatus;
 }
 
@@ -132,6 +138,10 @@ function parseHours(token: string) {
   return undefined;
 }
 
+function looksLikeDateToken(token: string) {
+  return /^\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?$/.test(token);
+}
+
 function findProject(label: string, projects: TaskProjectOption[] = []) {
   const wanted = normalize(label).replace(/\s+/g, '');
   return projects.find((project) => {
@@ -150,15 +160,17 @@ export function parseQuickTaskInput(
     title: '',
     tags,
     unmatchedProjectLabels: [],
+    invalidDateTokens: [],
   };
 
-  for (const token of input.trim().split(/\s+/)) {
+  for (const rawToken of input.trim().split(/\s+/)) {
+    const token = stripSimpleMarkdownToken(rawToken);
     if (!token) continue;
     if (token === '#' || token === '@') continue;
 
     if (token.startsWith('#') && token.length > 1) {
-      const tag = normalize(token.slice(1)).replace(/[^\p{L}\p{N}_-]/gu, '');
-      if (tag && !tags.includes(tag)) tags.push(tag);
+      const nextTags = mergeTaskTags([...tags, normalizeTaskTag(token)]);
+      tags.splice(0, tags.length, ...nextTags);
       continue;
     }
 
@@ -197,7 +209,12 @@ export function parseQuickTaskInput(
       continue;
     }
 
-    titleTokens.push(token);
+    if (looksLikeDateToken(token)) {
+      parsed.invalidDateTokens.push(token);
+      continue;
+    }
+
+    titleTokens.push(stripSimpleMarkdownToken(rawToken));
   }
 
   parsed.title = titleTokens.join(' ').trim();

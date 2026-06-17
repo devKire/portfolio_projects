@@ -20,6 +20,8 @@ interface TaskListViewProps {
   onTaskUpdate: () => void;
   onTaskPatch: (id: string, patch: TaskPatch) => void;
   projects: TaskProjectOption[];
+  availableTags: string[];
+  onAvailableTagsChange: (tags: string[]) => void;
 }
 
 export const TaskListView = memo(function TaskListView({
@@ -32,6 +34,8 @@ export const TaskListView = memo(function TaskListView({
   onTaskUpdate,
   onTaskPatch,
   projects,
+  availableTags,
+  onAvailableTagsChange,
 }: TaskListViewProps) {
   if (tasks.length === 0) {
     return (
@@ -80,6 +84,8 @@ export const TaskListView = memo(function TaskListView({
             onUpdate={onTaskUpdate}
             onTaskPatch={onTaskPatch}
             projects={projects}
+            availableTags={availableTags}
+            onAvailableTagsChange={onAvailableTagsChange}
           />
         ))}
       </div>

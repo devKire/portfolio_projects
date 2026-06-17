@@ -10,11 +10,12 @@ import {
   Clock3,
   Loader2,
   Pencil,
-  Tag,
   Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { haveSameTaskTags } from '@/lib/task-tags';
+import { TaskTagsMenu } from '../task-tags-menu';
 import type {
   TaskPatch,
   TaskPriority,
@@ -31,6 +32,8 @@ interface TaskCardDisplayProps {
   onPatch: (patch: TaskPatch) => Promise<void>;
   onOptimisticPatch: (patch: TaskPatch) => void;
   projects: TaskProjectOption[];
+  availableTags: string[];
+  onAvailableTagsChange: (tags: string[]) => void;
   onDelete: () => void;
   isDeleting: boolean;
 }
@@ -66,13 +69,6 @@ function formatDate(value?: Date | string | null) {
   });
 }
 
-function parseTags(value: string) {
-  return value
-    .split(/[,\s]+/)
-    .map((tag) => tag.replace(/^#/, '').trim())
-    .filter(Boolean);
-}
-
 export const TaskCardDisplay = memo(function TaskCardDisplay({
   task,
   isSelected,
@@ -82,21 +78,21 @@ export const TaskCardDisplay = memo(function TaskCardDisplay({
   onPatch,
   onOptimisticPatch,
   projects,
+  availableTags,
+  onAvailableTagsChange,
   onDelete,
   isDeleting,
 }: TaskCardDisplayProps) {
   const [editingField, setEditingField] = useState<
-    'title' | 'description' | 'tags' | null
+    'title' | 'description' | null
   >(null);
   const [draftTitle, setDraftTitle] = useState(task.title);
   const [draftDescription, setDraftDescription] = useState(
     task.description || ''
   );
-  const [draftTags, setDraftTags] = useState(task.tags.join(' '));
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const titleRef = useRef<HTMLInputElement>(null);
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
-  const tagsRef = useRef<HTMLInputElement>(null);
 
   const isCompleted = task.status === 'completed';
   const isOverdue =
@@ -130,7 +126,6 @@ export const TaskCardDisplay = memo(function TaskCardDisplay({
     () => setDraftDescription(task.description || ''),
     [task.description]
   );
-  useEffect(() => setDraftTags(task.tags.join(' ')), [task.tags]);
 
   useEffect(() => {
     if (editingField === 'title') {
@@ -139,10 +134,6 @@ export const TaskCardDisplay = memo(function TaskCardDisplay({
     }
     if (editingField === 'description') {
       descriptionRef.current?.focus();
-    }
-    if (editingField === 'tags') {
-      tagsRef.current?.focus();
-      tagsRef.current?.select();
     }
   }, [editingField]);
 
@@ -157,10 +148,12 @@ export const TaskCardDisplay = memo(function TaskCardDisplay({
     try {
       await onPatch(patch);
       setSaveState('saved');
+      return true;
     } catch (error) {
       if (rollback) onOptimisticPatch(rollback);
       console.error('Inline task update failed:', error);
       setSaveState('error');
+      return false;
     }
   };
 
@@ -188,12 +181,11 @@ export const TaskCardDisplay = memo(function TaskCardDisplay({
     }
   };
 
-  const commitTags = () => {
-    const nextTags = parseTags(draftTags);
-    setEditingField(null);
-    if (nextTags.join('|') !== task.tags.join('|')) {
-      void commitPatch({ tags: nextTags }, { tags: task.tags });
-    }
+  const handleTagsChange = async (nextTags: string[]) => {
+    if (haveSameTaskTags(nextTags, task.tags)) return true;
+    const success = await commitPatch({ tags: nextTags }, { tags: task.tags });
+    if (success) onAvailableTagsChange(nextTags);
+    return success;
   };
 
   const handleSimpleKeyDown = (
@@ -436,36 +428,29 @@ export const TaskCardDisplay = memo(function TaskCardDisplay({
               <span>h</span>
             </label>
 
-            {editingField === 'tags' ? (
-              <input
-                data-inline-control
-                ref={tagsRef}
-                value={draftTags}
-                onChange={(event) => setDraftTags(event.target.value)}
-                onBlur={commitTags}
-                onKeyDown={(event) =>
-                  handleSimpleKeyDown(event, commitTags, () => {
-                    setDraftTags(task.tags.join(' '));
-                    setEditingField(null);
-                  })
-                }
-                className="h-7 min-w-[160px] rounded-md border border-[#303036] bg-[#111] px-2 text-xs text-[#f2f2f3] outline-none focus:border-[#6f55d9]/50"
+            <div
+              data-inline-control
+              className="inline-flex min-h-7 max-w-full flex-wrap items-center gap-1 rounded-md border border-[#2f2f35] bg-[#111] px-1.5 py-1 text-[#9b9ba3]"
+            >
+              {task.tags.length > 0 ? (
+                task.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="inline-flex items-center rounded bg-[#24242a] px-1.5 py-0.5 text-xs text-[#9b9ba3]"
+                  >
+                    #{tag}
+                  </span>
+                ))
+              ) : (
+                <span className="px-1 text-xs text-[#777780]">sem tag</span>
+              )}
+              <TaskTagsMenu
+                tags={task.tags || []}
+                availableTags={availableTags}
+                onChange={handleTagsChange}
+                onAvailableTagsChange={onAvailableTagsChange}
               />
-            ) : (
-              <button
-                data-inline-control
-                type="button"
-                onClick={() => setEditingField('tags')}
-                className="inline-flex h-7 max-w-full items-center gap-1 rounded-md border border-[#2f2f35] bg-[#111] px-2 text-[#9b9ba3] outline-none hover:border-[#303036] hover:text-[#f2f2f3] focus:ring-2 focus:ring-[#6f55d9]/30"
-              >
-                <Tag className="h-3.5 w-3.5" />
-                <span className="truncate">
-                  {task.tags.length
-                    ? task.tags.map((tag) => `#${tag}`).join(' ')
-                    : 'tags'}
-                </span>
-              </button>
-            )}
+            </div>
 
             {task.project && (
               <span className="sr-only">

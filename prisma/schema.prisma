@@ -246,11 +246,11 @@ model Task {
   parent   Task?    @relation("TaskToSubtask", fields: [parentId], references: [id])
   subtasks Task[]   @relation("TaskToSubtask")
 
+  @@unique([noteId, noteTaskKey])
   @@index([status])
   @@index([projectId])
   @@index([sprintId])
   @@index([noteId])
-  @@unique([noteId, noteTaskKey])
 }
 
 model DailyChecklistItem {
@@ -321,13 +321,15 @@ enum NoteStatus {
 }
 
 model Note {
-  id         String         @id @default(uuid())
-  title      String
-  slug       String         @unique
-  content    String         @db.Text
-  excerpt    String?
-  visibility NoteVisibility @default(PRIVATE)
-  status     NoteStatus     @default(DRAFT)
+  id                String         @id @default(uuid())
+  title             String
+  slug              String         @unique
+  content           String         @db.Text
+  excerpt           String?
+  visibility        NoteVisibility @default(PRIVATE)
+  status            NoteStatus     @default(DRAFT)
+  statusBeforeTrash NoteStatus?
+  trashedAt         DateTime?
 
   isFavorite Boolean @default(false)
   viewCount  Int     @default(0)
@@ -346,8 +348,8 @@ model Note {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  project Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  folder  NoteFolder?  @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  project Project?    @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  folder  NoteFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
 
   tags     NoteTag[]
   outgoing NoteLink[] @relation("SourceLinks")
@@ -357,6 +359,7 @@ model Note {
   @@index([slug])
   @@index([visibility])
   @@index([status])
+  @@index([trashedAt])
   @@index([projectId])
   @@index([folderPath])
   @@index([folderId])
@@ -365,13 +368,17 @@ model Note {
 }
 
 model NoteFolder {
-  id        String   @id @default(uuid())
-  name      String
-  path      String   @unique
-  parentId  String?
-  position  Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                  String    @id @default(uuid())
+  name                String
+  path                String    @unique
+  parentId            String?
+  position            Int       @default(0)
+  deletedAt           DateTime?
+  trashedAt           DateTime?
+  pathBeforeTrash     String?
+  parentIdBeforeTrash String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   parent   NoteFolder?  @relation("NoteFolderTree", fields: [parentId], references: [id], onDelete: SetNull)
   children NoteFolder[] @relation("NoteFolderTree")
@@ -380,6 +387,8 @@ model NoteFolder {
   @@index([parentId])
   @@index([path])
   @@index([position])
+  @@index([deletedAt])
+  @@index([trashedAt])
 }
 
 model NoteAttachment {
@@ -415,16 +424,16 @@ model NoteTag {
 }
 
 model NoteLink {
-  id             String   @id @default(uuid())
-  sourceNoteId   String
-  targetNoteId   String?
-  targetSlug     String
-  targetTitle    String
-  alias          String?
-  occurrences    Int      @default(1)
-  targetExists   Boolean  @default(false)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id           String   @id @default(uuid())
+  sourceNoteId String
+  targetNoteId String?
+  targetSlug   String
+  targetTitle  String
+  alias        String?
+  occurrences  Int      @default(1)
+  targetExists Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   sourceNote Note  @relation("SourceLinks", fields: [sourceNoteId], references: [id], onDelete: Cascade)
   targetNote Note? @relation("TargetLinks", fields: [targetNoteId], references: [id], onDelete: SetNull)

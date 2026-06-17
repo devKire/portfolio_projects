@@ -16,6 +16,8 @@ interface TaskKanbanViewProps {
   onTaskUpdate: () => void;
   onTaskPatch: (id: string, patch: TaskPatch) => void;
   projects: TaskProjectOption[];
+  availableTags: string[];
+  onAvailableTagsChange: (tags: string[]) => void;
 }
 
 const columns = [
@@ -39,6 +41,8 @@ export const TaskKanbanView = memo(function TaskKanbanView({
   onTaskUpdate,
   onTaskPatch,
   projects,
+  availableTags,
+  onAvailableTagsChange,
 }: TaskKanbanViewProps) {
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
 
@@ -136,6 +140,8 @@ export const TaskKanbanView = memo(function TaskKanbanView({
                     onUpdate={onTaskUpdate}
                     onTaskPatch={(patch) => onTaskPatch(task.id, patch)}
                     projects={projects}
+                    availableTags={availableTags}
+                    onAvailableTagsChange={onAvailableTagsChange}
                   />
                 </div>
               ))}

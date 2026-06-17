@@ -20,6 +20,8 @@ interface TaskItemProps {
   onUpdate: () => void;
   onTaskPatch: (id: string, patch: TaskPatch) => void;
   projects: TaskProjectOption[];
+  availableTags: string[];
+  onAvailableTagsChange: (tags: string[]) => void;
 }
 
 export const TaskItem = memo(function TaskItem({
@@ -31,6 +33,8 @@ export const TaskItem = memo(function TaskItem({
   onUpdate,
   onTaskPatch,
   projects,
+  availableTags,
+  onAvailableTagsChange,
 }: TaskItemProps) {
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -83,9 +87,11 @@ export const TaskItem = memo(function TaskItem({
       if (!result.success) {
         throw new Error(result.error || 'Failed to update task');
       }
-      onUpdate();
+      if (result.data) {
+        onTaskPatch(task.id, result.data as TaskPatch);
+      }
     },
-    [task.id, onTaskPatch, onUpdate]
+    [task.id, onTaskPatch]
   );
 
   const handleEditSuccess = useCallback(() => {
@@ -130,6 +136,8 @@ export const TaskItem = memo(function TaskItem({
           onPatch={handlePatch}
           onOptimisticPatch={(patch) => onTaskPatch(task.id, patch)}
           projects={projects}
+          availableTags={availableTags}
+          onAvailableTagsChange={onAvailableTagsChange}
           onDelete={handleDelete}
           isDeleting={isDeleting}
         />

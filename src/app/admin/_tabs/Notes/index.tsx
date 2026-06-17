@@ -4,7 +4,9 @@ import {
   Archive,
   ArrowDown,
   ArrowUp,
+  AlertTriangle,
   Check,
+  CheckSquare,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -15,6 +17,7 @@ import {
   FileArchive,
   FileText,
   Folder,
+  FolderInput,
   FolderPlus,
   FolderOpen,
   GitBranch,
@@ -32,6 +35,7 @@ import {
   Sparkles,
   Star,
   Trash2,
+  RotateCcw,
   X,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
@@ -42,6 +46,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ClipboardEvent as ReactClipboardEvent,
   type DragEvent as ReactDragEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
@@ -49,20 +54,25 @@ import {
 } from 'react';
 
 import {
+  createNoteAttachment,
   createNoteFolder,
   createNote,
-  deleteNoteFolder,
+  deleteTrashItemsPermanently,
+  emptyTrash,
   getNote,
   getNotes,
   getNoteTags,
   getProjectsForNotes,
   moveNoteFolder,
+  moveNoteFolderToTrash,
   moveNoteToFolder,
   moveNoteToTrash,
   renameNote,
   renameNoteFolder,
   reorderNoteFolders,
   reorderNotes,
+  restoreAllTrash,
+  restoreTrashItems,
   toggleFavorite,
   updateNote,
   type NoteFormInput,
@@ -170,6 +180,11 @@ type FolderSummary = {
   position: number;
   count: number;
 };
+type TrashFolderSummary = FolderSummary & {
+  trashPath?: string;
+  deletedAt?: Date | string | null;
+  trashedAt?: Date | string | null;
+};
 type FolderNode = {
   id: string;
   name: string;
@@ -181,6 +196,11 @@ type FolderNode = {
 };
 type FolderMenuTarget = string | 'root' | 'unfiled' | null;
 type FolderTarget = Pick<FolderNode, 'id' | 'name' | 'path'> | null;
+type FolderContextMenuState = {
+  targetId: FolderMenuTarget;
+  x: number;
+  y: number;
+};
 type NoteContextMenuState = {
   noteId: string;
   x: number;
@@ -188,7 +208,7 @@ type NoteContextMenuState = {
 };
 type NoteFeedback = {
   message: string;
-  tone: 'success' | 'error';
+  tone: 'success' | 'error' | 'info';
 } | null;
 type ImportSummary = {
   imported: number;
@@ -196,8 +216,25 @@ type ImportSummary = {
   ignored: number;
   folders: number;
   attachments: number;
+  attachmentsCreated?: number;
+  attachmentsUpdated?: number;
+  attachmentsIgnored?: number;
+  imagesImported?: number;
+  otherAttachmentsImported?: number;
+  partialErrors?: string[];
   totalNotes: number;
 };
+type ConfirmState = {
+  title: string;
+  description: string;
+  confirmLabel: string;
+  tone: 'danger' | 'default';
+  pendingLabel?: string;
+  onConfirm: () => Promise<void>;
+};
+type TrashRow =
+  | { type: 'folder'; id: string; key: string; folder: TrashFolderSummary }
+  | { type: 'note'; id: string; key: string; note: NoteListItem };
 
 const MAX_VAULT_ZIP_SIZE = 50 * 1024 * 1024;
 const ZIP_MIME_TYPES = new Set([
@@ -231,6 +268,31 @@ function formatFileSize(bytes: number) {
   if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
   if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${bytes} B`;
+}
+
+function formatObsidianTimestamp(date = new Date()) {
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
+}
+
+function extensionFromMime(mimeType: string) {
+  if (mimeType === 'image/jpeg') return 'jpg';
+  if (mimeType === 'image/gif') return 'gif';
+  if (mimeType === 'image/webp') return 'webp';
+  if (mimeType === 'image/svg+xml') return 'svg';
+  return 'png';
+}
+
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () =>
+      typeof reader.result === 'string'
+        ? resolve(reader.result)
+        : reject(new Error('invalid-result'));
+    reader.onerror = () => reject(reader.error || new Error('read-error'));
+    reader.readAsDataURL(file);
+  });
 }
 
 function useDebouncedValue(value: string, delay = 250) {
@@ -367,6 +429,26 @@ function buildNoteFilePath(
   return folderPath ? `${folderPath}/${fileName}` : fileName;
 }
 
+function joinFolderPath(parentPath: string | null | undefined, name: string) {
+  return parentPath ? `${parentPath}/${name}` : name;
+}
+
+function folderNameFromPath(path: string | null | undefined) {
+  if (!path) return null;
+  return path.split('/').filter(Boolean).at(-1) || null;
+}
+
+function replaceFolderPrefix(
+  value: string | null | undefined,
+  oldPath: string,
+  nextPath: string
+) {
+  if (!value) return null;
+  return value === oldPath
+    ? nextPath
+    : value.replace(`${oldPath}/`, `${nextPath}/`);
+}
+
 function getUsefulNotePath(note: NoteListItem) {
   if (note.filePath) return note.filePath;
   if (note.fileName) {
@@ -431,7 +513,10 @@ function FolderTree({
   dropFolderId: string | null;
   onToggle: (path: string) => void;
   onSelect: (folder: FolderNode) => void;
-  onMenu: (folderId: FolderMenuTarget) => void;
+  onMenu: (
+    folderId: FolderMenuTarget,
+    event?: { clientX: number; clientY: number }
+  ) => void;
   onStartCreate: (parentId: string | null) => void;
   onStartRename: (folder: FolderNode) => void;
   onEditingNameChange: (value: string) => void;
@@ -469,6 +554,7 @@ function FolderTree({
               onDragStart={(event) => {
                 event.dataTransfer.setData('application/x-folder-id', node.id);
                 event.dataTransfer.effectAllowed = 'move';
+                onMenu(null);
               }}
               onDragOver={(event) => {
                 event.preventDefault();
@@ -478,7 +564,7 @@ function FolderTree({
               onDrop={(event) => handleDrop(event, node)}
               onContextMenu={(event) => {
                 event.preventDefault();
-                onMenu(menuFolderId === node.id ? null : node.id);
+                onMenu(menuFolderId === node.id ? null : node.id, event);
               }}
             >
               <button
@@ -546,8 +632,8 @@ function FolderTree({
                   </button>
                   <button
                     type="button"
-                    onClick={() =>
-                      onMenu(menuFolderId === node.id ? null : node.id)
+                    onClick={(event) =>
+                      onMenu(menuFolderId === node.id ? null : node.id, event)
                     }
                     className="grid h-7 w-7 shrink-0 place-items-center rounded text-[#777780] opacity-0 group-hover:opacity-100 hover:bg-[#24242a] hover:text-white focus:opacity-100"
                     aria-label="Acoes da pasta"
@@ -557,61 +643,6 @@ function FolderTree({
                 </>
               )}
             </div>
-            {menuFolderId === node.id && !isEditing && (
-              <div className="mt-1 ml-7 grid grid-cols-2 gap-1 rounded-md border border-[#303036] bg-[#202024] p-1 text-[11px] shadow-xl">
-                <button
-                  type="button"
-                  onClick={() => onCreateNote(node)}
-                  className="rounded px-2 py-1 text-left text-[#c9c9d1] hover:bg-[#2a2a30]"
-                >
-                  Nova nota nesta pasta
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onStartCreate(node.id)}
-                  className="rounded px-2 py-1 text-left text-[#c9c9d1] hover:bg-[#2a2a30]"
-                >
-                  Subpasta
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onStartRename(node)}
-                  className="rounded px-2 py-1 text-left text-[#c9c9d1] hover:bg-[#2a2a30]"
-                >
-                  Renomear
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onReorder(node, -1)}
-                  className="flex items-center gap-1 rounded px-2 py-1 text-left text-[#c9c9d1] hover:bg-[#2a2a30]"
-                >
-                  <ArrowUp className="h-3 w-3" />
-                  Subir
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onReorder(node, 1)}
-                  className="flex items-center gap-1 rounded px-2 py-1 text-left text-[#c9c9d1] hover:bg-[#2a2a30]"
-                >
-                  <ArrowDown className="h-3 w-3" />
-                  Descer
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onMoveFolder(node.id, null)}
-                  className="rounded px-2 py-1 text-left text-[#c9c9d1] hover:bg-[#2a2a30]"
-                >
-                  Mover raiz
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onDelete(node)}
-                  className="rounded px-2 py-1 text-left text-red-200 hover:bg-red-500/10"
-                >
-                  Remover
-                </button>
-              </div>
-            )}
             {hasChildren && isExpanded && (
               <div className="ml-5 border-l border-[#2f2f35] pl-1">
                 <FolderTree
@@ -941,6 +972,384 @@ function NoteContextMenu({
   );
 }
 
+function FolderContextMenu({
+  state,
+  folder,
+  folderTree,
+  onClose,
+  onCreateNote,
+  onCreateFolder,
+  onRename,
+  onMoveFolder,
+  onCopyPath,
+  onMoveToTrash,
+}: {
+  state: FolderContextMenuState | null;
+  folder: FolderNode | null;
+  folderTree: FolderNode[];
+  onClose: () => void;
+  onCreateNote: (folder: FolderTarget) => void;
+  onCreateFolder: (parentId: string | null) => void;
+  onRename: (folder: FolderNode) => void;
+  onMoveFolder: (folderId: string, parentId: string | null) => void;
+  onCopyPath: (folder: FolderNode) => void;
+  onMoveToTrash: (folder: FolderNode) => void;
+}) {
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState({ left: 0, top: 0 });
+  const [moveOpen, setMoveOpen] = useState(false);
+  const [submenuSide, setSubmenuSide] = useState<'left' | 'right'>('right');
+
+  const targetId = state?.targetId || null;
+  const isRoot = targetId === 'root';
+  const isUnfiled = targetId === 'unfiled';
+  const canEditFolder = Boolean(folder && !isRoot && !isUnfiled);
+
+  const focusFirstItem = useCallback(() => {
+    menuRef.current
+      ?.querySelector<HTMLButtonElement>('[role="menuitem"]:not(:disabled)')
+      ?.focus();
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!state || !menuRef.current) return;
+    const margin = 8;
+    const rect = menuRef.current.getBoundingClientRect();
+    setCoords({
+      left: Math.max(
+        margin,
+        Math.min(state.x, window.innerWidth - rect.width - margin)
+      ),
+      top: Math.max(
+        margin,
+        Math.min(state.y, window.innerHeight - rect.height - margin)
+      ),
+    });
+  }, [state]);
+
+  useEffect(() => {
+    if (!state) return;
+    setMoveOpen(false);
+    window.requestAnimationFrame(focusFirstItem);
+  }, [focusFirstItem, state]);
+
+  useLayoutEffect(() => {
+    if (!moveOpen || !menuRef.current) return;
+    const rect = menuRef.current.getBoundingClientRect();
+    const submenuWidth = 260;
+    setSubmenuSide(
+      window.innerWidth - rect.right < submenuWidth && rect.left > submenuWidth
+        ? 'left'
+        : 'right'
+    );
+  }, [moveOpen]);
+
+  useEffect(() => {
+    if (!state) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      if (menuRef.current?.contains(event.target as Node)) return;
+      onClose();
+    };
+    window.addEventListener('pointerdown', handlePointerDown);
+    return () => window.removeEventListener('pointerdown', handlePointerDown);
+  }, [onClose, state]);
+
+  const getMenuItems = useCallback(() => {
+    if (!menuRef.current) return [];
+    return Array.from(
+      menuRef.current.querySelectorAll<HTMLButtonElement>(
+        '[role="menuitem"]:not(:disabled)'
+      )
+    );
+  }, []);
+
+  const focusRelativeItem = useCallback(
+    (direction: -1 | 1) => {
+      const items = getMenuItems();
+      if (!items.length) return;
+      const currentIndex = items.indexOf(
+        document.activeElement as HTMLButtonElement
+      );
+      const nextIndex =
+        currentIndex === -1
+          ? 0
+          : (currentIndex + direction + items.length) % items.length;
+      items[nextIndex]?.focus();
+    },
+    [getMenuItems]
+  );
+
+  const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      onClose();
+      return;
+    }
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      focusRelativeItem(1);
+      return;
+    }
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      focusRelativeItem(-1);
+      return;
+    }
+    if (event.key === 'ArrowRight') {
+      const active = document.activeElement as HTMLElement | null;
+      if (active?.dataset.contextAction === 'move-folder') {
+        event.preventDefault();
+        setMoveOpen(true);
+      }
+      return;
+    }
+    if (event.key === 'ArrowLeft' && moveOpen) {
+      event.preventDefault();
+      setMoveOpen(false);
+      menuRef.current
+        ?.querySelector<HTMLButtonElement>(
+          '[data-context-action="move-folder"]'
+        )
+        ?.focus();
+      return;
+    }
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      (document.activeElement as HTMLButtonElement | null)?.click();
+    }
+  };
+
+  if (!state || (!folder && !isRoot && !isUnfiled)) return null;
+
+  const runAction = (action: () => void) => {
+    onClose();
+    action();
+  };
+
+  const isMoveTargetDisabled = (target: FolderNode) => {
+    if (!folder) return false;
+    return (
+      target.id === folder.id ||
+      target.path === folder.path ||
+      target.path.startsWith(`${folder.path}/`)
+    );
+  };
+
+  const renderFolderItems = (nodes: FolderNode[], depth = 0): ReactNode =>
+    nodes.map((target) => {
+      const disabled = isMoveTargetDisabled(target);
+      return (
+        <div key={target.id}>
+          <button
+            type="button"
+            role="menuitem"
+            disabled={disabled}
+            onClick={() =>
+              folder &&
+              !disabled &&
+              runAction(() => onMoveFolder(folder.id, target.id))
+            }
+            className={`flex h-8 w-full items-center gap-2 rounded px-2 text-left text-xs outline-none ${
+              disabled
+                ? 'cursor-default text-[#5f5f68]'
+                : 'text-[#c9c9d1] hover:bg-[#2a2a30] hover:text-white focus:bg-[#2a2a30] focus:text-white'
+            }`}
+            style={{ paddingLeft: `${8 + depth * 12}px` }}
+          >
+            <Folder className="h-3.5 w-3.5 shrink-0 text-[#8f8f98]" />
+            <span className="min-w-0 flex-1 truncate">{target.name}</span>
+          </button>
+          {target.children.length > 0 &&
+            renderFolderItems(target.children, depth + 1)}
+        </div>
+      );
+    });
+
+  return (
+    <div
+      ref={menuRef}
+      role="menu"
+      aria-label="Acoes da pasta"
+      tabIndex={-1}
+      onKeyDown={handleKeyDown}
+      className="fixed z-50 w-60 rounded-md border border-[#34343c] bg-[#1b1b1f] p-1 text-xs text-[#dcddde] shadow-2xl outline-none"
+      style={{ left: coords.left, top: coords.top }}
+    >
+      <button
+        type="button"
+        role="menuitem"
+        onClick={() => runAction(() => onCreateNote(folder))}
+        className="flex h-8 w-full items-center gap-2 rounded px-2 text-left outline-none hover:bg-[#2a2a30] focus:bg-[#2a2a30]"
+      >
+        <FileText className="h-3.5 w-3.5 text-[#9a8cff]" />
+        {isUnfiled ? 'Nova nota em Sem Pasta' : 'Nova nota nesta pasta'}
+      </button>
+      {!isUnfiled && (
+        <button
+          type="button"
+          role="menuitem"
+          onClick={() => runAction(() => onCreateFolder(folder?.id || null))}
+          className="flex h-8 w-full items-center gap-2 rounded px-2 text-left outline-none hover:bg-[#2a2a30] focus:bg-[#2a2a30]"
+        >
+          <FolderPlus className="h-3.5 w-3.5 text-[#9a8cff]" />
+          {isRoot ? 'Nova pasta na raiz' : 'Nova subpasta'}
+        </button>
+      )}
+      {canEditFolder && folder && (
+        <>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => runAction(() => onRename(folder))}
+            className="flex h-8 w-full items-center gap-2 rounded px-2 text-left outline-none hover:bg-[#2a2a30] focus:bg-[#2a2a30]"
+          >
+            <Edit3 className="h-3.5 w-3.5 text-[#9a8cff]" />
+            Renomear
+          </button>
+          <div
+            className="relative"
+            onMouseEnter={() => setMoveOpen(true)}
+            onMouseLeave={() => setMoveOpen(false)}
+          >
+            <button
+              type="button"
+              role="menuitem"
+              data-context-action="move-folder"
+              aria-haspopup="menu"
+              aria-expanded={moveOpen}
+              onClick={() => setMoveOpen((value) => !value)}
+              className="flex h-8 w-full items-center gap-2 rounded px-2 text-left outline-none hover:bg-[#2a2a30] focus:bg-[#2a2a30]"
+            >
+              <FolderInput className="h-3.5 w-3.5 text-[#9a8cff]" />
+              <span className="flex-1">Mover para</span>
+              <ChevronRight className="h-3.5 w-3.5 text-[#777780]" />
+            </button>
+            {moveOpen && (
+              <div
+                role="menu"
+                aria-label="Mover pasta"
+                className={`absolute top-0 z-50 w-64 overflow-y-auto rounded-md border border-[#34343c] bg-[#1b1b1f] p-1 shadow-2xl ${
+                  submenuSide === 'left' ? 'right-full mr-1' : 'left-full ml-1'
+                }`}
+                style={{ maxHeight: 'min(20rem, calc(100vh - 1rem))' }}
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled={!folder.parentId}
+                  onClick={() =>
+                    folder.parentId &&
+                    runAction(() => onMoveFolder(folder.id, null))
+                  }
+                  className={`flex h-8 w-full items-center gap-2 rounded px-2 text-left text-xs outline-none ${
+                    !folder.parentId
+                      ? 'cursor-default bg-[#2d2940] text-[#c9b8ff]'
+                      : 'text-[#c9c9d1] hover:bg-[#2a2a30] hover:text-white focus:bg-[#2a2a30]'
+                  }`}
+                >
+                  <Inbox className="h-3.5 w-3.5 text-[#8f8f98]" />
+                  Raiz
+                </button>
+                {renderFolderItems(folderTree)}
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => runAction(() => onCopyPath(folder))}
+            className="flex h-8 w-full items-center gap-2 rounded px-2 text-left outline-none hover:bg-[#2a2a30] focus:bg-[#2a2a30]"
+          >
+            <Copy className="h-3.5 w-3.5 text-[#9a8cff]" />
+            Copiar caminho
+          </button>
+          <div className="my-1 border-t border-[#303036]" />
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => runAction(() => onMoveToTrash(folder))}
+            className="flex h-8 w-full items-center gap-2 rounded px-2 text-left text-red-200 outline-none hover:bg-red-500/10 focus:bg-red-500/10"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Mover para a lixeira
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+function ConfirmDialog({
+  state,
+  pending,
+  onCancel,
+}: {
+  state: ConfirmState | null;
+  pending: boolean;
+  onCancel: () => void;
+}) {
+  if (!state) return null;
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="notes-confirm-title"
+        className="w-full max-w-md rounded-lg border border-[#34343c] bg-[#202024] shadow-2xl"
+      >
+        <div className="flex items-start gap-3 border-b border-[#303036] p-4">
+          <div
+            className={`mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded ${
+              state.tone === 'danger'
+                ? 'bg-red-500/10 text-red-200'
+                : 'bg-[#34245f] text-[#d7ccff]'
+            }`}
+          >
+            <AlertTriangle className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <h2
+              id="notes-confirm-title"
+              className="text-sm font-semibold text-[#f2f2f3]"
+            >
+              {state.title}
+            </h2>
+            <p className="mt-1 text-sm leading-5 text-[#b8b8bf]">
+              {state.description}
+            </p>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 p-4">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={pending}
+            className="rounded-md border border-[#34343c] px-3 py-2 text-sm text-[#dcddde] hover:bg-[#2a2a30] disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={() => void state.onConfirm()}
+            disabled={pending}
+            className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm text-white disabled:opacity-50 ${
+              state.tone === 'danger'
+                ? 'bg-red-600 hover:bg-red-500'
+                : 'bg-[#6f55d9] hover:bg-[#7c66df]'
+            }`}
+          >
+            {pending && <Loader2 className="h-4 w-4 animate-spin" />}
+            {pending
+              ? state.pendingLabel || 'Processando...'
+              : state.confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CommandPalette({
   open,
   notes,
@@ -1087,6 +1496,9 @@ export default function Notes() {
   const [projects, setProjects] = useState<ProjectOption[]>([]);
   const [tags, setTags] = useState<TagOption[]>([]);
   const [folders, setFolders] = useState<FolderSummary[]>([]);
+  const [trashedFolders, setTrashedFolders] = useState<TrashFolderSummary[]>(
+    []
+  );
   const [attachments, setAttachments] = useState<PreviewAttachment[]>([]);
   const [linkableNotes, setLinkableNotes] = useState<PreviewNote[]>([]);
   const [unfiledCount, setUnfiledCount] = useState(0);
@@ -1124,7 +1536,8 @@ export default function Notes() {
   >(undefined);
   const [folderName, setFolderName] = useState('');
   const [folderSaving, setFolderSaving] = useState(false);
-  const [menuFolderId, setMenuFolderId] = useState<FolderMenuTarget>(null);
+  const [folderContextMenu, setFolderContextMenu] =
+    useState<FolderContextMenuState | null>(null);
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
   const [editingFolderName, setEditingFolderName] = useState('');
   const [dropFolderId, setDropFolderId] = useState<string | null>(null);
@@ -1133,6 +1546,15 @@ export default function Notes() {
   const [renamingNoteId, setRenamingNoteId] = useState<string | null>(null);
   const [renamingTitle, setRenamingTitle] = useState('');
   const [noteFeedback, setNoteFeedback] = useState<NoteFeedback>(null);
+  const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
+  const [confirmPending, setConfirmPending] = useState(false);
+  const [trashSelection, setTrashSelection] = useState<Set<string>>(
+    () => new Set()
+  );
+  const [lastTrashSelectionIndex, setLastTrashSelectionIndex] = useState<
+    number | null
+  >(null);
+  const [pasteUploading, setPasteUploading] = useState(false);
   const renameInputRef = useRef<HTMLInputElement>(null);
   const renameCommitRef = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -1497,7 +1919,7 @@ export default function Notes() {
       setMode('edit');
       setScope('all');
       setActiveFolder(folder?.path || null);
-      setMenuFolderId(null);
+      setFolderContextMenu(null);
       await load();
     } else {
       setError(result.error || 'Nao foi possivel criar a nota.');
@@ -1521,12 +1943,18 @@ export default function Notes() {
     if (noteResult.success && noteResult.data) {
       setNotes(noteResult.data.notes as NoteListItem[]);
       setFolders(noteResult.data.folders as FolderSummary[]);
+      setTrashedFolders(
+        (noteResult.data.trashedFolders || []) as TrashFolderSummary[]
+      );
       setAttachments(noteResult.data.attachments as PreviewAttachment[]);
       setLinkableNotes(noteResult.data.linkableNotes as PreviewNote[]);
       setUnfiledCount(noteResult.data.unfiledCount || 0);
       setTotalCount(noteResult.data.stats.total || 0);
       setFavoriteCount(noteResult.data.stats.favorites || 0);
-      setTrashCount(noteResult.data.stats.byStatus?.ARCHIVED || 0);
+      setTrashCount(
+        (noteResult.data.stats.byStatus?.ARCHIVED || 0) +
+          (noteResult.data.trashFolderCount || 0)
+      );
     } else setError(noteResult.error || 'Nao foi possivel carregar notas.');
     if (tagResult.success) setTags(tagResult.data);
     if (projectResult.success) setProjects(projectResult.data);
@@ -1565,6 +1993,18 @@ export default function Notes() {
   }, [notesListCollapsed, notesListLayoutLoaded]);
 
   useEffect(() => {
+    setFolderContextMenu(null);
+    setNoteContextMenu(null);
+  }, [activeFolder, activeProject, activeTag, scope]);
+
+  useEffect(() => {
+    if (scope !== 'trash') {
+      setTrashSelection(new Set());
+      setLastTrashSelectionIndex(null);
+    }
+  }, [scope]);
+
+  useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
@@ -1591,6 +2031,49 @@ export default function Notes() {
     () => new Map(folders.map((folder) => [folder.id, folder])),
     [folders]
   );
+  const menuFolderId = folderContextMenu?.targetId || null;
+  const folderContextTarget = useMemo(() => {
+    const targetId = folderContextMenu?.targetId;
+    if (!targetId || targetId === 'root' || targetId === 'unfiled') return null;
+    return (
+      folderTree
+        .flatMap(function flatten(node): FolderNode[] {
+          return [node, ...node.children.flatMap(flatten)];
+        })
+        .find((folder) => folder.id === targetId) || null
+    );
+  }, [folderContextMenu?.targetId, folderTree]);
+  const trashRows = useMemo<TrashRow[]>(() => {
+    if (scope !== 'trash') return [];
+    return [
+      ...trashedFolders.map((folder) => ({
+        type: 'folder' as const,
+        id: folder.id,
+        key: `folder:${folder.id}`,
+        folder,
+      })),
+      ...filteredNotes.map((note) => ({
+        type: 'note' as const,
+        id: note.id,
+        key: `note:${note.id}`,
+        note,
+      })),
+    ];
+  }, [filteredNotes, scope, trashedFolders]);
+  const selectedTrashRows = useMemo(
+    () => trashRows.filter((row) => trashSelection.has(row.key)),
+    [trashRows, trashSelection]
+  );
+  useEffect(() => {
+    if (scope !== 'trash') return;
+    const available = new Set(trashRows.map((row) => row.key));
+    setTrashSelection((current) => {
+      const next = new Set(
+        Array.from(current).filter((key) => available.has(key))
+      );
+      return next.size === current.size ? current : next;
+    });
+  }, [scope, trashRows]);
   const contextMenuNote = useMemo(() => {
     if (!noteContextMenu) return null;
     return (
@@ -1605,7 +2088,7 @@ export default function Notes() {
   ) => {
     event.preventDefault();
     event.stopPropagation();
-    setMenuFolderId(null);
+    setFolderContextMenu(null);
     setNoteContextMenu({
       noteId: note.id,
       x: event.clientX,
@@ -1613,10 +2096,41 @@ export default function Notes() {
     });
   };
 
+  const openFolderContextMenu = (
+    targetId: FolderMenuTarget,
+    event?: { clientX: number; clientY: number }
+  ) => {
+    setNoteContextMenu(null);
+    if (!targetId) {
+      setFolderContextMenu(null);
+      return;
+    }
+    setFolderContextMenu({
+      targetId,
+      x: event?.clientX ?? 16,
+      y: event?.clientY ?? 16,
+    });
+  };
+
+  const runConfirmed = (state: ConfirmState) => {
+    setConfirmState({
+      ...state,
+      onConfirm: async () => {
+        setConfirmPending(true);
+        try {
+          await state.onConfirm();
+          setConfirmState(null);
+        } finally {
+          setConfirmPending(false);
+        }
+      },
+    });
+  };
+
   const startCreateFolder = (parentId: string | null = null) => {
     setFolderFormParentId(parentId);
     setFolderName('');
-    setMenuFolderId(null);
+    setFolderContextMenu(null);
   };
 
   const saveFolder = async () => {
@@ -1626,7 +2140,44 @@ export default function Notes() {
       setError('Informe um nome para a pasta.');
       return;
     }
+    const parent = folderFormParentId
+      ? folderById.get(folderFormParentId)
+      : null;
+    if (folderFormParentId && !parent) {
+      setError('Pasta pai nao encontrada.');
+      return;
+    }
+    const previousFolders = folders;
+    const tempId = `temp-${Date.now()}`;
+    const path = joinFolderPath(parent?.path, name);
+    const optimisticFolder: FolderSummary = {
+      id: tempId,
+      name,
+      path,
+      parentId: parent?.id || null,
+      position: folders.filter(
+        (folder) => folder.parentId === (parent?.id || null)
+      ).length,
+      count: 0,
+    };
+
     setFolderSaving(true);
+    setFolders((current) => [...current, optimisticFolder]);
+    setFolderFormParentId(undefined);
+    setFolderName('');
+    setScope('all');
+    setActiveFolder(path);
+    setExpandedFolders((current) => {
+      const next = new Set(current);
+      path
+        .split('/')
+        .slice(0, -1)
+        .forEach((_, index, parts) => {
+          next.add(parts.slice(0, index + 1).join('/'));
+        });
+      return next;
+    });
+
     const result = await createNoteFolder({
       name,
       parentId: folderFormParentId ?? null,
@@ -1636,23 +2187,27 @@ export default function Notes() {
         id: string;
         path: string;
         name: string;
+        parentId: string | null;
+        position: number;
       };
-      setFolderFormParentId(undefined);
-      setFolderName('');
-      setScope('all');
+      setFolders((current) =>
+        current.map((item) =>
+          item.id === tempId
+            ? {
+                id: folder.id,
+                path: folder.path,
+                name: folder.name,
+                parentId: folder.parentId,
+                position: folder.position,
+                count: 0,
+              }
+            : item
+        )
+      );
       setActiveFolder(folder.path);
-      setExpandedFolders((current) => {
-        const next = new Set(current);
-        folder.path
-          .split('/')
-          .slice(0, -1)
-          .forEach((_, index, parts) => {
-            next.add(parts.slice(0, index + 1).join('/'));
-          });
-        return next;
-      });
-      await load();
     } else {
+      setFolders(previousFolders);
+      setActiveFolder(parent?.path);
       setError(result.error || 'Nao foi possivel criar a pasta.');
     }
     setFolderSaving(false);
@@ -1660,55 +2215,217 @@ export default function Notes() {
 
   const saveFolderRename = async (folder: FolderNode) => {
     setError('');
+    const nextName = editingFolderName.trim();
+    if (!nextName) {
+      setError('Informe um nome de pasta valido.');
+      return;
+    }
     const previousPath = folder.path;
+    const parent = folder.parentId ? folderById.get(folder.parentId) : null;
+    const optimisticPath = joinFolderPath(parent?.path, nextName);
+    const previousFolders = folders;
+    const previousNotes = notes;
+    const previousSelected = selectedNote;
+    const previousLinkableNotes = linkableNotes;
+    const previousAttachments = attachments;
+    const previousActiveFolder = activeFolder;
+    const patchPath = (path?: string | null) =>
+      path && (path === previousPath || path.startsWith(`${previousPath}/`))
+        ? replaceFolderPrefix(path, previousPath, optimisticPath)
+        : path || null;
+
+    setFolders((current) =>
+      current.map((item) => {
+        const nextPath = patchPath(item.path);
+        return nextPath
+          ? {
+              ...item,
+              name:
+                item.id === folder.id
+                  ? nextName
+                  : folderNameFromPath(nextPath) || item.name,
+              path: nextPath,
+            }
+          : item;
+      })
+    );
+    setNotes((current) =>
+      current.map((note) => {
+        const folderPath = patchPath(note.folderPath);
+        return folderPath !== (note.folderPath || null)
+          ? {
+              ...note,
+              folderPath,
+              folderName: folderNameFromPath(folderPath),
+              filePath: buildNoteFilePath(folderPath, note.fileName),
+            }
+          : note;
+      })
+    );
+    setLinkableNotes((current) =>
+      current.map((note) => {
+        const folderPath = patchPath(note.folderPath);
+        return folderPath !== (note.folderPath || null)
+          ? {
+              ...note,
+              folderPath,
+              filePath: buildNoteFilePath(
+                folderPath,
+                note.filePath?.split('/').at(-1)
+              ),
+            }
+          : note;
+      })
+    );
+    setAttachments((current) =>
+      current.map((attachment) => {
+        const folderPath = patchPath(attachment.folderPath);
+        return folderPath !== (attachment.folderPath || null)
+          ? {
+              ...attachment,
+              folderPath,
+              filePath:
+                buildNoteFilePath(folderPath, attachment.fileName) ||
+                attachment.fileName,
+            }
+          : attachment;
+      })
+    );
+    setSelectedNote((current) => {
+      if (!current) return current;
+      const folderPath = patchPath(current.folderPath);
+      return folderPath !== (current.folderPath || null)
+        ? {
+            ...current,
+            folderPath,
+            folderName: folderNameFromPath(folderPath),
+            filePath: buildNoteFilePath(folderPath, current.fileName),
+          }
+        : current;
+    });
+    setEditingFolderId(null);
+    setFolderContextMenu(null);
+    if (
+      activeFolder === previousPath ||
+      activeFolder?.startsWith(`${previousPath}/`)
+    ) {
+      setActiveFolder(
+        activeFolder === previousPath
+          ? optimisticPath
+          : activeFolder.replace(`${previousPath}/`, `${optimisticPath}/`)
+      );
+    }
+
     const result = await renameNoteFolder(folder.id, editingFolderName);
     if (result.success && result.data) {
-      const nextPath = (result.data as { path: string }).path;
-      setEditingFolderId(null);
-      setMenuFolderId(null);
-      if (
-        activeFolder === previousPath ||
-        activeFolder?.startsWith(`${previousPath}/`)
-      ) {
-        setActiveFolder(
-          activeFolder === previousPath
-            ? nextPath
-            : activeFolder.replace(`${previousPath}/`, `${nextPath}/`)
-        );
-      }
-      await load();
+      setNoteFeedback({ message: 'Pasta renomeada', tone: 'success' });
     } else {
+      setFolders(previousFolders);
+      setNotes(previousNotes);
+      setSelectedNote(previousSelected);
+      setLinkableNotes(previousLinkableNotes);
+      setAttachments(previousAttachments);
+      setActiveFolder(previousActiveFolder);
       setError(result.error || 'Nao foi possivel renomear a pasta.');
     }
   };
 
   const handleDeleteFolder = async (folder: FolderNode) => {
-    setError('');
-    let result = await deleteNoteFolder(folder.id);
-    if (!result.success && result.error?.includes('conteudo')) {
-      const moveToParent = window.confirm(
-        'Esta pasta tem notas ou subpastas. Mover conteudo para a pasta pai?'
-      );
-      if (moveToParent) result = await deleteNoteFolder(folder.id, 'parent');
-      else {
-        const moveToUnfiled = window.confirm(
-          'Mover todo o conteudo para Sem Pasta? As notas nao serao apagadas.'
+    runConfirmed({
+      title: 'Mover pasta para a lixeira?',
+      description:
+        'A pasta, subpastas e notas dentro dela irão para a Lixeira. Nada será excluído permanentemente agora.',
+      confirmLabel: 'Mover para lixeira',
+      pendingLabel: 'Movendo...',
+      tone: 'danger',
+      onConfirm: async () => {
+        setError('');
+        const affectedFolders = folders.filter(
+          (item) =>
+            item.id === folder.id || item.path.startsWith(`${folder.path}/`)
         );
-        if (moveToUnfiled)
-          result = await deleteNoteFolder(folder.id, 'unfiled');
-      }
-    }
-    if (result.success) {
-      if (
-        activeFolder === folder.path ||
-        activeFolder?.startsWith(`${folder.path}/`)
-      )
-        setActiveFolder(undefined);
-      setMenuFolderId(null);
-      await load();
-    } else {
-      setError(result.error || 'Nao foi possivel remover a pasta.');
-    }
+        const affectedNotes = notes.filter((note) =>
+          note.folderPath
+            ? note.folderPath === folder.path ||
+              note.folderPath.startsWith(`${folder.path}/`)
+            : false
+        );
+        const previousFolders = folders;
+        const previousTrashedFolders = trashedFolders;
+        const previousNotes = notes;
+        const previousSelected = selectedNote;
+        const previousDraft = draft;
+        const previousTotalCount = totalCount;
+        const previousFavoriteCount = favoriteCount;
+        const previousTrashCount = trashCount;
+
+        setFolders((current) =>
+          current.filter(
+            (item) =>
+              item.id !== folder.id && !item.path.startsWith(`${folder.path}/`)
+          )
+        );
+        setTrashedFolders((current) => [
+          ...affectedFolders.map((item) => ({
+            ...item,
+            deletedAt: new Date().toISOString(),
+            trashedAt: new Date().toISOString(),
+          })),
+          ...current,
+        ]);
+        setNotes((current) =>
+          current.filter(
+            (note) =>
+              !note.folderPath ||
+              (note.folderPath !== folder.path &&
+                !note.folderPath.startsWith(`${folder.path}/`))
+          )
+        );
+        setTotalCount((count) => Math.max(0, count - affectedNotes.length));
+        setFavoriteCount((count) =>
+          Math.max(
+            0,
+            count - affectedNotes.filter((note) => note.isFavorite).length
+          )
+        );
+        setTrashCount(
+          (count) => count + affectedFolders.length + affectedNotes.length
+        );
+        if (
+          selectedNote &&
+          selectedNote.folderPath &&
+          (selectedNote.folderPath === folder.path ||
+            selectedNote.folderPath.startsWith(`${folder.path}/`))
+        ) {
+          setSelectedNote(null);
+          setDraft(emptyDraft());
+        }
+        if (
+          activeFolder === folder.path ||
+          activeFolder?.startsWith(`${folder.path}/`)
+        )
+          setActiveFolder(undefined);
+        setFolderContextMenu(null);
+
+        const result = await moveNoteFolderToTrash(folder.id);
+        if (result.success) {
+          setNoteFeedback({
+            message: 'Pasta movida para a lixeira',
+            tone: 'success',
+          });
+        } else {
+          setFolders(previousFolders);
+          setTrashedFolders(previousTrashedFolders);
+          setNotes(previousNotes);
+          setSelectedNote(previousSelected);
+          setDraft(previousDraft);
+          setTotalCount(previousTotalCount);
+          setFavoriteCount(previousFavoriteCount);
+          setTrashCount(previousTrashCount);
+          setError(result.error || 'Nao foi possivel mover a pasta.');
+        }
+      },
+    });
   };
 
   const handleMoveFolder = async (
@@ -1718,23 +2435,119 @@ export default function Notes() {
     setError('');
     const folder = folderById.get(folderId);
     const previousPath = folder?.path;
+    const parent = parentId ? folderById.get(parentId) : null;
+    if (!folder || (parentId && !parent)) {
+      setError('Pasta destino nao encontrada.');
+      return;
+    }
+    if (
+      parent?.path === folder.path ||
+      parent?.path.startsWith(`${folder.path}/`)
+    ) {
+      setError('Uma pasta nao pode ser movida para dentro de uma descendente.');
+      return;
+    }
+    const optimisticPath = joinFolderPath(parent?.path, folder.name);
+    const previousFolders = folders;
+    const previousNotes = notes;
+    const previousSelected = selectedNote;
+    const previousLinkableNotes = linkableNotes;
+    const previousAttachments = attachments;
+    const previousActiveFolder = activeFolder;
+    const patchPath = (path?: string | null) =>
+      previousPath &&
+      path &&
+      (path === previousPath || path.startsWith(`${previousPath}/`))
+        ? replaceFolderPrefix(path, previousPath, optimisticPath)
+        : path || null;
+
+    setFolders((current) =>
+      current.map((item) => {
+        const nextPath = patchPath(item.path);
+        if (!nextPath) return item;
+        return {
+          ...item,
+          path: nextPath,
+          parentId: item.id === folderId ? parentId : item.parentId,
+        };
+      })
+    );
+    setNotes((current) =>
+      current.map((note) => {
+        const folderPath = patchPath(note.folderPath);
+        return folderPath !== (note.folderPath || null)
+          ? {
+              ...note,
+              folderPath,
+              folderName: folderNameFromPath(folderPath),
+              filePath: buildNoteFilePath(folderPath, note.fileName),
+            }
+          : note;
+      })
+    );
+    setLinkableNotes((current) =>
+      current.map((note) => {
+        const folderPath = patchPath(note.folderPath);
+        return folderPath !== (note.folderPath || null)
+          ? {
+              ...note,
+              folderPath,
+              filePath: note.filePath
+                ? buildNoteFilePath(folderPath, note.filePath.split('/').at(-1))
+                : note.filePath,
+            }
+          : note;
+      })
+    );
+    setAttachments((current) =>
+      current.map((attachment) => {
+        const folderPath = patchPath(attachment.folderPath);
+        return folderPath !== (attachment.folderPath || null)
+          ? {
+              ...attachment,
+              folderPath,
+              filePath:
+                buildNoteFilePath(folderPath, attachment.fileName) ||
+                attachment.fileName,
+            }
+          : attachment;
+      })
+    );
+    setSelectedNote((current) => {
+      if (!current) return current;
+      const folderPath = patchPath(current.folderPath);
+      return folderPath !== (current.folderPath || null)
+        ? {
+            ...current,
+            folderPath,
+            folderName: folderNameFromPath(folderPath),
+            filePath: buildNoteFilePath(folderPath, current.fileName),
+          }
+        : current;
+    });
+    if (
+      previousPath &&
+      (activeFolder === previousPath ||
+        activeFolder?.startsWith(`${previousPath}/`))
+    ) {
+      setActiveFolder(
+        activeFolder === previousPath
+          ? optimisticPath
+          : activeFolder.replace(`${previousPath}/`, `${optimisticPath}/`)
+      );
+    }
+    setFolderContextMenu(null);
+
     const result = await moveNoteFolder(folderId, parentId);
     if (result.success && result.data) {
-      const nextPath = (result.data as { path: string }).path;
-      if (
-        previousPath &&
-        (activeFolder === previousPath ||
-          activeFolder?.startsWith(`${previousPath}/`))
-      ) {
-        setActiveFolder(
-          activeFolder === previousPath
-            ? nextPath
-            : activeFolder.replace(`${previousPath}/`, `${nextPath}/`)
-        );
-      }
-      setMenuFolderId(null);
-      await load();
+      setNoteFeedback({ message: 'Pasta movida', tone: 'success' });
     } else {
+      setFolders(previousFolders);
+      setNotes(previousNotes);
+      setSelectedNote(previousSelected);
+      setLinkableNotes(previousLinkableNotes);
+      setAttachments(previousAttachments);
+      setActiveFolder(previousActiveFolder);
       setError(result.error || 'Nao foi possivel mover a pasta.');
     }
   };
@@ -1953,6 +2766,224 @@ export default function Notes() {
       setFolders(previousFolders);
       setError(result.error || 'Nao foi possivel mover para a lixeira.');
     }
+  };
+
+  const getTrashPayload = (rows: TrashRow[]) => ({
+    noteIds: rows
+      .filter(
+        (row): row is Extract<TrashRow, { type: 'note' }> => row.type === 'note'
+      )
+      .map((row) => row.id),
+    folderIds: rows
+      .filter(
+        (row): row is Extract<TrashRow, { type: 'folder' }> =>
+          row.type === 'folder'
+      )
+      .map((row) => row.id),
+  });
+
+  const getAffectedTrashRows = (rows: TrashRow[]) => {
+    const selectedFolderPaths = rows
+      .filter(
+        (row): row is Extract<TrashRow, { type: 'folder' }> =>
+          row.type === 'folder'
+      )
+      .map((row) => row.folder.path);
+    return trashRows.filter((row) => {
+      if (rows.some((selected) => selected.key === row.key)) return true;
+      if (selectedFolderPaths.length === 0) return false;
+      const path =
+        row.type === 'folder' ? row.folder.path : row.note.folderPath || null;
+      return selectedFolderPaths.some(
+        (folderPath) =>
+          path === folderPath || Boolean(path?.startsWith(`${folderPath}/`))
+      );
+    });
+  };
+
+  const removeTrashRowsOptimistically = (
+    rows: TrashRow[],
+    restored: boolean
+  ) => {
+    const affected = getAffectedTrashRows(rows);
+    const affectedKeys = new Set(affected.map((row) => row.key));
+    const affectedNoteIds = new Set(
+      affected
+        .filter(
+          (row): row is Extract<TrashRow, { type: 'note' }> =>
+            row.type === 'note'
+        )
+        .map((row) => row.id)
+    );
+    const affectedFolderIds = new Set(
+      affected
+        .filter(
+          (row): row is Extract<TrashRow, { type: 'folder' }> =>
+            row.type === 'folder'
+        )
+        .map((row) => row.id)
+    );
+
+    setNotes((current) =>
+      current.filter((note) => !affectedNoteIds.has(note.id))
+    );
+    setTrashedFolders((current) =>
+      current.filter((folder) => !affectedFolderIds.has(folder.id))
+    );
+    setTrashSelection((current) => {
+      const next = new Set(current);
+      affectedKeys.forEach((key) => next.delete(key));
+      return next;
+    });
+    setTrashCount((count) => Math.max(0, count - affected.length));
+    if (restored) {
+      const restoredNotes = affected.filter(
+        (row) => row.type === 'note'
+      ).length;
+      setTotalCount((count) => count + restoredNotes);
+    }
+  };
+
+  const handleTrashRowSelection = (
+    row: TrashRow,
+    index: number,
+    event: ReactMouseEvent<HTMLInputElement>
+  ) => {
+    event.stopPropagation();
+    setTrashSelection((current) => {
+      const next = new Set(current);
+      if (event.shiftKey && lastTrashSelectionIndex !== null) {
+        const start = Math.min(lastTrashSelectionIndex, index);
+        const end = Math.max(lastTrashSelectionIndex, index);
+        trashRows.slice(start, end + 1).forEach((item) => next.add(item.key));
+      } else if (next.has(row.key)) {
+        next.delete(row.key);
+      } else {
+        next.add(row.key);
+      }
+      return next;
+    });
+    setLastTrashSelectionIndex(index);
+  };
+
+  const restoreTrashRows = async (rows: TrashRow[]) => {
+    if (!rows.length) return;
+    const previousNotes = notes;
+    const previousTrashedFolders = trashedFolders;
+    const previousTrashCount = trashCount;
+    const previousTotalCount = totalCount;
+    const previousSelection = trashSelection;
+    removeTrashRowsOptimistically(rows, true);
+    const result = await restoreTrashItems(getTrashPayload(rows));
+    if (result.success) {
+      setNoteFeedback({ message: 'Itens restaurados', tone: 'success' });
+    } else {
+      setNotes(previousNotes);
+      setTrashedFolders(previousTrashedFolders);
+      setTrashCount(previousTrashCount);
+      setTotalCount(previousTotalCount);
+      setTrashSelection(previousSelection);
+      setError(result.error || 'Nao foi possivel restaurar os itens.');
+    }
+  };
+
+  const permanentlyDeleteTrashRows = async (rows: TrashRow[]) => {
+    if (!rows.length) return;
+    const previousNotes = notes;
+    const previousTrashedFolders = trashedFolders;
+    const previousTrashCount = trashCount;
+    const previousSelection = trashSelection;
+    removeTrashRowsOptimistically(rows, false);
+    const result = await deleteTrashItemsPermanently(getTrashPayload(rows));
+    if (result.success) {
+      setNoteFeedback({
+        message: 'Itens excluidos permanentemente',
+        tone: 'success',
+      });
+    } else {
+      setNotes(previousNotes);
+      setTrashedFolders(previousTrashedFolders);
+      setTrashCount(previousTrashCount);
+      setTrashSelection(previousSelection);
+      setError(result.error || 'Nao foi possivel excluir os itens.');
+    }
+  };
+
+  const confirmRestoreSelectedTrash = () => {
+    void restoreTrashRows(selectedTrashRows);
+  };
+
+  const confirmDeleteSelectedTrash = () => {
+    const affected = getAffectedTrashRows(selectedTrashRows);
+    runConfirmed({
+      title: 'Excluir permanentemente?',
+      description: `${affected.length} item(ns) serão excluídos permanentemente. Esta ação não poderá ser desfeita.`,
+      confirmLabel: 'Excluir permanentemente',
+      pendingLabel: 'Excluindo...',
+      tone: 'danger',
+      onConfirm: async () => permanentlyDeleteTrashRows(selectedTrashRows),
+    });
+  };
+
+  const confirmRestoreAllTrash = () => {
+    const previousNotes = notes;
+    const previousTrashedFolders = trashedFolders;
+    const previousTrashCount = trashCount;
+    const previousTotalCount = totalCount;
+    const previousSelection = trashSelection;
+    const rows = trashRows;
+    setNoteFeedback({ message: 'Restaurando lixeira...', tone: 'info' });
+    removeTrashRowsOptimistically(rows, true);
+    setNotes([]);
+    setTrashedFolders([]);
+    setTrashCount(0);
+    void restoreAllTrash().then((result) => {
+      if (result.success) {
+        setTotalCount(
+          previousTotalCount +
+            ((result.data as { notes?: number } | undefined)?.notes || 0)
+        );
+        setNoteFeedback({ message: 'Lixeira restaurada', tone: 'success' });
+      } else {
+        setNotes(previousNotes);
+        setTrashedFolders(previousTrashedFolders);
+        setTrashCount(previousTrashCount);
+        setTotalCount(previousTotalCount);
+        setTrashSelection(previousSelection);
+        setError(result.error || 'Nao foi possivel restaurar a lixeira.');
+      }
+    });
+  };
+
+  const confirmEmptyTrash = () => {
+    runConfirmed({
+      title: 'Esvaziar lixeira?',
+      description: `${trashRows.length} item(ns) serão excluídos permanentemente. Esta ação não poderá ser desfeita.`,
+      confirmLabel: 'Esvaziar lixeira',
+      pendingLabel: 'Esvaziando...',
+      tone: 'danger',
+      onConfirm: async () => {
+        const previousNotes = notes;
+        const previousTrashedFolders = trashedFolders;
+        const previousTrashCount = trashCount;
+        const previousSelection = trashSelection;
+        setNoteFeedback({ message: 'Esvaziando lixeira...', tone: 'info' });
+        removeTrashRowsOptimistically(trashRows, false);
+        setNotes([]);
+        setTrashedFolders([]);
+        setTrashCount(0);
+        const result = await emptyTrash();
+        if (result.success) {
+          setNoteFeedback({ message: 'Lixeira esvaziada', tone: 'success' });
+        } else {
+          setNotes(previousNotes);
+          setTrashedFolders(previousTrashedFolders);
+          setTrashCount(previousTrashCount);
+          setTrashSelection(previousSelection);
+          setError(result.error || 'Nao foi possivel esvaziar a lixeira.');
+        }
+      },
+    });
   };
 
   const startNoteRename = (note: NoteListItem) => {
@@ -2185,6 +3216,76 @@ export default function Notes() {
     }
   };
 
+  const handleEditorPaste = async (
+    event: ReactClipboardEvent<HTMLTextAreaElement>
+  ) => {
+    const imageItem = Array.from(event.clipboardData.items).find((item) =>
+      item.type.startsWith('image/')
+    );
+    if (!imageItem) return;
+
+    const file = imageItem.getAsFile();
+    if (!file) return;
+
+    event.preventDefault();
+    const textarea = event.currentTarget;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const extension = extensionFromMime(file.type);
+    const fileName = `Pasted image ${formatObsidianTimestamp()}.${extension}`;
+
+    setPasteUploading(true);
+    setNoteFeedback({ message: 'Enviando imagem...', tone: 'info' });
+
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      const result = await createNoteAttachment({
+        fileName,
+        dataUrl,
+        mimeType: file.type,
+        size: file.size,
+        folderPath: null,
+      });
+
+      if (!result.success || !result.data) {
+        setNoteFeedback({
+          message: result.error || 'Nao foi possivel enviar a imagem',
+          tone: 'error',
+        });
+        return;
+      }
+
+      const attachment = result.data.attachment as PreviewAttachment;
+      const link = `![[${attachment.fileName}]]`;
+      setAttachments((current) => {
+        const withoutDuplicate = current.filter(
+          (item) => item.id !== attachment.id
+        );
+        return [...withoutDuplicate, attachment];
+      });
+      setDraft((current) => ({
+        ...current,
+        content: `${current.content.slice(0, start)}${link}${current.content.slice(end)}`,
+      }));
+      setWikilinkBlocked(true);
+      setNoteFeedback({ message: 'Imagem anexada', tone: 'success' });
+      window.requestAnimationFrame(() => {
+        textarea.focus();
+        const nextCursor = start + link.length;
+        textarea.selectionStart = nextCursor;
+        textarea.selectionEnd = nextCursor;
+        setCursorPos(nextCursor);
+      });
+    } catch {
+      setNoteFeedback({
+        message: 'Nao foi possivel ler a imagem da area de transferencia',
+        tone: 'error',
+      });
+    } finally {
+      setPasteUploading(false);
+    }
+  };
+
   const handleEditorKeyDown = (
     event: ReactKeyboardEvent<HTMLTextAreaElement>
   ) => {
@@ -2298,6 +3399,50 @@ export default function Notes() {
         onCopyPath={(note) => void copyNotePath(note)}
         onMoveToTrash={(note) => void handleMoveNoteToTrash(note)}
       />
+      <FolderContextMenu
+        state={folderContextMenu}
+        folder={folderContextTarget}
+        folderTree={folderTree}
+        onClose={() => setFolderContextMenu(null)}
+        onCreateNote={(folder) => void handleCreateNoteInFolder(folder)}
+        onCreateFolder={(parentId) => startCreateFolder(parentId)}
+        onRename={(folder) => {
+          setEditingFolderId(folder.id);
+          setEditingFolderName(folder.name);
+          setFolderContextMenu(null);
+        }}
+        onMoveFolder={(folderId, parentId) =>
+          void handleMoveFolder(folderId, parentId)
+        }
+        onCopyPath={(folder) =>
+          void copyNotePath({
+            id: folder.id,
+            title: folder.name,
+            slug: folder.path,
+            content: '',
+            excerpt: null,
+            visibility: 'PRIVATE',
+            status: 'DRAFT',
+            isFavorite: false,
+            viewCount: 0,
+            filePath: folder.path,
+            folderPath: folder.path,
+            folderName: folder.name,
+            folderId: folder.id,
+            projectId: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            project: null,
+            tags: [],
+          })
+        }
+        onMoveToTrash={(folder) => void handleDeleteFolder(folder)}
+      />
+      <ConfirmDialog
+        state={confirmState}
+        pending={confirmPending}
+        onCancel={() => !confirmPending && setConfirmState(null)}
+      />
       <div
         aria-live="polite"
         className={`fixed right-4 bottom-4 z-50 rounded-md border px-3 py-2 text-xs shadow-xl transition-opacity ${
@@ -2355,6 +3500,7 @@ export default function Notes() {
                 }))
               }
               onKeyDown={handleEditorKeyDown}
+              onPaste={handleEditorPaste}
               placeholder="Capture ideias, decisões, links [[wiki]] ou tarefas - [ ] ..."
               className="h-80 w-full resize-none bg-transparent px-5 py-4 font-mono text-sm leading-6 outline-none placeholder:text-[#777780]"
             />
@@ -2457,7 +3603,10 @@ export default function Notes() {
                   className="flex items-center justify-between px-2 text-[11px] font-medium tracking-normal text-[#777780] uppercase"
                   onContextMenu={(event) => {
                     event.preventDefault();
-                    setMenuFolderId(menuFolderId === 'root' ? null : 'root');
+                    openFolderContextMenu(
+                      menuFolderId === 'root' ? null : 'root',
+                      event
+                    );
                   }}
                 >
                   <span>Pastas</span>
@@ -2472,8 +3621,11 @@ export default function Notes() {
                     </button>
                     <button
                       type="button"
-                      onClick={() =>
-                        setMenuFolderId(menuFolderId === 'root' ? null : 'root')
+                      onClick={(event) =>
+                        openFolderContextMenu(
+                          menuFolderId === 'root' ? null : 'root',
+                          event
+                        )
                       }
                       className="grid h-6 w-6 place-items-center rounded text-[#9b9ba3] hover:bg-[#24242a] hover:text-white"
                       aria-label="Acoes da raiz"
@@ -2482,24 +3634,6 @@ export default function Notes() {
                     </button>
                   </span>
                 </div>
-                {menuFolderId === 'root' && (
-                  <div className="ml-2 grid gap-1 rounded-md border border-[#303036] bg-[#202024] p-1 text-[11px] shadow-xl">
-                    <button
-                      type="button"
-                      onClick={() => void handleCreateNoteInFolder(null)}
-                      className="rounded px-2 py-1 text-left text-[#c9c9d1] hover:bg-[#2a2a30]"
-                    >
-                      Nova nota na raiz
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => startCreateFolder(null)}
-                      className="rounded px-2 py-1 text-left text-[#c9c9d1] hover:bg-[#2a2a30]"
-                    >
-                      Nova pasta na raiz
-                    </button>
-                  </div>
-                )}
                 {folderFormParentId !== undefined && (
                   <div className="space-y-1 rounded-md border border-[#303036] bg-[#202024] p-2">
                     <div className="text-[11px] text-[#777780]">
@@ -2582,8 +3716,9 @@ export default function Notes() {
                     }}
                     onContextMenu={(event) => {
                       event.preventDefault();
-                      setMenuFolderId(
-                        menuFolderId === 'unfiled' ? null : 'unfiled'
+                      openFolderContextMenu(
+                        menuFolderId === 'unfiled' ? null : 'unfiled',
+                        event
                       );
                     }}
                     className={`group flex items-center rounded-md text-xs ${dropFolderId === 'unfiled' ? 'bg-[#34245f] text-[#d7ccff] ring-1 ring-[#8f7cff]' : activeFolder === null ? 'bg-[#2d2940] text-[#c9b8ff]' : 'text-[#9b9ba3] hover:bg-[#24242a] hover:text-white'}`}
@@ -2606,9 +3741,10 @@ export default function Notes() {
                     </button>
                     <button
                       type="button"
-                      onClick={() =>
-                        setMenuFolderId(
-                          menuFolderId === 'unfiled' ? null : 'unfiled'
+                      onClick={(event) =>
+                        openFolderContextMenu(
+                          menuFolderId === 'unfiled' ? null : 'unfiled',
+                          event
                         )
                       }
                       className="mr-1 grid h-6 w-6 shrink-0 place-items-center rounded text-[#777780] opacity-0 group-hover:opacity-100 hover:bg-[#24242a] hover:text-white focus:opacity-100"
@@ -2617,17 +3753,6 @@ export default function Notes() {
                       <MoreHorizontal className="h-3.5 w-3.5" />
                     </button>
                   </div>
-                  {menuFolderId === 'unfiled' && (
-                    <div className="mt-1 ml-7 grid gap-1 rounded-md border border-[#303036] bg-[#202024] p-1 text-[11px] shadow-xl">
-                      <button
-                        type="button"
-                        onClick={() => void handleCreateNoteInFolder(null)}
-                        className="rounded px-2 py-1 text-left text-[#c9c9d1] hover:bg-[#2a2a30]"
-                      >
-                        Nova nota em Sem Pasta
-                      </button>
-                    </div>
-                  )}
                 </div>
                 <FolderTree
                   nodes={folderTree}
@@ -2660,12 +3785,12 @@ export default function Notes() {
                         ])
                     );
                   }}
-                  onMenu={setMenuFolderId}
+                  onMenu={openFolderContextMenu}
                   onStartCreate={(parentId) => startCreateFolder(parentId)}
                   onStartRename={(folder) => {
                     setEditingFolderId(folder.id);
                     setEditingFolderName(folder.name);
-                    setMenuFolderId(null);
+                    setFolderContextMenu(null);
                   }}
                   onEditingNameChange={setEditingFolderName}
                   onSaveRename={(folder) => void saveFolderRename(folder)}
@@ -2750,8 +3875,29 @@ export default function Notes() {
                   <div className="space-y-0.5 rounded bg-emerald-500/10 px-2 py-1.5 text-[11px] text-emerald-200">
                     <div>{importSummary.imported} notas importadas</div>
                     <div>{importSummary.updated} notas atualizadas</div>
+                    <div>
+                      {importSummary.imagesImported || 0} imagens importadas
+                    </div>
+                    <div>
+                      {importSummary.otherAttachmentsImported || 0} outros
+                      anexos
+                    </div>
+                    <div>
+                      {importSummary.attachmentsCreated || 0} anexos criados
+                    </div>
+                    <div>
+                      {importSummary.attachmentsUpdated || 0} anexos atualizados
+                    </div>
                     <div>{importSummary.ignored} arquivos ignorados</div>
+                    <div>
+                      {importSummary.attachmentsIgnored || 0} anexos ignorados
+                    </div>
                     <div>{importSummary.folders} pastas detectadas</div>
+                    {Boolean(importSummary.partialErrors?.length) && (
+                      <div className="pt-1 text-amber-100">
+                        {importSummary.partialErrors!.slice(0, 2).join(' ')}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -2811,6 +3957,76 @@ export default function Notes() {
                   className="box-border h-10 w-full max-w-full min-w-0 rounded-md border border-[#303036] bg-[#19191d] pr-3 pl-9 text-sm outline-none placeholder:text-[#777780] focus:border-[#6f55d9]"
                 />
               </div>
+              {scope === 'trash' && (
+                <div className="mt-3 space-y-2 rounded-md border border-[#303036] bg-[#19191d] p-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setTrashSelection(
+                          new Set(trashRows.map((row) => row.key))
+                        )
+                      }
+                      disabled={trashRows.length === 0}
+                      className="inline-flex h-8 items-center gap-1.5 rounded border border-[#34343c] px-2 text-xs text-[#c9c9d1] hover:bg-[#2a2a30] disabled:opacity-50"
+                    >
+                      <CheckSquare className="h-3.5 w-3.5" />
+                      Selecionar todos
+                    </button>
+                    {trashSelection.size > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTrashSelection(new Set());
+                          setLastTrashSelectionIndex(null);
+                        }}
+                        className="h-8 rounded border border-[#34343c] px-2 text-xs text-[#c9c9d1] hover:bg-[#2a2a30]"
+                      >
+                        Limpar seleção
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={confirmRestoreAllTrash}
+                      disabled={trashRows.length === 0}
+                      className="inline-flex h-8 items-center gap-1.5 rounded border border-emerald-500/30 px-2 text-xs text-emerald-200 hover:bg-emerald-500/10 disabled:opacity-50"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      Restaurar tudo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={confirmEmptyTrash}
+                      disabled={trashRows.length === 0}
+                      className="inline-flex h-8 items-center gap-1.5 rounded border border-red-500/30 px-2 text-xs text-red-200 hover:bg-red-500/10 disabled:opacity-50"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Esvaziar lixeira
+                    </button>
+                  </div>
+                  {selectedTrashRows.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-2 border-t border-[#303036] pt-2 text-xs text-[#b8b8bf]">
+                      <span>{selectedTrashRows.length} selecionado(s)</span>
+                      <button
+                        type="button"
+                        onClick={confirmRestoreSelectedTrash}
+                        className="inline-flex h-8 items-center gap-1.5 rounded bg-emerald-500/10 px-2 text-emerald-200 hover:bg-emerald-500/15"
+                      >
+                        <RotateCcw className="h-3.5 w-3.5" />
+                        Restaurar selecionados
+                      </button>
+                      <button
+                        type="button"
+                        onClick={confirmDeleteSelectedTrash}
+                        className="inline-flex h-8 items-center gap-1.5 rounded bg-red-500/10 px-2 text-red-200 hover:bg-red-500/15"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Excluir permanentemente
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
               {loading && (
@@ -2820,6 +4036,101 @@ export default function Notes() {
                 </div>
               )}
               {!loading &&
+                scope === 'trash' &&
+                trashRows.map((row, index) => {
+                  const checked = trashSelection.has(row.key);
+                  const isFolder = row.type === 'folder';
+                  const title = isFolder ? row.folder.name : row.note.title;
+                  const path = isFolder ? row.folder.path : row.note.folderPath;
+                  const updatedAt = isFolder
+                    ? row.folder.trashedAt || row.folder.deletedAt
+                    : row.note.updatedAt;
+
+                  return (
+                    <div
+                      key={row.key}
+                      className={`group min-w-0 overflow-hidden border-b border-[#2a2a30] hover:bg-[#282830] ${
+                        checked ? 'bg-[#2d2940]' : ''
+                      }`}
+                    >
+                      <div className="flex min-w-0 items-start gap-2 p-3">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onClick={(event) =>
+                            handleTrashRowSelection(row, index, event)
+                          }
+                          onChange={() => undefined}
+                          className="mt-1 h-4 w-4 accent-[#7c5cff]"
+                          aria-label={`Selecionar ${title}`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            row.type === 'note'
+                              ? void openNote(row.note)
+                              : undefined
+                          }
+                          className="min-w-0 flex-1 text-left"
+                        >
+                          <div className="flex min-w-0 items-start gap-2">
+                            {isFolder ? (
+                              <Folder className="mt-0.5 h-4 w-4 shrink-0 text-[#9a8cff]" />
+                            ) : (
+                              <FileText className="mt-0.5 h-4 w-4 shrink-0 text-[#8f8f98]" />
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <h3 className="line-clamp-1 text-sm font-medium text-[#f2f2f3]">
+                                {title}
+                              </h3>
+                              {path && (
+                                <div className="mt-1 truncate text-[11px] text-[#777780]">
+                                  {path}
+                                </div>
+                              )}
+                              <div className="mt-2 text-[11px] text-[#777780]">
+                                {updatedAt
+                                  ? formatDate(updatedAt)
+                                  : 'Na lixeira'}
+                              </div>
+                            </div>
+                          </div>
+                        </button>
+                        <div className="flex shrink-0 items-center gap-1 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100">
+                          <button
+                            type="button"
+                            onClick={() => void restoreTrashRows([row])}
+                            className="grid h-7 w-7 place-items-center rounded text-emerald-200 hover:bg-emerald-500/10"
+                            aria-label="Restaurar"
+                          >
+                            <RotateCcw className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              runConfirmed({
+                                title: 'Excluir permanentemente?',
+                                description:
+                                  'Este item será excluído permanentemente. Esta ação não poderá ser desfeita.',
+                                confirmLabel: 'Excluir',
+                                pendingLabel: 'Excluindo...',
+                                tone: 'danger',
+                                onConfirm: async () =>
+                                  permanentlyDeleteTrashRows([row]),
+                              })
+                            }
+                            className="grid h-7 w-7 place-items-center rounded text-red-200 hover:bg-red-500/10"
+                            aria-label="Excluir permanentemente"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              {!loading &&
+                scope !== 'trash' &&
                 filteredNotes.map((note) => (
                   <div
                     key={note.id}
@@ -2944,11 +4255,16 @@ export default function Notes() {
                     </div>
                   </div>
                 ))}
-              {!loading && filteredNotes.length === 0 && (
-                <div className="p-6 text-center text-sm text-[#8f8f98]">
-                  Nenhuma nota encontrada.
-                </div>
-              )}
+              {!loading &&
+                (scope === 'trash'
+                  ? trashRows.length === 0
+                  : filteredNotes.length === 0) && (
+                  <div className="p-6 text-center text-sm text-[#8f8f98]">
+                    {scope === 'trash'
+                      ? 'A lixeira está vazia.'
+                      : 'Nenhuma nota encontrada.'}
+                  </div>
+                )}
             </div>
           </div>
         </section>
@@ -2993,6 +4309,12 @@ export default function Notes() {
                   )}
                   {autoSaveStatus === 'error' && <span>Erro ao salvar</span>}
                   {autoSaveStatus === 'editing' && <span>Editando...</span>}
+                </span>
+              )}
+              {pasteUploading && (
+                <span className="hidden items-center gap-1 rounded px-2 py-1 text-[11px] text-[#8f8f98] md:inline-flex">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Enviando imagem...
                 </span>
               )}
               {(['edit', 'preview', 'split', 'graph'] as WorkspaceMode[]).map(
@@ -3133,6 +4455,7 @@ export default function Notes() {
                           setCursorPos(event.currentTarget.selectionStart);
                         }}
                         onKeyDown={handleEditorKeyDown}
+                        onPaste={handleEditorPaste}
                         className={`${mode === 'split' ? 'w-1/2 border-r border-[#2f2f35]' : 'w-full'} h-full min-h-0 resize-none overflow-y-auto bg-[#1e1e22] px-8 py-7 font-mono text-sm leading-6 text-[#dcddde] outline-none placeholder:text-[#777780]`}
                         placeholder="# Titulo&#10;&#10;[[Wiki Link]]&#10;- [ ] Task sincronizada"
                       />

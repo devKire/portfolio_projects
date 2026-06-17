@@ -55,6 +55,37 @@ export type VaultImportFile = {
 
 export type DeleteFolderMode = 'parent' | 'unfiled';
 
+export type TrashSelectionInput = {
+  noteIds?: string[];
+  folderIds?: string[];
+};
+
+export type NoteAttachmentInput = {
+  fileName: string;
+  dataUrl: string;
+  mimeType?: string | null;
+  size?: number | null;
+  folderPath?: string | null;
+};
+
+const SUPPORTED_ATTACHMENT_MIME_TYPES = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp',
+  'image/svg+xml',
+  'application/pdf',
+  'audio/mpeg',
+  'audio/wav',
+  'audio/mp4',
+  'audio/ogg',
+  'video/mp4',
+  'video/webm',
+  'video/quicktime',
+]);
+
+const MAX_ATTACHMENT_DATA_URL_SIZE = 8 * 1024 * 1024;
+
 const noteInclude = {
   project: { select: { id: true, title: true } },
   tags: { orderBy: { name: 'asc' } },
@@ -278,6 +309,15 @@ function fileBaseFromName(fileName: string | null | undefined) {
   return fileName.replace(/\.[^.]+$/, '');
 }
 
+function splitFileName(fileName: string) {
+  const extension = fileExtensionFromName(fileName);
+  if (!extension) return { base: fileName, extension: null };
+  return {
+    base: fileName.slice(0, -(extension.length + 1)),
+    extension,
+  };
+}
+
 function normalizeVaultFileBase(value: string) {
   return (
     value
@@ -288,9 +328,48 @@ function normalizeVaultFileBase(value: string) {
   );
 }
 
+async function createUniqueAttachmentPath(
+  fileNameInput: string,
+  folderPath?: string | null
+) {
+  const metadata = getVaultFileMetadata(
+    updateFilePath(folderPath || null, normalizeVaultFileBase(fileNameInput)) ||
+      normalizeVaultFileBase(fileNameInput)
+  );
+  const { base, extension } = splitFileName(metadata.fileName);
+  let fileName = metadata.fileName;
+  let filePath = metadata.filePath;
+  let index = 2;
+
+  while (true) {
+    const existing = await db.noteAttachment.findUnique({
+      where: { filePath },
+      select: { id: true },
+    });
+    if (!existing) {
+      return {
+        ...metadata,
+        fileName,
+        filePath,
+        folderPath: metadata.folderPath,
+        folderName: metadata.folderName,
+        extension: extension || metadata.extension,
+      };
+    }
+
+    fileName = `${base} ${index}${extension ? `.${extension}` : ''}`;
+    filePath = updateFilePath(metadata.folderPath, fileName) || fileName;
+    index += 1;
+  }
+}
+
+function isActiveNoteStatusWhere() {
+  return { not: 'ARCHIVED' as const };
+}
+
 async function nextFolderPosition(parentId: string | null) {
   const aggregate = await db.noteFolder.aggregate({
-    where: { parentId },
+    where: { parentId, deletedAt: null },
     _max: { position: true },
   });
   return (aggregate._max.position ?? -1) + 1;
@@ -298,7 +377,7 @@ async function nextFolderPosition(parentId: string | null) {
 
 async function nextNotePosition(folderId: string | null) {
   const aggregate = await db.note.aggregate({
-    where: { folderId },
+    where: { folderId, status: isActiveNoteStatusWhere() },
     _max: { position: true },
   });
   return (aggregate._max.position ?? -1) + 1;
@@ -327,10 +406,14 @@ async function ensureNoteFolderPath(path: string | null | undefined) {
           position: await nextFolderPosition(parentId),
         },
       });
-    } else if (folder.parentId !== parentId || folder.name !== segment) {
+    } else if (
+      folder.parentId !== parentId ||
+      folder.name !== segment ||
+      folder.deletedAt
+    ) {
       folder = await db.noteFolder.update({
         where: { id: folder.id },
-        data: { parentId, name: segment },
+        data: { parentId, name: segment, deletedAt: null, trashedAt: null },
       });
     }
     parentId = folder.id;
@@ -350,10 +433,27 @@ function replaceFolderPrefix(
     : value.replace(`${oldPath}/`, `${nextPath}/`);
 }
 
+function trashFolderPath(folderId: string, originalPath: string) {
+  return `__trash/${folderId}/${originalPath}`;
+}
+
+function originalFolderPath(folder: {
+  path: string;
+  pathBeforeTrash?: string | null;
+}) {
+  return folder.pathBeforeTrash || folder.path.replace(/^__trash\/[^/]+\//, '');
+}
+
+function isDescendantPath(path: string | null | undefined, rootPath: string) {
+  return Boolean(
+    path && (path === rootPath || path.startsWith(`${rootPath}/`))
+  );
+}
+
 export async function syncFoldersFromImportedNotes() {
   try {
     const paths = await db.note.findMany({
-      where: { folderPath: { not: null } },
+      where: { folderPath: { not: null }, status: isActiveNoteStatusWhere() },
       distinct: ['folderPath'],
       select: { folderPath: true },
       orderBy: { folderPath: 'asc' },
@@ -364,13 +464,14 @@ export async function syncFoldersFromImportedNotes() {
     }
 
     const folders = await db.noteFolder.findMany({
+      where: { deletedAt: null },
       select: { id: true, path: true },
     });
     const folderByPath = new Map(
       folders.map((folder) => [folder.path, folder.id])
     );
     const notes = await db.note.findMany({
-      where: { folderPath: { not: null } },
+      where: { folderPath: { not: null }, status: isActiveNoteStatusWhere() },
       select: { id: true, folderPath: true, folderId: true },
     });
 
@@ -944,9 +1045,14 @@ export async function getNotes(filters: NoteFilters = {}) {
         select: { id: true, title: true, slug: true, viewCount: true },
       }),
       db.noteFolder.findMany({
+        where: { deletedAt: null },
         orderBy: [{ parentId: 'asc' }, { position: 'asc' }, { name: 'asc' }],
-        include: {
-          _count: { select: { notes: true } },
+        select: {
+          id: true,
+          path: true,
+          name: true,
+          parentId: true,
+          position: true,
         },
       }),
       db.noteAttachment.findMany({
@@ -964,6 +1070,7 @@ export async function getNotes(filters: NoteFilters = {}) {
         where: { folderPath: null, status: { not: 'ARCHIVED' } },
       }),
       db.note.findMany({
+        where: { status: { not: 'ARCHIVED' } },
         orderBy: { title: 'asc' },
         select: {
           id: true,
@@ -975,6 +1082,34 @@ export async function getNotes(filters: NoteFilters = {}) {
         },
       }),
     ]);
+    const [folderCounts, trashedFolders, trashFolderCount] = await Promise.all([
+      db.note.groupBy({
+        by: ['folderId'],
+        where: { folderId: { not: null }, status: { not: 'ARCHIVED' } },
+        _count: { _all: true },
+      }),
+      db.noteFolder.findMany({
+        where: { deletedAt: { not: null } },
+        orderBy: [{ trashedAt: 'desc' }, { name: 'asc' }],
+        select: {
+          id: true,
+          path: true,
+          name: true,
+          parentId: true,
+          position: true,
+          deletedAt: true,
+          trashedAt: true,
+          pathBeforeTrash: true,
+          parentIdBeforeTrash: true,
+        },
+      }),
+      db.noteFolder.count({ where: { deletedAt: { not: null } } }),
+    ]);
+    const countByFolderId = new Map(
+      folderCounts
+        .filter((item) => item.folderId)
+        .map((item) => [item.folderId!, item._count._all])
+    );
 
     return {
       success: true,
@@ -1005,8 +1140,20 @@ export async function getNotes(filters: NoteFilters = {}) {
           name: folder.name,
           parentId: folder.parentId,
           position: folder.position,
-          count: folder._count.notes,
+          count: countByFolderId.get(folder.id) || 0,
         })),
+        trashedFolders: trashedFolders.map((folder) => ({
+          id: folder.id,
+          path: originalFolderPath(folder),
+          trashPath: folder.path,
+          name: folder.name,
+          parentId: folder.parentIdBeforeTrash || folder.parentId,
+          position: folder.position,
+          deletedAt: folder.deletedAt,
+          trashedAt: folder.trashedAt,
+          count: 0,
+        })),
+        trashFolderCount,
         attachments,
         unfiledCount,
         linkableNotes,
@@ -1234,13 +1381,18 @@ export async function moveNoteToTrash(id: string) {
   try {
     const existing = await db.note.findUnique({
       where: { id },
-      select: { id: true },
+      select: { id: true, status: true },
     });
     if (!existing) return { success: false, error: 'Nota nao encontrada.' };
 
     const note = await db.note.update({
       where: { id },
-      data: { status: 'ARCHIVED' },
+      data: {
+        status: 'ARCHIVED',
+        statusBeforeTrash:
+          existing.status === 'ARCHIVED' ? undefined : existing.status,
+        trashedAt: new Date(),
+      },
       include: noteInclude,
     });
 
@@ -1255,6 +1407,385 @@ export async function moveNoteToTrash(id: string) {
   }
 }
 
+export async function moveNoteFolderToTrash(id: string) {
+  try {
+    const folder = await db.noteFolder.findUnique({ where: { id } });
+    if (!folder) return { success: false, error: 'Pasta nao encontrada.' };
+    if (folder.deletedAt) {
+      return { success: true, data: { folderId: id, noteCount: 0 } };
+    }
+
+    const trashedAt = new Date();
+    const descendants = await db.noteFolder.findMany({
+      where: {
+        OR: [{ id: folder.id }, { path: { startsWith: `${folder.path}/` } }],
+      },
+      orderBy: { path: 'asc' },
+    });
+    const folderIds = descendants.map((item) => item.id);
+    const notes = await db.note.findMany({
+      where: {
+        OR: [
+          { folderPath: folder.path },
+          { folderPath: { startsWith: `${folder.path}/` } },
+        ],
+        status: { not: 'ARCHIVED' },
+      },
+      select: { id: true, status: true },
+    });
+
+    await db.$transaction([
+      ...descendants.map((item) => {
+        const previousPath = item.path;
+        return db.noteFolder.update({
+          where: { id: item.id },
+          data: {
+            path: trashFolderPath(folder.id, previousPath),
+            parentIdBeforeTrash: item.parentId,
+            pathBeforeTrash: previousPath,
+            deletedAt: trashedAt,
+            trashedAt,
+          },
+        });
+      }),
+      ...notes.map((note) =>
+        db.note.update({
+          where: { id: note.id },
+          data: {
+            status: 'ARCHIVED',
+            statusBeforeTrash: note.status,
+            trashedAt,
+          },
+        })
+      ),
+    ]);
+
+    revalidateNotes();
+    return {
+      success: true,
+      data: { folderId: id, folderIds, noteCount: notes.length },
+    };
+  } catch (error) {
+    console.error('Error moving note folder to trash:', error);
+    return {
+      success: false,
+      error: 'Nao foi possivel mover a pasta para a lixeira.',
+    };
+  }
+}
+
+async function restoreFolderTree(folderIds: string[]) {
+  if (!folderIds.length) return [];
+  const baseFolders = await db.noteFolder.findMany({
+    where: { id: { in: folderIds }, deletedAt: { not: null } },
+    orderBy: { pathBeforeTrash: 'asc' },
+  });
+  if (!baseFolders.length) return [];
+
+  const selected = await db.noteFolder.findMany({
+    where: {
+      deletedAt: { not: null },
+      OR: baseFolders.flatMap((folder) => {
+        const path = originalFolderPath(folder);
+        return [
+          { id: folder.id },
+          { pathBeforeTrash: { startsWith: `${path}/` } },
+        ];
+      }),
+    },
+    orderBy: { pathBeforeTrash: 'asc' },
+  });
+  if (!selected.length) return [];
+
+  const roots = selected.filter(
+    (folder) =>
+      !folder.parentIdBeforeTrash ||
+      !selected.some((item) => item.id === folder.parentIdBeforeTrash)
+  );
+  const restoredIds = new Set<string>();
+  const updatedFolders: Awaited<ReturnType<typeof db.noteFolder.update>>[] = [];
+
+  for (const root of roots) {
+    const originalRootPath = originalFolderPath(root);
+    const originalParent = root.parentIdBeforeTrash
+      ? await db.noteFolder.findUnique({
+          where: { id: root.parentIdBeforeTrash },
+          select: { id: true, path: true, deletedAt: true },
+        })
+      : null;
+    const activeParent =
+      originalParent && !originalParent.deletedAt ? originalParent : null;
+    const parentPath = activeParent?.path || null;
+    const baseName = folderNameFromPath(originalRootPath) || root.name;
+    let nextRootName = baseName;
+    let nextRootPath = joinFolderPath(parentPath, nextRootName);
+    let suffix = 2;
+
+    while (true) {
+      const conflict = await db.noteFolder.findFirst({
+        where: {
+          path: nextRootPath,
+          deletedAt: null,
+          id: { not: root.id },
+        },
+        select: { id: true },
+      });
+      if (!conflict) break;
+      nextRootName = `${baseName} restaurada ${suffix}`;
+      nextRootPath = joinFolderPath(parentPath, nextRootName);
+      suffix += 1;
+    }
+
+    const subtree = selected.filter((folder) =>
+      isDescendantPath(originalFolderPath(folder), originalRootPath)
+    );
+    const nextPathById = new Map<string, string>();
+    subtree.forEach((folder) => {
+      const originalPath = originalFolderPath(folder);
+      const nextPath =
+        originalPath === originalRootPath
+          ? nextRootPath
+          : replaceFolderPrefix(originalPath, originalRootPath, nextRootPath) ||
+            originalPath;
+      nextPathById.set(folder.id, nextPath);
+    });
+
+    const updates = subtree.map((folder) => {
+      const nextPath =
+        nextPathById.get(folder.id) || originalFolderPath(folder);
+      const parentId =
+        folder.id === root.id
+          ? activeParent?.id || null
+          : folder.parentIdBeforeTrash &&
+              restoredIds.has(folder.parentIdBeforeTrash)
+            ? folder.parentIdBeforeTrash
+            : folder.parentIdBeforeTrash || null;
+      restoredIds.add(folder.id);
+      return db.noteFolder.update({
+        where: { id: folder.id },
+        data: {
+          name: folderNameFromPath(nextPath) || folder.name,
+          path: nextPath,
+          parentId,
+          deletedAt: null,
+          trashedAt: null,
+          pathBeforeTrash: null,
+          parentIdBeforeTrash: null,
+        },
+      });
+    });
+
+    updatedFolders.push(...(await db.$transaction(updates)));
+  }
+
+  return updatedFolders;
+}
+
+export async function restoreTrashItems(input: TrashSelectionInput = {}) {
+  try {
+    const noteIds = Array.from(new Set(input.noteIds || []));
+    const folderIds = Array.from(new Set(input.folderIds || []));
+    const folderPaths = folderIds.length
+      ? (
+          await db.noteFolder.findMany({
+            where: { id: { in: folderIds }, deletedAt: { not: null } },
+            select: { path: true, pathBeforeTrash: true },
+          })
+        ).map((folder) => originalFolderPath(folder))
+      : [];
+    const noteIdsFromFolders = folderPaths.length
+      ? (
+          await db.note.findMany({
+            where: {
+              status: 'ARCHIVED',
+              OR: folderPaths.flatMap((path) => [
+                { folderPath: path },
+                { folderPath: { startsWith: `${path}/` } },
+              ]),
+            },
+            select: { id: true },
+          })
+        ).map((note) => note.id)
+      : [];
+    const allNoteIds = Array.from(new Set([...noteIds, ...noteIdsFromFolders]));
+    const restoredFolders = await restoreFolderTree(folderIds);
+
+    const notes = allNoteIds.length
+      ? await db.note.findMany({
+          where: { id: { in: allNoteIds }, status: 'ARCHIVED' },
+          select: {
+            id: true,
+            statusBeforeTrash: true,
+            folderId: true,
+            fileName: true,
+          },
+        })
+      : [];
+    const candidateFolderIds = Array.from(
+      new Set([
+        ...restoredFolders.map((folder) => folder.id),
+        ...notes.map((note) => note.folderId).filter(Boolean),
+      ])
+    ) as string[];
+    const folderById = candidateFolderIds.length
+      ? new Map(
+          (
+            await db.noteFolder.findMany({
+              where: { id: { in: candidateFolderIds }, deletedAt: null },
+              select: { id: true, path: true, name: true },
+            })
+          ).map((folder) => [folder.id, folder])
+        )
+      : new Map<string, { id: string; path: string; name: string }>();
+
+    await db.$transaction(
+      notes.map((note) => {
+        const folder = note.folderId ? folderById.get(note.folderId) : null;
+        const folderPath = folder?.path || null;
+        return db.note.update({
+          where: { id: note.id },
+          data: {
+            status: note.statusBeforeTrash || 'DRAFT',
+            statusBeforeTrash: null,
+            trashedAt: null,
+            folderId: folder?.id || null,
+            folderPath,
+            folderName: folderNameFromPath(folderPath),
+            filePath: updateFilePath(folderPath, note.fileName),
+          },
+        });
+      })
+    );
+
+    await refreshAllLinkTargets();
+    revalidateNotes();
+    return {
+      success: true,
+      data: {
+        notes: notes.length,
+        folders: restoredFolders.length,
+      },
+    };
+  } catch (error) {
+    console.error('Error restoring trash items:', error);
+    return { success: false, error: 'Nao foi possivel restaurar os itens.' };
+  }
+}
+
+export async function restoreAllTrash() {
+  try {
+    const [notes, folders] = await Promise.all([
+      db.note.findMany({
+        where: { status: 'ARCHIVED' },
+        select: { id: true },
+      }),
+      db.noteFolder.findMany({
+        where: { deletedAt: { not: null } },
+        select: { id: true },
+      }),
+    ]);
+    return restoreTrashItems({
+      noteIds: notes.map((note) => note.id),
+      folderIds: folders.map((folder) => folder.id),
+    });
+  } catch (error) {
+    console.error('Error restoring all trash:', error);
+    return { success: false, error: 'Nao foi possivel restaurar a lixeira.' };
+  }
+}
+
+export async function deleteTrashItemsPermanently(
+  input: TrashSelectionInput = {}
+) {
+  try {
+    const noteIds = Array.from(new Set(input.noteIds || []));
+    const selectedFolderIds = Array.from(new Set(input.folderIds || []));
+    const selectedFolders = selectedFolderIds.length
+      ? await db.noteFolder.findMany({
+          where: { id: { in: selectedFolderIds }, deletedAt: { not: null } },
+          select: { id: true, pathBeforeTrash: true, path: true },
+        })
+      : [];
+    const folderWhere =
+      selectedFolders.length > 0
+        ? {
+            OR: selectedFolders.flatMap((folder) => {
+              const originalPath = originalFolderPath(folder);
+              return [
+                { id: folder.id },
+                { pathBeforeTrash: { startsWith: `${originalPath}/` } },
+              ];
+            }),
+          }
+        : { id: { in: [] as string[] } };
+    const folders = selectedFolders.length
+      ? await db.noteFolder.findMany({
+          where: { deletedAt: { not: null }, ...folderWhere },
+          select: { id: true, pathBeforeTrash: true },
+        })
+      : [];
+    const folderIds = folders.map((folder) => folder.id);
+    const folderPaths = folders
+      .map((folder) => folder.pathBeforeTrash)
+      .filter((path): path is string => Boolean(path));
+    const noteIdsFromFolders = folderPaths.length
+      ? (
+          await db.note.findMany({
+            where: {
+              status: 'ARCHIVED',
+              OR: folderPaths.flatMap((path) => [
+                { folderPath: path },
+                { folderPath: { startsWith: `${path}/` } },
+              ]),
+            },
+            select: { id: true },
+          })
+        ).map((note) => note.id)
+      : [];
+    const allNoteIds = Array.from(new Set([...noteIds, ...noteIdsFromFolders]));
+
+    await db.$transaction([
+      db.note.deleteMany({ where: { id: { in: allNoteIds } } }),
+      db.noteFolder.deleteMany({ where: { id: { in: folderIds } } }),
+    ]);
+
+    await refreshAllLinkTargets();
+    revalidateNotes();
+    return {
+      success: true,
+      data: {
+        notes: allNoteIds.length,
+        folders: folderIds.length,
+      },
+    };
+  } catch (error) {
+    console.error('Error permanently deleting trash items:', error);
+    return {
+      success: false,
+      error: 'Nao foi possivel excluir permanentemente os itens.',
+    };
+  }
+}
+
+export async function emptyTrash() {
+  try {
+    const [notes, folders] = await Promise.all([
+      db.note.findMany({ where: { status: 'ARCHIVED' }, select: { id: true } }),
+      db.noteFolder.findMany({
+        where: { deletedAt: { not: null } },
+        select: { id: true },
+      }),
+    ]);
+    return deleteTrashItemsPermanently({
+      noteIds: notes.map((note) => note.id),
+      folderIds: folders.map((folder) => folder.id),
+    });
+  } catch (error) {
+    console.error('Error emptying trash:', error);
+    return { success: false, error: 'Nao foi possivel esvaziar a lixeira.' };
+  }
+}
+
 export async function deleteNote(id: string) {
   try {
     await db.note.delete({ where: { id } });
@@ -1264,6 +1795,47 @@ export async function deleteNote(id: string) {
   } catch (error) {
     console.error('Error deleting note:', error);
     return { success: false, error: 'Nao foi possivel remover a nota.' };
+  }
+}
+
+export async function createNoteAttachment(input: NoteAttachmentInput) {
+  try {
+    const fileName = normalizeVaultFileBase(input.fileName);
+    if (!fileName || isUnsafeVaultPath(fileName)) {
+      return { success: false, error: 'Nome de arquivo invalido.' };
+    }
+    const mimeType = input.mimeType || 'application/octet-stream';
+    if (!SUPPORTED_ATTACHMENT_MIME_TYPES.has(mimeType)) {
+      return { success: false, error: 'Tipo de arquivo nao suportado.' };
+    }
+    if (!input.dataUrl.startsWith(`data:${mimeType};base64,`)) {
+      return { success: false, error: 'Conteudo do anexo invalido.' };
+    }
+    if ((input.size || 0) > MAX_ATTACHMENT_DATA_URL_SIZE) {
+      return {
+        success: false,
+        error: 'A imagem excede o limite de 8 MB para anexos.',
+      };
+    }
+
+    const metadata = await createUniqueAttachmentPath(
+      fileName,
+      input.folderPath || null
+    );
+    const attachment = await db.noteAttachment.create({
+      data: {
+        ...metadata,
+        mimeType,
+        size: input.size || null,
+        dataUrl: input.dataUrl,
+      },
+    });
+
+    revalidateNotes();
+    return { success: true, data: { attachment } };
+  } catch (error) {
+    console.error('Error creating note attachment:', error);
+    return { success: false, error: 'Nao foi possivel salvar o anexo.' };
   }
 }
 
@@ -1301,14 +1873,47 @@ export async function importVault(files: VaultImportFile[]) {
       return { success: false, error: 'Nenhum arquivo .md encontrado.' };
     }
 
-    const attachmentFiles = usableFiles.filter((file) => {
+    const rawAttachmentFiles = usableFiles.filter((file) => {
       const metadata = getVaultFileMetadata(file.path);
-      return metadata.extension !== 'md' && Boolean(file.dataUrl);
+      return metadata.extension !== 'md';
     });
+    const attachmentFiles = rawAttachmentFiles.filter(
+      (file) =>
+        Boolean(file.dataUrl) &&
+        Boolean(file.mimeType) &&
+        SUPPORTED_ATTACHMENT_MIME_TYPES.has(file.mimeType!)
+    );
+    const existingAttachments = attachmentFiles.length
+      ? await db.noteAttachment.findMany({
+          where: {
+            filePath: {
+              in: attachmentFiles.map(
+                (file) => getVaultFileMetadata(file.path).filePath
+              ),
+            },
+          },
+          select: { filePath: true },
+        })
+      : [];
+    const existingAttachmentPaths = new Set(
+      existingAttachments.map((attachment) => attachment.filePath)
+    );
+    let attachmentsCreated = 0;
+    let attachmentsUpdated = 0;
+    let imagesImported = 0;
+    let otherAttachmentsImported = 0;
 
     await Promise.all(
       attachmentFiles.map((file) => {
         const metadata = getVaultFileMetadata(file.path);
+        if (existingAttachmentPaths.has(metadata.filePath)) {
+          attachmentsUpdated += 1;
+        } else {
+          attachmentsCreated += 1;
+        }
+        if (file.mimeType?.startsWith('image/')) imagesImported += 1;
+        else otherAttachmentsImported += 1;
+
         return db.noteAttachment.upsert({
           where: { filePath: metadata.filePath },
           create: {
@@ -1391,7 +1996,14 @@ export async function importVault(files: VaultImportFile[]) {
       success: true,
       data: {
         imported: results.length,
-        attachments: attachmentFiles.length,
+        attachments: {
+          total: attachmentFiles.length,
+          created: attachmentsCreated,
+          updated: attachmentsUpdated,
+          ignored: rawAttachmentFiles.length - attachmentFiles.length,
+          images: imagesImported,
+          other: otherAttachmentsImported,
+        },
         notes: results,
       },
     };

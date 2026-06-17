@@ -3,8 +3,9 @@
 import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
-import type { TaskPatch } from '@/types/tasks';
+import type { BulkTaskInput, BulkTaskResult, TaskPatch } from '@/types/tasks';
 import { updateMarkdownTaskStatus } from '@/lib/note-task-sync';
+import { mergeTaskTags } from '@/lib/task-tags';
 
 // Types
 export interface CreateTaskInput {
@@ -24,20 +25,8 @@ export interface CreateTaskInput {
   parentId?: string | null;
 }
 
-function normalizeTaskTag(tag: string) {
-  return tag
-    .trim()
-    .replace(/^#/, '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^\p{L}\p{N}_-]/gu, '');
-}
-
 function normalizeTaskTags(tags?: string[]) {
-  return Array.from(
-    new Set((tags || []).map(normalizeTaskTag).filter(Boolean))
-  );
+  return mergeTaskTags(tags || []);
 }
 
 export interface CreateFeatureInput {
@@ -161,6 +150,151 @@ export async function createTask(data: CreateTaskInput) {
   } catch (error) {
     console.error('Error creating task:', error);
     return { success: false, error: 'Failed to create task' };
+  }
+}
+
+const validTaskStatuses = new Set(['pending', 'in-progress', 'completed']);
+const validTaskPriorities = new Set(['low', 'medium', 'high', 'urgent']);
+
+const taskInclude = {
+  project: true,
+  note: { select: { id: true, title: true, slug: true } },
+  feature: true,
+  sprint: true,
+  subtasks: true,
+} satisfies Prisma.TaskInclude;
+
+export async function createTasksBulk(inputs: BulkTaskInput[]) {
+  const results: BulkTaskResult[] = inputs.map((input) => ({
+    clientId: input.clientId,
+    success: true,
+  }));
+
+  if (!Array.isArray(inputs) || inputs.length === 0) {
+    return { success: false, results, error: 'Nenhuma tarefa para criar' };
+  }
+
+  try {
+    const projectIds = Array.from(
+      new Set(
+        inputs
+          .map((input) => input.projectId)
+          .filter((projectId): projectId is string => Boolean(projectId))
+      )
+    );
+
+    const existingProjectIds = new Set(
+      (
+        await db.project.findMany({
+          where: { id: { in: projectIds } },
+          select: { id: true },
+        })
+      ).map((project) => project.id)
+    );
+
+    inputs.forEach((input, index) => {
+      const errors: string[] = [];
+      if (!input.clientId) errors.push('clientId ausente');
+      if (!input.title?.trim()) errors.push('Titulo vazio');
+      if (input.status && !validTaskStatuses.has(input.status)) {
+        errors.push('Status invalido');
+      }
+      if (input.priority && !validTaskPriorities.has(input.priority)) {
+        errors.push('Prioridade invalida');
+      }
+      if (input.projectId && !existingProjectIds.has(input.projectId)) {
+        errors.push('Projeto nao encontrado');
+      }
+      if (
+        input.estimatedHours !== undefined &&
+        (!Number.isFinite(input.estimatedHours) || input.estimatedHours < 0)
+      ) {
+        errors.push('Estimativa invalida');
+      }
+
+      if (errors.length) {
+        results[index] = {
+          clientId: input.clientId || `linha-${index + 1}`,
+          success: false,
+          error: errors.join(', '),
+        };
+      }
+    });
+
+    if (results.some((result) => !result.success)) {
+      return {
+        success: false,
+        results,
+        error: 'Corrija as linhas invalidas antes de criar.',
+      };
+    }
+
+    const tasks = await db.$transaction(async (tx) => {
+      const createdTasks = [];
+
+      for (const input of inputs) {
+        const createData: Prisma.TaskUncheckedCreateInput = {
+          title: input.title.trim(),
+          description: input.description?.trim() || undefined,
+          status: input.status || 'pending',
+          priority: input.priority || 'medium',
+          dueDate: input.dueDate || undefined,
+          estimatedHours: input.estimatedHours || 0,
+          actualHours: input.actualHours || 0,
+          tags: normalizeTaskTags(input.tags),
+        };
+
+        if (input.projectId && input.projectId.trim() !== '') {
+          createData.projectId = input.projectId;
+        }
+
+        const task = await tx.task.create({
+          data: createData,
+          include: taskInclude,
+        });
+
+        await tx.taskActivityLog.create({
+          data: {
+            taskId: task.id,
+            type: 'task.created',
+            message: `Task criada: ${task.title}`,
+            metadata: {
+              status: task.status,
+              priority: task.priority,
+              projectId: task.projectId,
+              bulk: true,
+            },
+          },
+        });
+
+        createdTasks.push(task);
+      }
+
+      return createdTasks;
+    });
+
+    const taskResults: BulkTaskResult[] = inputs.map((input, index) => ({
+      clientId: input.clientId,
+      success: true,
+      taskId: tasks[index]?.id,
+      task: tasks[index],
+    }));
+
+    revalidatePath('/admin/tasks');
+    revalidatePath('/admin');
+
+    return { success: true, results: taskResults, data: tasks };
+  } catch (error) {
+    console.error('Error creating tasks in bulk:', error);
+    return {
+      success: false,
+      results: inputs.map((input) => ({
+        clientId: input.clientId,
+        success: false,
+        error: 'Failed to create task',
+      })),
+      error: 'Failed to create tasks',
+    };
   }
 }
 
@@ -358,9 +492,9 @@ export async function getTaskTags() {
       select: { tags: true },
     });
 
-    const tags = Array.from(
-      new Set(tasks.flatMap((task) => normalizeTaskTags(task.tags)))
-    ).sort((first, second) => first.localeCompare(second));
+    const tags = normalizeTaskTags(tasks.flatMap((task) => task.tags)).sort(
+      (first, second) => first.localeCompare(second)
+    );
 
     return { success: true, data: tags };
   } catch (error) {

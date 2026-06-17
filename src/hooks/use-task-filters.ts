@@ -29,12 +29,15 @@ export function useTaskFilters(initialFilters: TaskFilters = {}) {
   );
 
   const updateFilter = useCallback(
-    (key: keyof TaskFilters, value: string | boolean | undefined) => {
+    (
+      key: keyof TaskFilters,
+      value: string | string[] | boolean | undefined
+    ) => {
       setFilters((prev) => {
-        if (key === 'projectId') {
+        if (key === 'projectId' || key === 'projectIds') {
           return {
             ...prev,
-            projectId: value as string | undefined,
+            [key]: value,
             sprintId: undefined,
           };
         }
