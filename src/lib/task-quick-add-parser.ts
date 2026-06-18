@@ -2,6 +2,7 @@ import type {
   TaskPriority,
   TaskProjectOption,
   TaskStatus,
+  TaskWithRelations,
 } from '@/types/tasks';
 import {
   mergeTaskTags,
@@ -126,7 +127,10 @@ function parseDueDate(token: string) {
   return undefined;
 }
 
-function parseHours(token: string) {
+export function parseTaskHoursInput(token: string) {
+  const numeric = token.trim().replace(',', '.');
+  if (/^\d+(?:\.\d+)?$/.test(numeric)) return Number(numeric);
+
   const hoursMatch = token.match(/^(\d+(?:[.,]\d+)?)h$/i);
   if (hoursMatch) return Number(hoursMatch[1].replace(',', '.'));
 
@@ -148,6 +152,72 @@ function findProject(label: string, projects: TaskProjectOption[] = []) {
     const title = normalize(project.title).replace(/\s+/g, '');
     return title === wanted || title.includes(wanted);
   });
+}
+
+function isSameCalendarDay(first: Date, second: Date) {
+  return (
+    first.getFullYear() === second.getFullYear() &&
+    first.getMonth() === second.getMonth() &&
+    first.getDate() === second.getDate()
+  );
+}
+
+function formatQuickAddDate(value: Date | string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+
+  const today = startOfToday();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+
+  if (isSameCalendarDay(date, today)) return 'hoje';
+  if (isSameCalendarDay(date, tomorrow)) return 'amanhã';
+
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(date);
+}
+
+function formatQuickAddHours(hours: number) {
+  return `${Number(hours.toFixed(2))}h`;
+}
+
+const priorityQuickAddTokens: Record<TaskPriority, string> = {
+  low: '!baixa',
+  medium: '!media',
+  high: '!alta',
+  urgent: '!urgente',
+};
+
+export function formatTaskAsQuickAdd(task: TaskWithRelations) {
+  const tokens: string[] = [task.title.replace(/\s+/g, ' ').trim()];
+  const projectTitle = task.project?.title?.trim();
+  if (projectTitle) {
+    tokens.push(`@${projectTitle.replace(/\s+/g, '')}`);
+  }
+
+  const priority = task.priority as TaskPriority;
+  if (priorityQuickAddTokens[priority]) {
+    tokens.push(priorityQuickAddTokens[priority]);
+  }
+
+  if (task.dueDate) {
+    const dueDateToken = formatQuickAddDate(task.dueDate);
+    if (dueDateToken) tokens.push(dueDateToken);
+  }
+
+  if (
+    typeof task.estimatedHours === 'number' &&
+    Number.isFinite(task.estimatedHours) &&
+    task.estimatedHours > 0
+  ) {
+    tokens.push(formatQuickAddHours(task.estimatedHours));
+  }
+
+  tokens.push(...mergeTaskTags(task.tags || []).map((tag) => `#${tag}`));
+  return tokens.filter(Boolean).join(' ');
 }
 
 export function parseQuickTaskInput(
@@ -197,7 +267,7 @@ export function parseQuickTaskInput(
       parsed.unmatchedProjectLabels.push(projectLabel);
     }
 
-    const hours = parseHours(token);
+    const hours = parseTaskHoursInput(token);
     if (hours !== undefined && Number.isFinite(hours)) {
       parsed.estimatedHours = hours;
       continue;

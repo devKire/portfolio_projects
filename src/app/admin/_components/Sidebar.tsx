@@ -33,7 +33,7 @@ export default function Sidebar({
 
   return (
     <aside
-      className={`flex h-screen flex-col border-r border-[#2f2f35] bg-[#19191d] ${isCollapsed && !isMobile ? 'w-16' : 'w-64'} ${isMobile ? 'w-full' : ''} transition-all duration-300`}
+      className={`flex h-dvh min-h-0 shrink-0 flex-col overflow-hidden border-r border-[#2f2f35] bg-[#19191d] ${isCollapsed && !isMobile ? 'w-16' : 'w-64'} ${isMobile ? 'w-full' : 'sticky top-0'} transition-all duration-300`}
     >
       {/* Header */}
       <div className="flex items-center justify-between border-b border-[#2f2f35] p-3">

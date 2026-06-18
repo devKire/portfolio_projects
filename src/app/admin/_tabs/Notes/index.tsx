@@ -2,6 +2,7 @@
 
 import {
   Archive,
+  ArrowLeft,
   ArrowDown,
   ArrowUp,
   AlertTriangle,
@@ -78,7 +79,12 @@ import {
   type NoteFormInput,
 } from '@/app/actions/notes';
 import { createTask } from '@/app/actions/tasks';
-import { inferNoteTitleFromPath, slugifyNote } from '@/lib/notes';
+import {
+  inferNoteTitleFromPath,
+  resolveWikiLinkTarget,
+  slugifyNote,
+} from '@/lib/notes';
+import { isEditableTarget } from '@/lib/keyboard';
 
 import {
   MarkdownPreview,
@@ -210,6 +216,10 @@ type NoteFeedback = {
   message: string;
   tone: 'success' | 'error' | 'info';
 } | null;
+type NoteHistoryEntry = {
+  id: string;
+  title: string;
+};
 type ImportSummary = {
   imported: number;
   updated: number;
@@ -237,6 +247,8 @@ type TrashRow =
   | { type: 'note'; id: string; key: string; note: NoteListItem };
 
 const MAX_VAULT_ZIP_SIZE = 50 * 1024 * 1024;
+const NOTE_HISTORY_STORAGE_KEY = 'knowledge-vault-note-history';
+const MAX_NOTE_HISTORY = 5;
 const ZIP_MIME_TYPES = new Set([
   'application/zip',
   'application/x-zip-compressed',
@@ -1383,7 +1395,7 @@ function CommandPalette({
     .filter((note) => note.title.toLowerCase().includes(query.toLowerCase()))
     .slice(0, 6);
   const commands = [
-    { label: 'Nova nota', hint: 'Ctrl N', action: onNewNote, icon: Plus },
+    { label: 'Nova nota', hint: 'Ctrl B', action: onNewNote, icon: Plus },
     {
       label: 'Abrir Graph',
       hint: 'Graph View',
@@ -1515,9 +1527,9 @@ export default function Notes() {
     () => new Set()
   );
   const [search, setSearch] = useState('');
-  const [mode, setMode] = useState<WorkspaceMode>('split');
+  const [mode, setMode] = useState<WorkspaceMode>('preview');
   const [leftCollapsed, setLeftCollapsed] = useState(false);
-  const [rightCollapsed, setRightCollapsed] = useState(false);
+  const [rightCollapsed, setRightCollapsed] = useState(true);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [quickCaptureOpen, setQuickCaptureOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -1555,6 +1567,14 @@ export default function Notes() {
     number | null
   >(null);
   const [pasteUploading, setPasteUploading] = useState(false);
+  const [navigationHistory, setNavigationHistory] = useState<
+    NoteHistoryEntry[]
+  >([]);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [pendingWikiAnchor, setPendingWikiAnchor] = useState<{
+    noteId: string;
+    anchor: string;
+  } | null>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
   const renameCommitRef = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -1562,6 +1582,9 @@ export default function Notes() {
   draftRef.current = draft;
   const selectedNoteRef = useRef(selectedNote);
   selectedNoteRef.current = selectedNote;
+  const historyNavigationTargetRef = useRef<string | null>(null);
+  const noteHistoryCacheRef = useRef(new Map<string, NoteDetail>());
+  const previousOpenedNoteIdRef = useRef<string | null>(null);
   const [error, setError] = useState('');
   const debouncedSearch = useDebouncedValue(search);
 
@@ -1578,6 +1601,129 @@ export default function Notes() {
     const timeout = window.setTimeout(() => setNoteFeedback(null), 2200);
     return () => window.clearTimeout(timeout);
   }, [noteFeedback]);
+
+  useEffect(() => {
+    try {
+      const stored = window.sessionStorage.getItem(NOTE_HISTORY_STORAGE_KEY);
+      const parsed = stored ? JSON.parse(stored) : [];
+      if (Array.isArray(parsed)) {
+        setNavigationHistory(
+          parsed
+            .filter((entry): entry is NoteHistoryEntry =>
+              Boolean(
+                entry &&
+                typeof entry.id === 'string' &&
+                typeof entry.title === 'string'
+              )
+            )
+            .slice(-MAX_NOTE_HISTORY)
+        );
+      }
+    } catch {
+      setNavigationHistory([]);
+    } finally {
+      setHistoryLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!historyLoaded) return;
+    try {
+      window.sessionStorage.setItem(
+        NOTE_HISTORY_STORAGE_KEY,
+        JSON.stringify(navigationHistory.slice(-MAX_NOTE_HISTORY))
+      );
+    } catch {
+      // sessionStorage can be unavailable in restricted browser contexts.
+    }
+  }, [historyLoaded, navigationHistory]);
+
+  useEffect(() => {
+    const noteId = selectedNote?.id || null;
+    if (previousOpenedNoteIdRef.current === noteId) return;
+    previousOpenedNoteIdRef.current = noteId;
+    if (!noteId) return;
+    setMode('preview');
+    setRightCollapsed(true);
+  }, [selectedNote?.id]);
+
+  useEffect(() => {
+    if (!selectedNote) return;
+    noteHistoryCacheRef.current.set(selectedNote.id, selectedNote);
+  }, [selectedNote]);
+
+  useEffect(() => {
+    if (!historyLoaded || !selectedNote) return;
+
+    if (historyNavigationTargetRef.current === selectedNote.id) {
+      historyNavigationTargetRef.current = null;
+      return;
+    }
+
+    setNavigationHistory((current) => {
+      const last = current.at(-1);
+      if (last?.id === selectedNote.id) {
+        if (last.title === selectedNote.title) return current;
+        return [
+          ...current.slice(0, -1),
+          { id: selectedNote.id, title: selectedNote.title },
+        ];
+      }
+
+      return [
+        ...current,
+        { id: selectedNote.id, title: selectedNote.title },
+      ].slice(-MAX_NOTE_HISTORY);
+    });
+  }, [historyLoaded, selectedNote?.id, selectedNote?.title]);
+
+  useEffect(() => {
+    if (!selectedNote) return;
+    setNavigationHistory((current) =>
+      current.map((entry) =>
+        entry.id === selectedNote.id
+          ? { ...entry, title: selectedNote.title }
+          : entry
+      )
+    );
+  }, [selectedNote?.id, selectedNote?.title]);
+
+  useEffect(() => {
+    if (
+      !pendingWikiAnchor ||
+      selectedNote?.id !== pendingWikiAnchor.noteId ||
+      (mode !== 'preview' && mode !== 'split')
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+    const frame = window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        if (cancelled) return;
+        const wanted = pendingWikiAnchor.anchor.trim().toLocaleLowerCase();
+        const wantedSlug = slugifyNote(wanted.replace(/^\^/, ''));
+        const target = Array.from(
+          document.querySelectorAll<HTMLElement>('[data-wiki-anchor]')
+        ).find((element) => {
+          const anchor =
+            element.dataset.wikiAnchor?.trim().toLocaleLowerCase() || '';
+          if (anchor === wanted) return true;
+          return (
+            !wanted.startsWith('^') &&
+            slugifyNote(anchor.replace(/^\^/, '')) === wantedSlug
+          );
+        });
+        target?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        setPendingWikiAnchor(null);
+      });
+    });
+
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(frame);
+    };
+  }, [draft.content, mode, pendingWikiAnchor, selectedNote?.id]);
 
   const draftKey = JSON.stringify({
     title: draft.title,
@@ -1727,17 +1873,12 @@ export default function Notes() {
       };
     }
 
-    const targetSlug = slugifyNote(
-      inferNoteTitleFromPath(target.replace(/\.md$/i, ''))
+    const resolution = resolveWikiLinkTarget(
+      target,
+      linkableNotes,
+      selectedNote?.folderPath
     );
-    return (
-      linkableNotes.find(
-        (note) =>
-          note.slug === targetSlug ||
-          note.title.toLowerCase() === target.toLowerCase() ||
-          note.filePath?.toLowerCase() === target.toLowerCase()
-      ) || null
-    );
+    return resolution.status === 'resolved' ? resolution.note : null;
   }, [linkableNotes, selectedNote, wikilinkParse]);
 
   useEffect(() => {
@@ -1916,7 +2057,6 @@ export default function Notes() {
       const detail = result.data.note as NoteDetail;
       setSelectedNote(detail);
       setDraft(noteToDraft(detail));
-      setMode('edit');
       setScope('all');
       setActiveFolder(folder?.path || null);
       setFolderContextMenu(null);
@@ -2010,7 +2150,9 @@ export default function Notes() {
         event.preventDefault();
         setPaletteOpen(true);
       }
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'n') {
+      if (event.repeat) return;
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'b') {
+        if (isEditableTarget(event.target)) return;
         event.preventDefault();
         startNewNote();
       }
@@ -3099,6 +3241,43 @@ export default function Notes() {
     else setError(result.error || 'Nao foi possivel reordenar notas.');
   };
 
+  const openHistoryEntry = async (
+    entry: NoteHistoryEntry,
+    historyIndex: number
+  ) => {
+    if (selectedNote?.id === entry.id) {
+      setNavigationHistory((current) => current.slice(0, historyIndex + 1));
+      return;
+    }
+
+    if (selectedNote && autoSave.hasPendingChanges()) {
+      setWikilinkBlocked(true);
+      const saved = await autoSave.triggerSave();
+      if (!saved) return;
+    }
+
+    let detail = noteHistoryCacheRef.current.get(entry.id) || null;
+    if (!detail) {
+      const result = await getNote(entry.id);
+      if (!result.success || !result.data) {
+        setError(result.error || 'Nao foi possivel abrir nota.');
+        return;
+      }
+      detail = result.data.note as NoteDetail;
+    }
+
+    historyNavigationTargetRef.current = detail.id;
+    setNavigationHistory((current) => current.slice(0, historyIndex + 1));
+    setSelectedNote(detail);
+    setDraft(noteToDraft(detail));
+  };
+
+  const openPreviousNote = async () => {
+    if (navigationHistory.length < 2) return;
+    const previousIndex = navigationHistory.length - 2;
+    await openHistoryEntry(navigationHistory[previousIndex], previousIndex);
+  };
+
   const openNote = async (note: NoteListItem) => {
     if (
       selectedNote &&
@@ -3117,7 +3296,6 @@ export default function Notes() {
     const detail = result.data.note as NoteDetail;
     setSelectedNote(detail);
     setDraft(noteToDraft(detail));
-    setMode((current) => (current === 'graph' ? 'split' : current));
   };
 
   function startNewNote() {
@@ -3145,9 +3323,14 @@ export default function Notes() {
     setSaving(false);
   };
 
-  const openWikiLink = async (slug: string) => {
-    const note = notes.find((item) => item.slug === slug);
+  const openWikiLink = async (idOrSlug: string, anchor?: string) => {
+    const note = notes.find(
+      (item) => item.id === idOrSlug || item.slug === idOrSlug
+    );
     if (note) {
+      if (anchor) {
+        setPendingWikiAnchor({ noteId: note.id, anchor });
+      }
       await openNote(note);
       return;
     }
@@ -3155,9 +3338,12 @@ export default function Notes() {
       const saved = await autoSave.triggerSave();
       if (!saved) return;
     }
-    const result = await getNote(slug, { incrementView: true });
+    const result = await getNote(idOrSlug, { incrementView: true });
     if (result.success && result.data) {
       const detail = result.data.note as NoteDetail;
+      if (anchor) {
+        setPendingWikiAnchor({ noteId: detail.id, anchor });
+      }
       setSelectedNote(detail);
       setDraft(noteToDraft(detail));
     }
@@ -4271,13 +4457,62 @@ export default function Notes() {
 
         <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#1e1e22]">
           <div className="flex h-12 shrink-0 items-center justify-between border-b border-[#2f2f35] px-3">
-            <div className="flex min-w-0 items-center gap-2">
-              <FileText className="h-4 w-4 text-[#8f8f98]" />
-              <span className="truncate text-sm text-[#f2f2f3]">
-                {selectedNote?.title || 'Nenhuma nota selecionada'}
-              </span>
+            <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => void openPreviousNote()}
+                disabled={navigationHistory.length < 2}
+                className="inline-flex h-8 shrink-0 items-center gap-1 rounded px-2 text-xs text-[#9b9ba3] hover:bg-[#2a2a30] hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+                aria-label="Voltar para a nota anterior"
+                title="Voltar para a nota anterior"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                <span className="hidden xl:inline">Voltar</span>
+              </button>
+              {selectedNote ? (
+                <nav
+                  className="flex min-w-0 items-center gap-1 overflow-hidden text-xs"
+                  aria-label="Historico recente de notas"
+                >
+                  {navigationHistory.map((entry, index) => {
+                    const isCurrent =
+                      index === navigationHistory.length - 1 &&
+                      entry.id === selectedNote.id;
+                    return (
+                      <div
+                        key={`${entry.id}-${index}`}
+                        className="flex min-w-0 items-center gap-1"
+                      >
+                        {index > 0 && (
+                          <ChevronRight className="h-3 w-3 shrink-0 text-[#55555d]" />
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => void openHistoryEntry(entry, index)}
+                          className={`max-w-28 truncate rounded px-1.5 py-1 text-left hover:bg-[#2a2a30] xl:max-w-40 ${
+                            isCurrent
+                              ? 'font-medium text-[#f2f2f3]'
+                              : 'text-[#8f8f98] hover:text-white'
+                          }`}
+                          title={entry.title}
+                          aria-current={isCurrent ? 'page' : undefined}
+                        >
+                          {entry.title}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </nav>
+              ) : (
+                <>
+                  <FileText className="h-4 w-4 shrink-0 text-[#8f8f98]" />
+                  <span className="truncate text-sm text-[#f2f2f3]">
+                    Nenhuma nota selecionada
+                  </span>
+                </>
+              )}
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex shrink-0 items-center gap-1">
               {notesListCollapsed && (
                 <button
                   type="button"
@@ -4364,7 +4599,7 @@ export default function Notes() {
                 <div className="flex h-full flex-col items-center justify-center text-center text-[#8f8f98]">
                   <Edit3 className="mb-3 h-10 w-10" />
                   <p className="text-[#dcddde]">
-                    Abra uma nota ou use Ctrl+N para capturar uma ideia.
+                    Abra uma nota ou use Ctrl+B para capturar uma ideia.
                   </p>
                   <p className="mt-1 text-sm">Ctrl+K abre a command palette.</p>
                 </div>
@@ -4482,11 +4717,12 @@ export default function Notes() {
                     )}
                     {(mode === 'preview' || mode === 'split') && (
                       <div
-                        className={`${mode === 'split' ? 'w-1/2' : 'w-full'} h-full min-h-0 overflow-y-auto`}
+                        className={`${mode === 'split' ? 'w-1/2' : 'w-full'} h-full min-h-0 min-w-0 overflow-x-hidden overflow-y-auto`}
                       >
                         <MarkdownPreview
                           content={draft.content || ''}
                           notes={linkableNotes}
+                          currentNote={selectedNote}
                           attachments={attachments}
                           onOpenWikiLink={openWikiLink}
                         />
@@ -4498,107 +4734,115 @@ export default function Notes() {
             </div>
 
             {!rightCollapsed && selectedNote && mode !== 'graph' && (
-              <aside className="min-h-0 w-80 shrink-0 overflow-y-auto border-l border-[#2f2f35] bg-[#19191d]">
-                <div className="border-b border-[#2f2f35] p-4">
-                  <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-[#f2f2f3]">
-                    <Link2 className="h-4 w-4 text-[#9a8cff]" />
-                    Linked Mentions
-                  </h3>
-                  <div className="space-y-2">
-                    {selectedNote.incoming.length === 0 && (
-                      <p className="text-xs text-[#777780]">Sem backlinks.</p>
-                    )}
-                    {selectedNote.incoming.map(
-                      (link) =>
-                        link.sourceNote && (
+              <aside className="flex h-full min-h-0 w-80 shrink-0 flex-col overflow-hidden border-l border-[#2f2f35] bg-[#19191d]">
+                <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
+                  <div className="border-b border-[#2f2f35] p-4">
+                    <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-[#f2f2f3]">
+                      <Link2 className="h-4 w-4 text-[#9a8cff]" />
+                      Linked Mentions
+                    </h3>
+                    <div className="space-y-2">
+                      {selectedNote.incoming.length === 0 && (
+                        <p className="text-xs text-[#777780]">Sem backlinks.</p>
+                      )}
+                      {selectedNote.incoming.map(
+                        (link) =>
+                          link.sourceNote && (
+                            <button
+                              key={link.id}
+                              type="button"
+                              onClick={() =>
+                                void openWikiLink(link.sourceNote!.slug)
+                              }
+                              className="block w-full rounded border border-[#303036] bg-[#202024] p-2 text-left text-xs text-[#dcddde] hover:bg-[#2a2a30]"
+                            >
+                              {link.sourceNote.title}
+                            </button>
+                          )
+                      )}
+                    </div>
+                  </div>
+                  <div className="border-b border-[#2f2f35] p-4">
+                    <h3 className="mb-2 text-sm font-semibold text-[#f2f2f3]">
+                      Outgoing Links
+                    </h3>
+                    <div className="space-y-2">
+                      {selectedNote.outgoing.length === 0 && (
+                        <p className="text-xs text-[#777780]">Sem links.</p>
+                      )}
+                      {selectedNote.outgoing.map((link) => {
+                        const label =
+                          'alias' in link && typeof link.alias === 'string'
+                            ? link.alias
+                            : link.targetTitle;
+                        return (
                           <button
                             key={link.id}
                             type="button"
                             onClick={() =>
-                              void openWikiLink(link.sourceNote!.slug)
+                              link.targetExists &&
+                              void openWikiLink(
+                                link.targetNote?.id || link.targetSlug
+                              )
                             }
-                            className="block w-full rounded border border-[#303036] bg-[#202024] p-2 text-left text-xs text-[#dcddde] hover:bg-[#2a2a30]"
+                            disabled={!link.targetExists}
+                            className="flex w-full items-center justify-between rounded border border-[#303036] bg-[#202024] p-2 text-left text-xs hover:bg-[#2a2a30]"
                           >
-                            {link.sourceNote.title}
+                            <span>{label}</span>
+                            <span
+                              className={
+                                link.targetExists
+                                  ? 'text-emerald-300'
+                                  : 'text-amber-300'
+                              }
+                            >
+                              {link.targetExists ? 'linked' : 'unresolved'}
+                            </span>
                           </button>
-                        )
-                    )}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-                <div className="border-b border-[#2f2f35] p-4">
-                  <h3 className="mb-2 text-sm font-semibold text-[#f2f2f3]">
-                    Outgoing Links
-                  </h3>
-                  <div className="space-y-2">
-                    {selectedNote.outgoing.length === 0 && (
-                      <p className="text-xs text-[#777780]">Sem links.</p>
-                    )}
-                    {selectedNote.outgoing.map((link) => {
-                      const label =
-                        'alias' in link && typeof link.alias === 'string'
-                          ? link.alias
-                          : link.targetTitle;
-                      return (
-                        <button
-                          key={link.id}
-                          type="button"
-                          onClick={() => void openWikiLink(link.targetSlug)}
-                          className="flex w-full items-center justify-between rounded border border-[#303036] bg-[#202024] p-2 text-left text-xs hover:bg-[#2a2a30]"
+                  <div className="border-b border-[#2f2f35] p-4">
+                    <h3 className="mb-2 text-sm font-semibold text-[#f2f2f3]">
+                      Tasks da Nota
+                    </h3>
+                    <div className="space-y-2">
+                      {(selectedNote.tasks || []).length === 0 && (
+                        <p className="text-xs text-[#777780]">
+                          Use - [ ] no Markdown para sincronizar tasks.
+                        </p>
+                      )}
+                      {(selectedNote.tasks || []).map((task) => (
+                        <div
+                          key={task.id}
+                          className="rounded border border-[#303036] bg-[#202024] p-2 text-xs"
                         >
-                          <span>{label}</span>
                           <span
                             className={
-                              link.targetExists
-                                ? 'text-emerald-300'
-                                : 'text-amber-300'
+                              task.status === 'completed'
+                                ? 'text-[#777780] line-through'
+                                : 'text-[#dcddde]'
                             }
                           >
-                            {link.targetExists ? 'linked' : 'unresolved'}
+                            {task.title}
                           </span>
-                        </button>
-                      );
-                    })}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-                <div className="p-4">
-                  <h3 className="mb-2 text-sm font-semibold text-[#f2f2f3]">
-                    Tasks da Nota
-                  </h3>
-                  <div className="space-y-2">
-                    {(selectedNote.tasks || []).length === 0 && (
-                      <p className="text-xs text-[#777780]">
-                        Use - [ ] no Markdown para sincronizar tasks.
-                      </p>
-                    )}
-                    {(selectedNote.tasks || []).map((task) => (
-                      <div
-                        key={task.id}
-                        className="rounded border border-[#303036] bg-[#202024] p-2 text-xs"
-                      >
-                        <span
-                          className={
-                            task.status === 'completed'
-                              ? 'text-[#777780] line-through'
-                              : 'text-[#dcddde]'
-                          }
-                        >
-                          {task.title}
-                        </span>
-                      </div>
-                    ))}
+                  <div className="p-4">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        selectedNote && void handleMoveNoteToTrash(selectedNote)
+                      }
+                      className="flex w-full items-center justify-center gap-2 rounded border border-red-500/30 py-2 text-sm text-red-200 hover:bg-red-500/10"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Mover para a lixeira
+                    </button>
                   </div>
-                </div>
-                <div className="p-4">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      selectedNote && void handleMoveNoteToTrash(selectedNote)
-                    }
-                    className="flex w-full items-center justify-center gap-2 rounded border border-red-500/30 py-2 text-sm text-red-200 hover:bg-red-500/10"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Mover para a lixeira
-                  </button>
                 </div>
               </aside>
             )}

@@ -4,6 +4,7 @@ import {
   BookOpen,
   Folder,
   Globe,
+  ListChecks,
   MessageSquare,
   Pen,
   Settings,
@@ -13,6 +14,7 @@ import {
 export const TAB_CONFIG = [
   { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
   { id: 'tasks', label: 'Tasks', icon: Pen },
+  { id: 'daily-checklist', label: 'Checklist Diário', icon: ListChecks },
   { id: 'projects', label: 'Projetos', icon: Folder },
   { id: 'notes', label: 'Notas', icon: BookOpen },
   { id: 'social', label: 'Redes Sociais', icon: Users },

@@ -54,12 +54,12 @@ export interface TaskProjectOption {
 
 export interface TaskPatch {
   title?: string;
-  description?: string;
+  description?: string | null;
   status?: TaskStatus | string;
   priority?: TaskPriority | string;
   dueDate?: Date | null;
-  estimatedHours?: number;
-  actualHours?: number;
+  estimatedHours?: number | null;
+  actualHours?: number | null;
   tags?: string[];
   projectId?: string | null;
   project?: TaskProjectRef | null;
@@ -94,3 +94,12 @@ export interface BulkTaskResult {
   task?: TaskWithRelations;
   error?: string;
 }
+
+export type DeleteTasksResult = {
+  success: boolean;
+  deletedIds: string[];
+  failedItems?: Array<{
+    id: string;
+    error: string;
+  }>;
+};

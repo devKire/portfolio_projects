@@ -7,11 +7,13 @@ import { useTaskSelection } from '@/hooks/use-task-selection';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 
 import {
-  deleteTask,
+  deleteTasksBulk,
   getProjects,
   getTaskTags,
   updateTaskStatus,
 } from '@/app/actions/tasks';
+import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
 import { TaskFiltersBar } from './task-filters-bar';
 import { BulkActionsBar } from './bulk-actions-bar';
 import { QuickTaskInput } from './quick-task-input';
@@ -19,7 +21,6 @@ import { BulkTaskInput } from './bulk-task-input';
 import { TaskListView } from './task-list-view';
 import { TaskKanbanView } from './task-kanban-view';
 import { TaskHeader } from './task-header';
-import { DailyChecklistCard } from './daily-checklist-card';
 import { mergeTaskTags } from '@/lib/task-tags';
 import type {
   TaskPatch,
@@ -40,6 +41,7 @@ export function TaskPageClient() {
     refetch,
     updateTaskInCache,
     addTasksToCache,
+    removeTasksFromCache,
   } = useTasks(resolvedFilters);
   const {
     selectedIds,
@@ -47,6 +49,7 @@ export function TaskPageClient() {
     toggle,
     selectAll,
     clearSelection,
+    removeFromSelection,
   } = useTaskSelection();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [isQuickInputOpen, setIsQuickInputOpen] = useState(false);
@@ -55,6 +58,7 @@ export function TaskPageClient() {
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [projects, setProjects] = useState<TaskProjectOption[]>([]);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(() => new Set());
 
   const loadTags = useCallback(async () => {
     const result = await getTaskTags();
@@ -80,13 +84,57 @@ export function TaskPageClient() {
     };
   }, [loadTags]);
 
+  const handleDeleteTasks = useCallback(
+    async (ids: string[]) => {
+      const uniqueIds = Array.from(new Set(ids));
+      if (uniqueIds.length === 0 || deletingIds.size > 0) return;
+
+      setDeletingIds(new Set(uniqueIds));
+      const count = uniqueIds.length;
+
+      try {
+        const result = await deleteTasksBulk(uniqueIds);
+        if (result.deletedIds.length > 0) {
+          removeTasksFromCache(result.deletedIds);
+          removeFromSelection(result.deletedIds);
+        }
+
+        if (result.success) {
+          toast.success(
+            count === 1
+              ? 'Tarefa excluida'
+              : `${result.deletedIds.length} tarefas excluidas`
+          );
+          return;
+        }
+
+        if (result.deletedIds.length > 0) {
+          toast.error(
+            `${result.deletedIds.length} tarefa(s) excluida(s); ${
+              result.failedItems?.length || 0
+            } falharam.`
+          );
+        } else {
+          toast.error(
+            result.failedItems?.[0]?.error ||
+              'Nao foi possivel excluir as tarefas.'
+          );
+        }
+      } catch (error) {
+        console.error('Error deleting tasks:', error);
+        toast.error('Nao foi possivel excluir as tarefas.');
+      } finally {
+        setDeletingIds(new Set());
+      }
+    },
+    [deletingIds.size, removeFromSelection, removeTasksFromCache]
+  );
+
   // Métodos de ação
   const handleBulkDelete = async () => {
-    if (selectionCount === 0) return;
+    if (selectionCount === 0 || deletingIds.size > 0) return;
     try {
-      await Promise.all(Array.from(selectedIds).map((id) => deleteTask(id)));
-      clearSelection();
-      refetch();
+      await handleDeleteTasks(Array.from(selectedIds));
     } catch (error) {
       console.error('Error in bulk delete:', error);
     }
@@ -99,7 +147,7 @@ export function TaskPageClient() {
         Array.from(selectedIds).map((id) => updateTaskStatus(id, status))
       );
       clearSelection();
-      refetch();
+      await refetch();
     } catch (error) {
       console.error('Error in bulk status change:', error);
     }
@@ -174,7 +222,20 @@ export function TaskPageClient() {
           onBulkStatusChange={handleBulkStatusChange}
           onBulkDelete={handleBulkDelete}
           onClearSelection={clearSelection}
+          isDeleting={deletingIds.size > 0}
         />
+      )}
+
+      {deletingIds.size > 0 && (
+        <div
+          className="flex items-center gap-2 rounded-lg border border-[#6f55d9]/30 bg-[#6f55d9]/10 px-3 py-2 text-sm text-[#c9b8ff]"
+          aria-live="polite"
+        >
+          <Loader2 className="h-4 w-4 animate-spin" />
+          {deletingIds.size === 1
+            ? 'Excluindo tarefa...'
+            : `Excluindo ${deletingIds.size} tarefas...`}
+        </div>
       )}
 
       {isQuickInputOpen && (
@@ -238,6 +299,8 @@ export function TaskPageClient() {
               refetch();
             }}
             onTaskPatch={handleTaskPatch}
+            onDeleteTasks={handleDeleteTasks}
+            deletingIds={deletingIds}
             projects={projects}
             availableTags={availableTags}
             onAvailableTagsChange={mergeAvailableTags}
@@ -247,13 +310,13 @@ export function TaskPageClient() {
             tasks={tasks}
             onTaskUpdate={() => refetch()}
             onTaskPatch={handleTaskPatch}
+            onDeleteTasks={handleDeleteTasks}
+            deletingIds={deletingIds}
             projects={projects}
             availableTags={availableTags}
             onAvailableTagsChange={mergeAvailableTags}
           />
         ))}
-
-      {!loading && !error && <DailyChecklistCard />}
 
       {/* Loading overlay para refetch */}
       {loading && tasks.length > 0 && (

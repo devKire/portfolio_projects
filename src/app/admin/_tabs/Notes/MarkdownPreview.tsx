@@ -21,7 +21,7 @@ import {
 import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';
 
-import { inferNoteTitleFromPath, slugifyNote } from '@/lib/notes';
+import { resolveWikiLinkTarget, slugifyNote } from '@/lib/notes';
 
 export type PreviewNote = {
   id: string;
@@ -42,6 +42,32 @@ export type PreviewAttachment = {
 };
 
 type Footnote = { id: string; content: string };
+type MarkdownBlock =
+  | { type: 'markdown'; content: string }
+  | { type: 'code'; content: string; language: string };
+
+const codeLanguageAliases: Record<string, string> = {
+  '': 'text',
+  text: 'text',
+  plaintext: 'text',
+  powershell: 'powershell',
+  ps1: 'powershell',
+  cmd: 'cmd',
+  batch: 'cmd',
+  bash: 'bash',
+  shell: 'bash',
+  sh: 'bash',
+  javascript: 'javascript',
+  js: 'javascript',
+  typescript: 'typescript',
+  ts: 'typescript',
+  tsx: 'tsx',
+  json: 'json',
+  python: 'python',
+  py: 'python',
+  sql: 'sql',
+  mermaid: 'mermaid',
+};
 
 const calloutAliases: Record<string, string> = {
   summary: 'abstract',
@@ -218,16 +244,75 @@ function stripFootnoteDefinitions(content: string) {
   return { body, footnotes };
 }
 
+function normalizeCodeLanguage(language: string) {
+  return codeLanguageAliases[language.trim().toLowerCase()] || 'text';
+}
+
+function appendMarkdownBlocks(blocks: MarkdownBlock[], content: string) {
+  content
+    .split(/\n{2,}/)
+    .filter((block) => block.trim())
+    .forEach((block) => blocks.push({ type: 'markdown', content: block }));
+}
+
+function tokenizeMarkdownBlocks(content: string) {
+  const blocks: MarkdownBlock[] = [];
+  const lines = content.split('\n');
+  let markdownBuffer: string[] = [];
+
+  const flushMarkdown = () => {
+    if (markdownBuffer.length > 0) {
+      appendMarkdownBlocks(blocks, markdownBuffer.join('\n'));
+      markdownBuffer = [];
+    }
+  };
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const openingFence = lines[index].match(/^\s*(`{3,})(?:\s*([^\s`]+).*)?$/);
+    if (!openingFence) {
+      markdownBuffer.push(lines[index]);
+      continue;
+    }
+
+    flushMarkdown();
+    const fenceLength = openingFence[1].length;
+    const codeLines: string[] = [];
+    let closed = false;
+
+    for (index += 1; index < lines.length; index += 1) {
+      const closingFence = lines[index].match(/^\s*(`{3,})\s*$/);
+      if (closingFence && closingFence[1].length >= fenceLength) {
+        closed = true;
+        break;
+      }
+      codeLines.push(lines[index]);
+    }
+
+    blocks.push({
+      type: 'code',
+      content: codeLines.join('\n'),
+      language: normalizeCodeLanguage(openingFence[2] || ''),
+    });
+
+    if (!closed) break;
+  }
+
+  flushMarkdown();
+  return blocks;
+}
+
 export function MarkdownPreview({
   content,
   notes,
+  currentNote,
   attachments,
   onOpenWikiLink,
 }: {
   content: string;
   notes: PreviewNote[];
+  currentNote?: PreviewNote | null;
   attachments: PreviewAttachment[];
-  onOpenWikiLink: (slug: string) => void;
+  onOpenWikiLink: (idOrSlug: string, anchor?: string) => void;
 }) {
   const [closedCallouts, setClosedCallouts] = useState<Record<string, boolean>>(
     {}
@@ -237,10 +322,6 @@ export function MarkdownPreview({
     [content]
   );
 
-  const noteBySlug = useMemo(
-    () => new Map(notes.map((note) => [note.slug, note])),
-    [notes]
-  );
   const attachmentByName = useMemo(() => {
     const map = new Map<string, PreviewAttachment>();
     for (const attachment of attachments) {
@@ -250,9 +331,15 @@ export function MarkdownPreview({
     return map;
   }, [attachments]);
 
-  const resolveNoteSlug = (target: string) => {
-    const clean = target.split('#')[0].trim();
-    return slugifyNote(inferNoteTitleFromPath(clean.replace(/\.md$/i, '')));
+  const resolveNote = (target: string) => {
+    const resolution = resolveWikiLinkTarget(
+      target,
+      notes,
+      currentNote?.folderPath
+    );
+    return resolution.status === 'resolved'
+      ? { note: resolution.note, anchor: resolution.anchor }
+      : null;
   };
 
   const renderInline = (text: string, keyPrefix: string): ReactNode[] => {
@@ -268,17 +355,18 @@ export function MarkdownPreview({
 
         const wiki = part.match(/^\[\[([^\]|]+)(?:\|([^\]]+))?\]\]$/);
         if (wiki) {
-          const title = wiki[1].trim();
-          const slug = resolveNoteSlug(title);
-          const exists = noteBySlug.has(slug);
+          const target = wiki[1].trim();
+          const resolved = resolveNote(target);
           return (
             <button
               key={key}
               type="button"
-              onClick={() => exists && onOpenWikiLink(slug)}
-              className={`rounded px-1.5 py-0.5 ${exists ? 'bg-[#34245f] text-[#c9b8ff] hover:bg-[#49347e]' : 'bg-[#3a2b1e] text-[#f2c57c]'}`}
+              onClick={() =>
+                resolved && onOpenWikiLink(resolved.note.id, resolved.anchor)
+              }
+              className={`rounded px-1.5 py-0.5 ${resolved ? 'bg-[#34245f] text-[#c9b8ff] hover:bg-[#49347e]' : 'bg-[#3a2b1e] text-[#f2c57c]'}`}
             >
-              {wiki[2]?.trim() || title}
+              {wiki[2]?.trim() || target}
             </button>
           );
         }
@@ -355,18 +443,17 @@ export function MarkdownPreview({
         </a>
       );
     }
-    const slug = resolveNoteSlug(target);
-    const note = noteBySlug.get(slug);
-    if (note) {
+    const resolved = resolveNote(target);
+    if (resolved) {
       return (
         <button
           key={key}
           type="button"
-          onClick={() => onOpenWikiLink(slug)}
+          onClick={() => onOpenWikiLink(resolved.note.id, resolved.anchor)}
           className="my-2 inline-flex items-center gap-2 rounded border border-[#393944] bg-[#25252b] px-3 py-2 text-sm text-[#dcddde] hover:bg-[#2d2940]"
         >
           <FileText className="h-4 w-4 text-[#9a8cff]" />
-          {note.title}
+          {resolved.note.title}
         </button>
       );
     }
@@ -452,39 +539,71 @@ export function MarkdownPreview({
               : 'text-xl';
         const className = `${size} font-semibold text-[#f2f2f3]`;
         const children = renderInline(heading[2], `${keyPrefix}-h-${i}`);
+        const headingAnchor = heading[2].trim();
+        const headingId = slugifyNote(headingAnchor);
         if (heading[1].length === 1)
           elements.push(
-            <h1 key={`${keyPrefix}-h-${i}`} className={className}>
+            <h1
+              key={`${keyPrefix}-h-${i}`}
+              id={headingId}
+              data-wiki-anchor={headingAnchor}
+              className={className}
+            >
               {children}
             </h1>
           );
         else if (heading[1].length === 2)
           elements.push(
-            <h2 key={`${keyPrefix}-h-${i}`} className={className}>
+            <h2
+              key={`${keyPrefix}-h-${i}`}
+              id={headingId}
+              data-wiki-anchor={headingAnchor}
+              className={className}
+            >
               {children}
             </h2>
           );
         else if (heading[1].length === 3)
           elements.push(
-            <h3 key={`${keyPrefix}-h-${i}`} className={className}>
+            <h3
+              key={`${keyPrefix}-h-${i}`}
+              id={headingId}
+              data-wiki-anchor={headingAnchor}
+              className={className}
+            >
               {children}
             </h3>
           );
         else if (heading[1].length === 4)
           elements.push(
-            <h4 key={`${keyPrefix}-h-${i}`} className={className}>
+            <h4
+              key={`${keyPrefix}-h-${i}`}
+              id={headingId}
+              data-wiki-anchor={headingAnchor}
+              className={className}
+            >
               {children}
             </h4>
           );
         else if (heading[1].length === 5)
           elements.push(
-            <h5 key={`${keyPrefix}-h-${i}`} className={className}>
+            <h5
+              key={`${keyPrefix}-h-${i}`}
+              id={headingId}
+              data-wiki-anchor={headingAnchor}
+              className={className}
+            >
               {children}
             </h5>
           );
         else
           elements.push(
-            <h6 key={`${keyPrefix}-h-${i}`} className={className}>
+            <h6
+              key={`${keyPrefix}-h-${i}`}
+              id={headingId}
+              data-wiki-anchor={headingAnchor}
+              className={className}
+            >
               {children}
             </h6>
           );
@@ -556,6 +675,26 @@ export function MarkdownPreview({
         continue;
       }
 
+      const blockReference = line.match(
+        /(?:^|\s)\^([A-Za-z0-9][A-Za-z0-9_-]*)\s*$/
+      );
+      if (blockReference) {
+        const blockId = blockReference[1];
+        const blockContent = line
+          .replace(new RegExp(`\\s*\\^${blockId}\\s*$`), '')
+          .trim();
+        elements.push(
+          <p
+            key={`${keyPrefix}-block-ref-${i}`}
+            id={`block-${blockId}`}
+            data-wiki-anchor={`^${blockId}`}
+          >
+            {renderInline(blockContent, `${keyPrefix}-block-ref-${i}`)}
+          </p>
+        );
+        continue;
+      }
+
       elements.push(
         <p key={`${keyPrefix}-p-${i}`}>
           {renderInline(line, `${keyPrefix}-p-${i}`)}
@@ -566,10 +705,9 @@ export function MarkdownPreview({
     return elements;
   };
 
-  const blocks = body
-    .replace(/^---\s*\n[\s\S]*?\n---/, '')
-    .split(/\n(?=```)|(?<=```)\n|\n{2,}/)
-    .filter((block) => block.trim());
+  const blocks = tokenizeMarkdownBlocks(
+    body.replace(/^---\s*\n[\s\S]*?\n---/, '')
+  );
 
   if (!content.trim())
     return <div className="p-8 text-sm text-[#7f7f87]">Preview vazio.</div>;
@@ -577,24 +715,28 @@ export function MarkdownPreview({
   return (
     <div className="space-y-4 px-8 py-7 text-[15px] leading-7 text-[#dcddde]">
       {blocks.map((block, index) => {
-        const fence = block.match(/^```(\w+)?\n?([\s\S]*?)```$/);
-        if (fence) {
-          const language = fence[1] || 'text';
+        if (block.type === 'code') {
+          const language = block.language;
           return (
             <div key={index}>
-              {language.toLowerCase() === 'mermaid' && (
+              {language === 'mermaid' && (
                 <div className="mb-1 text-xs text-[#8f8f98]">
                   Mermaid preview indisponivel, exibindo fonte.
                 </div>
               )}
-              <pre className="overflow-auto rounded-md border border-[#2b2b30] bg-[#111113] p-4 text-sm leading-6 text-[#d4d4d4]">
-                <code>{fence[2]}</code>
+              <pre className="overflow-x-auto overflow-y-hidden rounded-md border border-[#2b2b30] bg-[#111113] p-4 text-sm leading-6 whitespace-pre text-[#d4d4d4]">
+                <code
+                  className={`language-${language}`}
+                  data-language={language}
+                >
+                  {block.content}
+                </code>
               </pre>
             </div>
           );
         }
 
-        const callout = block.match(
+        const callout = block.content.match(
           /^>\s*\[!(\w+)\]([+-])?\s*(.*)(?:\n([\s\S]*))?$/
         );
         if (callout) {
@@ -604,7 +746,7 @@ export function MarkdownPreview({
           const title = callout[3]?.trim() || config.label;
           const fold = callout[2];
           const key = `callout-${index}`;
-          const bodyText = block
+          const bodyText = block.content
             .split('\n')
             .slice(1)
             .map((line) => line.replace(/^>\s?/, ''))
@@ -645,20 +787,23 @@ export function MarkdownPreview({
           );
         }
 
-        if (block.startsWith('>')) {
+        if (block.content.startsWith('>')) {
           return (
             <blockquote
               key={index}
               className="border-l-2 border-[#7c5cff] pl-4 text-[#b8b8bf]"
             >
-              {renderLines(block.replace(/^>\s?/gm, ''), `quote-${index}`)}
+              {renderLines(
+                block.content.replace(/^>\s?/gm, ''),
+                `quote-${index}`
+              )}
             </blockquote>
           );
         }
 
         return (
           <div key={index} className="space-y-3">
-            {renderLines(block, `block-${index}`)}
+            {renderLines(block.content, `block-${index}`)}
           </div>
         );
       })}

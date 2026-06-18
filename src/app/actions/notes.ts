@@ -13,7 +13,9 @@ import {
   isIgnoredVaultPath,
   isUnsafeVaultPath,
   normalizeNoteTag,
+  resolveWikiLinkTarget,
   slugifyNote,
+  wikiLinkTargetStorageKey,
 } from '@/lib/notes';
 import { extractMarkdownTasks } from '@/lib/note-task-sync';
 
@@ -152,16 +154,39 @@ async function syncNoteRelations(
   tags: string[]
 ) {
   const links = extractWikiLinks(content);
-  const targetSlugs = links.map((link) => link.targetSlug);
-  const targets = targetSlugs.length
-    ? await db.note.findMany({
-        where: { slug: { in: targetSlugs } },
-        select: { id: true, slug: true },
-      })
-    : [];
-  const targetBySlug = new Map(
-    targets.map((target) => [target.slug, target.id])
-  );
+  const [sourceNote, linkableNotes] = await Promise.all([
+    db.note.findUnique({
+      where: { id: noteId },
+      select: { folderPath: true },
+    }),
+    db.note.findMany({
+      where: { status: { not: 'ARCHIVED' } },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        filePath: true,
+        folderPath: true,
+      },
+    }),
+  ]);
+  const resolvedLinks = links.map((link) => {
+    const resolution = resolveWikiLinkTarget(
+      link.targetTitle,
+      linkableNotes,
+      sourceNote?.folderPath
+    );
+    const targetNote =
+      resolution.status === 'resolved' ? resolution.note : null;
+
+    return {
+      ...link,
+      targetNoteId: targetNote?.id || null,
+      targetSlug:
+        targetNote?.slug || wikiLinkTargetStorageKey(link.targetTitle),
+      targetExists: Boolean(targetNote),
+    };
+  });
 
   await db.$transaction([
     db.noteTag.deleteMany({ where: { noteId } }),
@@ -175,18 +200,15 @@ async function syncNoteRelations(
       skipDuplicates: true,
     }),
     db.noteLink.createMany({
-      data: links.map((link) => {
-        const targetNoteId = targetBySlug.get(link.targetSlug);
-        return {
-          sourceNoteId: noteId,
-          targetNoteId,
-          targetSlug: link.targetSlug,
-          targetTitle: link.targetTitle,
-          alias: link.alias,
-          occurrences: link.occurrences,
-          targetExists: Boolean(targetNoteId),
-        };
-      }),
+      data: resolvedLinks.map((link) => ({
+        sourceNoteId: noteId,
+        targetNoteId: link.targetNoteId,
+        targetSlug: link.targetSlug,
+        targetTitle: link.targetTitle,
+        alias: link.alias,
+        occurrences: link.occurrences,
+        targetExists: link.targetExists,
+      })),
       skipDuplicates: true,
     }),
   ]);
@@ -244,31 +266,44 @@ async function syncNoteTasks(
   });
 }
 
-async function refreshLinksPointingTo(noteId: string, slug: string) {
-  await db.noteLink.updateMany({
-    where: { targetSlug: slug },
-    data: {
-      targetNoteId: noteId,
-      targetExists: true,
-    },
-  });
-}
-
 async function refreshAllLinkTargets() {
   const [notes, links] = await Promise.all([
-    db.note.findMany({ select: { id: true, slug: true } }),
-    db.noteLink.findMany({ select: { id: true, targetSlug: true } }),
+    db.note.findMany({
+      where: { status: { not: 'ARCHIVED' } },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        filePath: true,
+        folderPath: true,
+      },
+    }),
+    db.noteLink.findMany({
+      select: {
+        id: true,
+        targetTitle: true,
+        sourceNote: { select: { folderPath: true } },
+      },
+    }),
   ]);
-  const noteBySlug = new Map(notes.map((note) => [note.slug, note.id]));
 
   await db.$transaction(
     links.map((link) => {
-      const targetNoteId = noteBySlug.get(link.targetSlug);
+      const resolution = resolveWikiLinkTarget(
+        link.targetTitle,
+        notes,
+        link.sourceNote.folderPath
+      );
+      const targetNote =
+        resolution.status === 'resolved' ? resolution.note : null;
+
       return db.noteLink.update({
         where: { id: link.id },
         data: {
-          targetNoteId: targetNoteId || null,
-          targetExists: Boolean(targetNoteId),
+          targetNoteId: targetNote?.id || null,
+          targetSlug:
+            targetNote?.slug || wikiLinkTargetStorageKey(link.targetTitle),
+          targetExists: Boolean(targetNote),
         },
       });
     })
@@ -599,6 +634,7 @@ async function updateFolderPathCascade(
     }),
   ]);
 
+  await refreshAllLinkTargets();
   revalidateNotes();
   return { success: true as const, data: { path: nextPath } };
 }
@@ -880,6 +916,7 @@ export async function moveNoteToFolder(
       include: noteInclude,
     });
 
+    await refreshAllLinkTargets();
     revalidateNotes();
     return { success: true, data: { note: updated } };
   } catch (error) {
@@ -1265,7 +1302,7 @@ export async function createNote(input: NoteFormInput) {
 
     await syncNoteRelations(note.id, content, tags);
     await syncNoteTasks(note.id, content, note.projectId);
-    await refreshLinksPointingTo(note.id, note.slug);
+    await refreshAllLinkTargets();
 
     revalidateNotes();
     return getNote(note.id);
@@ -1308,8 +1345,9 @@ export async function updateNote(id: string, input: Partial<NoteFormInput>) {
 
     await syncNoteRelations(note.id, content, tags);
     await syncNoteTasks(note.id, content, note.projectId);
-    await refreshLinksPointingTo(note.id, note.slug);
-    if (existing.slug !== note.slug) await refreshAllLinkTargets();
+    if (existing.title !== note.title || existing.slug !== note.slug) {
+      await refreshAllLinkTargets();
+    }
 
     revalidateNotes();
     return getNote(note.id);
@@ -1366,8 +1404,7 @@ export async function renameNote(id: string, titleInput: string) {
       include: noteInclude,
     });
 
-    await refreshLinksPointingTo(note.id, note.slug);
-    if (existing.slug !== note.slug) await refreshAllLinkTargets();
+    await refreshAllLinkTargets();
 
     revalidateNotes();
     return { success: true, data: { note } };

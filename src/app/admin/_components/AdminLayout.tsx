@@ -32,9 +32,9 @@ export default function AdminLayout({
   isMobile,
 }: AdminLayoutProps) {
   return (
-    <div className="flex min-h-screen bg-[#161619] text-[#dcddde]">
+    <div className="flex min-h-dvh min-w-0 bg-[#161619] text-[#dcddde] lg:h-dvh lg:min-h-0 lg:overflow-hidden">
       {/* Sidebar Desktop */}
-      <div className="hidden lg:block">
+      <div className="hidden lg:sticky lg:top-0 lg:block lg:h-dvh lg:min-h-0 lg:shrink-0 lg:overflow-hidden">
         <Sidebar
           activeTab={activeTab}
           onTabChange={onTabChange}
@@ -46,7 +46,7 @@ export default function AdminLayout({
       </div>
 
       {/* Main Area */}
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {/* Header Mobile */}
         <HeaderMobile
           isMenuOpen={isMobileMenuOpen}
@@ -56,8 +56,10 @@ export default function AdminLayout({
         />
 
         {/* Content */}
-        <main className="min-w-0 flex-1 overflow-x-hidden p-3 md:p-4 lg:p-6">
-          <div className="h-full w-full min-w-0">{children}</div>
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-3 md:p-4 lg:p-6">
+          <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden">
+            {children}
+          </div>
         </main>
       </div>
 

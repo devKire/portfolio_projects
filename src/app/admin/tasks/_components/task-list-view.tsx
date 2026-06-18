@@ -19,6 +19,8 @@ interface TaskListViewProps {
   editingTaskId: string | null;
   onTaskUpdate: () => void;
   onTaskPatch: (id: string, patch: TaskPatch) => void;
+  onDeleteTasks: (ids: string[]) => Promise<void>;
+  deletingIds: Set<string>;
   projects: TaskProjectOption[];
   availableTags: string[];
   onAvailableTagsChange: (tags: string[]) => void;
@@ -33,6 +35,8 @@ export const TaskListView = memo(function TaskListView({
   editingTaskId,
   onTaskUpdate,
   onTaskPatch,
+  onDeleteTasks,
+  deletingIds,
   projects,
   availableTags,
   onAvailableTagsChange,
@@ -83,6 +87,8 @@ export const TaskListView = memo(function TaskListView({
             onEditStart={onEditStart}
             onUpdate={onTaskUpdate}
             onTaskPatch={onTaskPatch}
+            onDeleteTasks={onDeleteTasks}
+            isDeleting={deletingIds.has(task.id)}
             projects={projects}
             availableTags={availableTags}
             onAvailableTagsChange={onAvailableTagsChange}

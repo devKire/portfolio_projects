@@ -27,7 +27,7 @@ export function useKeyboardShortcuts(config: ShortcutConfig) {
         e.preventDefault();
         config.onSearchFocus();
       }
-      if (isCtrlOrCmd && key === 'n' && !e.repeat) {
+      if (isCtrlOrCmd && key === 'b' && !e.repeat) {
         e.preventDefault();
         config.onNewTask();
       }

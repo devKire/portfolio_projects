@@ -1,10 +1,10 @@
 // src/app/(admin)/tasks/_components/task-item/index.tsx
 'use client';
 
-import { memo, useState, useCallback } from 'react';
+import { memo, useCallback } from 'react';
 import { TaskCardDisplay } from './task-card-display';
 import { TaskEditInline } from './task-edit-inline';
-import { updateTaskStatus, deleteTask, updateTask } from '@/app/actions/tasks';
+import { updateTaskStatus, updateTask } from '@/app/actions/tasks';
 import type {
   TaskPatch,
   TaskProjectOption,
@@ -19,6 +19,8 @@ interface TaskItemProps {
   onEditStart: (id: string | null) => void;
   onUpdate: () => void;
   onTaskPatch: (id: string, patch: TaskPatch) => void;
+  onDeleteTasks: (ids: string[]) => Promise<void>;
+  isDeleting: boolean;
   projects: TaskProjectOption[];
   availableTags: string[];
   onAvailableTagsChange: (tags: string[]) => void;
@@ -32,31 +34,17 @@ export const TaskItem = memo(function TaskItem({
   onEditStart,
   onUpdate,
   onTaskPatch,
+  onDeleteTasks,
+  isDeleting,
   projects,
   availableTags,
   onAvailableTagsChange,
 }: TaskItemProps) {
-  const [isDeleting, setIsDeleting] = useState(false);
-
   const handleDelete = useCallback(async () => {
     if (confirm('Tem certeza que deseja excluir esta tarefa?')) {
-      setIsDeleting(true);
-      try {
-        const result = await deleteTask(task.id);
-        if (result.success) {
-          onUpdate();
-        } else {
-          console.error('Failed to delete task:', result.error);
-          alert('Erro ao excluir tarefa');
-        }
-      } catch (error) {
-        console.error('Error deleting task:', error);
-        alert('Erro ao excluir tarefa');
-      } finally {
-        setIsDeleting(false);
-      }
+      await onDeleteTasks([task.id]);
     }
-  }, [task.id, onUpdate]);
+  }, [onDeleteTasks, task.id]);
 
   const handleStatusChange = useCallback(
     async (newStatus: string) => {
@@ -94,10 +82,14 @@ export const TaskItem = memo(function TaskItem({
     [task.id, onTaskPatch]
   );
 
-  const handleEditSuccess = useCallback(() => {
-    onEditStart(null);
-    onUpdate();
-  }, [onEditStart, onUpdate]);
+  const handleEditSuccess = useCallback(
+    (updatedTask: TaskWithRelations) => {
+      onTaskPatch(task.id, updatedTask as unknown as TaskPatch);
+      onAvailableTagsChange(updatedTask.tags || []);
+      onEditStart(null);
+    },
+    [onAvailableTagsChange, onEditStart, onTaskPatch, task.id]
+  );
 
   const handleEditCancel = useCallback(() => {
     onEditStart(null);
@@ -123,6 +115,8 @@ export const TaskItem = memo(function TaskItem({
         <TaskEditInline
           task={task}
           projects={projects}
+          availableTags={availableTags}
+          onAvailableTagsChange={onAvailableTagsChange}
           onCancel={handleEditCancel}
           onSuccess={handleEditSuccess}
         />

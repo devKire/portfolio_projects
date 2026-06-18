@@ -3,12 +3,14 @@
 
 import { memo, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Loader2, Trash2 } from 'lucide-react';
 
 interface BulkActionsBarProps {
   count: number;
-  onBulkStatusChange: (status: string) => void;
-  onBulkDelete: () => void;
+  onBulkStatusChange: (status: string) => Promise<void>;
+  onBulkDelete: () => Promise<void>;
   onClearSelection: () => void;
+  isDeleting?: boolean;
 }
 
 export const BulkActionsBar = memo(function BulkActionsBar({
@@ -16,23 +18,39 @@ export const BulkActionsBar = memo(function BulkActionsBar({
   onBulkStatusChange,
   onBulkDelete,
   onClearSelection,
+  isDeleting = false,
 }: BulkActionsBarProps) {
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingAction, setProcessingAction] = useState<
+    'status' | 'delete' | null
+  >(null);
 
   const handleStatusChange = async (status: string) => {
     if (!status) return;
     setIsProcessing(true);
-    await onBulkStatusChange(status);
-    setIsProcessing(false);
+    setProcessingAction('status');
+    try {
+      await onBulkStatusChange(status);
+    } finally {
+      setIsProcessing(false);
+      setProcessingAction(null);
+    }
   };
 
   const handleDelete = async () => {
     if (confirm(`Excluir ${count} tarefa(s)?`)) {
       setIsProcessing(true);
-      await onBulkDelete();
-      setIsProcessing(false);
+      setProcessingAction('delete');
+      try {
+        await onBulkDelete();
+      } finally {
+        setIsProcessing(false);
+        setProcessingAction(null);
+      }
     }
   };
+
+  const disabled = isProcessing || isDeleting;
 
   return (
     <div className="animate-in slide-in-from-top-2 flex items-center justify-between rounded-lg border border-[#6f55d9]/30 bg-[#6f55d9]/10 p-3">
@@ -48,7 +66,7 @@ export const BulkActionsBar = memo(function BulkActionsBar({
         <select
           onChange={(e) => handleStatusChange(e.target.value)}
           className="rounded border border-[#303036] bg-[#2a2a2a] px-2 py-1 text-sm text-white focus:border-[#6f55d9] focus:outline-none"
-          disabled={isProcessing}
+          disabled={disabled}
           defaultValue=""
         >
           <option value="" disabled>
@@ -61,15 +79,23 @@ export const BulkActionsBar = memo(function BulkActionsBar({
         <Button
           size="sm"
           onClick={handleDelete}
-          disabled={isProcessing}
-          className="text-xs"
+          disabled={disabled}
+          className="gap-1.5 text-xs"
         >
-          🗑️ Excluir
+          {processingAction === 'delete' || isDeleting ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Trash2 className="h-3.5 w-3.5" />
+          )}
+          {processingAction === 'delete' || isDeleting
+            ? `Excluindo ${count} tarefa${count === 1 ? '' : 's'}...`
+            : 'Excluir'}
         </Button>
         <Button
           size="sm"
           variant="secondary"
           onClick={onClearSelection}
+          disabled={disabled}
           className="text-xs"
         >
           Cancelar

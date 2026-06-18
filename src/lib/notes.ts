@@ -12,6 +12,31 @@ export type ParsedWikiLink = {
   occurrences: number;
 };
 
+export type WikiLinkResolvableNote = {
+  id: string;
+  title: string;
+  slug: string;
+  filePath?: string | null;
+  folderPath?: string | null;
+};
+
+export type WikiLinkResolution =
+  | {
+      status: 'resolved';
+      note: WikiLinkResolvableNote;
+      anchor?: string;
+    }
+  | {
+      status: 'ambiguous';
+      candidates: WikiLinkResolvableNote[];
+      anchor?: string;
+    }
+  | {
+      status: 'unresolved';
+      candidates: [];
+      anchor?: string;
+    };
+
 export function slugifyNote(value: string) {
   return value
     .trim()
@@ -22,6 +47,121 @@ export function slugifyNote(value: string) {
     .replace(/[\s_]+/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
+}
+
+export function splitWikiLinkTarget(value: string) {
+  const trimmed = value.trim();
+  const hashIndex = trimmed.indexOf('#');
+
+  if (hashIndex === -1) {
+    return { target: trimmed, anchor: undefined };
+  }
+
+  return {
+    target: trimmed.slice(0, hashIndex).trim(),
+    anchor: trimmed.slice(hashIndex + 1).trim() || undefined,
+  };
+}
+
+export function normalizeWikiLinkPath(value: string) {
+  return value
+    .trim()
+    .replace(/\\/g, '/')
+    .replace(/^\/+|\/+$/g, '')
+    .replace(/\.md$/i, '')
+    .split('/')
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join('/')
+    .toLocaleLowerCase();
+}
+
+function normalizeWikiLinkTitle(value: string) {
+  return value.trim().toLocaleLowerCase();
+}
+
+function uniqueWikiLinkCandidates<T extends WikiLinkResolvableNote>(
+  notes: T[]
+) {
+  const byId = new Map(notes.map((note) => [note.id, note]));
+  return Array.from(byId.values());
+}
+
+function resolutionFromCandidates<T extends WikiLinkResolvableNote>(
+  candidates: T[],
+  anchor?: string
+): WikiLinkResolution {
+  const unique = uniqueWikiLinkCandidates(candidates);
+  if (unique.length === 1) {
+    return { status: 'resolved', note: unique[0], anchor };
+  }
+  if (unique.length > 1) {
+    return { status: 'ambiguous', candidates: unique, anchor };
+  }
+  return { status: 'unresolved', candidates: [], anchor };
+}
+
+export function resolveWikiLinkTarget<T extends WikiLinkResolvableNote>(
+  rawTarget: string,
+  notes: T[],
+  sourceFolderPath?: string | null
+): WikiLinkResolution {
+  const { target, anchor } = splitWikiLinkTarget(rawTarget);
+  const normalizedTarget = normalizeWikiLinkPath(target);
+  if (!normalizedTarget) {
+    return { status: 'unresolved', candidates: [], anchor };
+  }
+
+  const exactPath = notes.filter(
+    (note) =>
+      Boolean(note.filePath) &&
+      normalizeWikiLinkPath(note.filePath || '') === normalizedTarget
+  );
+  if (exactPath.length > 0) {
+    return resolutionFromCandidates(exactPath, anchor);
+  }
+
+  const normalizedSourceFolder = normalizeWikiLinkPath(sourceFolderPath || '');
+  if (normalizedSourceFolder) {
+    const relativePath = `${normalizedSourceFolder}/${normalizedTarget}`;
+    const relativeMatches = notes.filter(
+      (note) =>
+        Boolean(note.filePath) &&
+        normalizeWikiLinkPath(note.filePath || '') === relativePath
+    );
+    if (relativeMatches.length > 0) {
+      return resolutionFromCandidates(relativeMatches, anchor);
+    }
+  }
+
+  const title = inferNoteTitleFromPath(target);
+  const normalizedTitle = normalizeWikiLinkTitle(title);
+
+  const currentFolderMatches = notes.filter(
+    (note) =>
+      normalizeWikiLinkPath(note.folderPath || '') === normalizedSourceFolder &&
+      normalizeWikiLinkTitle(note.title) === normalizedTitle
+  );
+  if (currentFolderMatches.length > 0) {
+    return resolutionFromCandidates(currentFolderMatches, anchor);
+  }
+
+  const globalTitleMatches = notes.filter(
+    (note) => normalizeWikiLinkTitle(note.title) === normalizedTitle
+  );
+  return resolutionFromCandidates(globalTitleMatches, anchor);
+}
+
+export function wikiLinkTargetStorageKey(rawTarget: string) {
+  const { target } = splitWikiLinkTarget(rawTarget);
+  const normalizedPath = normalizeWikiLinkPath(target);
+  const pathKey = normalizedPath
+    .split('/')
+    .map((part) => slugifyNote(part))
+    .filter(Boolean)
+    .join('--');
+
+  return pathKey || slugifyNote(inferNoteTitleFromPath(target)) || 'unresolved';
 }
 
 export function normalizeNoteTag(tag: string) {
@@ -102,25 +242,25 @@ export function extractWikiLinks(content: string) {
 
   while ((match = wikiLinkRegex.exec(content)) !== null) {
     const rawTarget = match[1].trim();
-    const [pathPart, anchor] = rawTarget.split('#');
-    const targetTitle = pathPart.trim();
+    const { target: targetTitle, anchor } = splitWikiLinkTarget(rawTarget);
     if (!targetTitle) continue;
 
-    const targetSlug = slugifyNote(inferNoteTitleFromPath(targetTitle));
+    const targetSlug = wikiLinkTargetStorageKey(targetTitle);
     if (!targetSlug) continue;
 
     const alias = match[2]?.trim() || undefined;
-    const existing = links.get(targetSlug);
+    const targetKey = normalizeWikiLinkPath(targetTitle);
+    const existing = links.get(targetKey);
 
     if (existing) {
       existing.occurrences += 1;
       if (!existing.alias && alias) existing.alias = alias;
     } else {
-      links.set(targetSlug, {
+      links.set(targetKey, {
         targetTitle,
         targetSlug,
         alias,
-        anchor: anchor?.trim() || undefined,
+        anchor,
         occurrences: 1,
       });
     }

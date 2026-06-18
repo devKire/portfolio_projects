@@ -15,6 +15,8 @@ interface TaskKanbanViewProps {
   tasks: TaskWithRelations[];
   onTaskUpdate: () => void;
   onTaskPatch: (id: string, patch: TaskPatch) => void;
+  onDeleteTasks: (ids: string[]) => Promise<void>;
+  deletingIds: Set<string>;
   projects: TaskProjectOption[];
   availableTags: string[];
   onAvailableTagsChange: (tags: string[]) => void;
@@ -40,6 +42,8 @@ export const TaskKanbanView = memo(function TaskKanbanView({
   tasks,
   onTaskUpdate,
   onTaskPatch,
+  onDeleteTasks,
+  deletingIds,
   projects,
   availableTags,
   onAvailableTagsChange,
@@ -137,8 +141,9 @@ export const TaskKanbanView = memo(function TaskKanbanView({
                 >
                   <TaskCard
                     task={task}
-                    onUpdate={onTaskUpdate}
                     onTaskPatch={(patch) => onTaskPatch(task.id, patch)}
+                    onDeleteTasks={onDeleteTasks}
+                    isDeleting={deletingIds.has(task.id)}
                     projects={projects}
                     availableTags={availableTags}
                     onAvailableTagsChange={onAvailableTagsChange}

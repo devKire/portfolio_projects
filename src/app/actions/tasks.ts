@@ -3,7 +3,12 @@
 import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
-import type { BulkTaskInput, BulkTaskResult, TaskPatch } from '@/types/tasks';
+import type {
+  BulkTaskInput,
+  BulkTaskResult,
+  DeleteTasksResult,
+  TaskPatch,
+} from '@/types/tasks';
 import { updateMarkdownTaskStatus } from '@/lib/note-task-sync';
 import { mergeTaskTags } from '@/lib/task-tags';
 
@@ -305,6 +310,19 @@ export async function updateTask(id: string, data: TaskPatch) {
     return { success: false, error: 'Invalid task ID' };
   }
 
+  for (const [label, value] of [
+    ['estimatedHours', data.estimatedHours],
+    ['actualHours', data.actualHours],
+  ] as const) {
+    if (
+      value !== undefined &&
+      value !== null &&
+      (!Number.isFinite(value) || value < 0)
+    ) {
+      return { success: false, error: `${label} must be zero or greater` };
+    }
+  }
+
   try {
     const updateData: Prisma.TaskUncheckedUpdateInput = {};
 
@@ -396,36 +414,103 @@ export async function updateTask(id: string, data: TaskPatch) {
   }
 }
 
-export async function deleteTask(id: string) {
+export async function deleteTasksBulk(
+  taskIds: string[]
+): Promise<DeleteTasksResult> {
+  const requestedIds = Array.from(
+    new Set(
+      (Array.isArray(taskIds) ? taskIds : []).filter(
+        (id): id is string => typeof id === 'string' && Boolean(id.trim())
+      )
+    )
+  );
+
+  if (requestedIds.length === 0) {
+    return {
+      success: false,
+      deletedIds: [],
+      failedItems: [{ id: '', error: 'Nenhuma tarefa selecionada.' }],
+    };
+  }
+
   try {
-    const task = await db.task.findUnique({
-      where: { id },
+    const tasks = await db.task.findMany({
+      where: { id: { in: requestedIds } },
       select: { id: true, title: true, status: true, projectId: true },
     });
+    const existingIds = new Set(tasks.map((task) => task.id));
+    const failedItems = requestedIds
+      .filter((id) => !existingIds.has(id))
+      .map((id) => ({ id, error: 'Tarefa nao encontrada.' }));
 
-    await db.task.delete({ where: { id } });
+    if (tasks.length === 0) {
+      return { success: false, deletedIds: [], failedItems };
+    }
 
-    if (task) {
-      await createTaskActivityLog({
-        taskId: null,
-        type: 'task.deleted',
-        message: `Task deletada: ${task.title}`,
-        metadata: {
-          taskId: task.id,
-          title: task.title,
-          status: task.status,
-          projectId: task.projectId,
+    const deletedIds = tasks.map((task) => task.id);
+
+    await db.$transaction(async (tx) => {
+      await tx.taskDependency.deleteMany({
+        where: {
+          OR: [
+            { taskId: { in: deletedIds } },
+            { dependsOnId: { in: deletedIds } },
+          ],
         },
       });
-    }
+
+      await tx.task.updateMany({
+        where: { parentId: { in: deletedIds } },
+        data: { parentId: null },
+      });
+
+      const deletion = await tx.task.deleteMany({
+        where: { id: { in: deletedIds } },
+      });
+      if (deletion.count !== deletedIds.length) {
+        throw new Error(
+          `Expected ${deletedIds.length} deletions, received ${deletion.count}.`
+        );
+      }
+
+      await tx.taskActivityLog.createMany({
+        data: tasks.map((task) => ({
+          taskId: null,
+          type: 'task.deleted',
+          message: `Task deletada: ${task.title}`,
+          metadata: {
+            taskId: task.id,
+            title: task.title,
+            status: task.status,
+            projectId: task.projectId,
+            bulk: requestedIds.length > 1,
+          },
+        })),
+      });
+    });
 
     revalidatePath('/admin/tasks');
     revalidatePath('/admin');
-    return { success: true };
+    return {
+      success: failedItems.length === 0,
+      deletedIds,
+      failedItems: failedItems.length > 0 ? failedItems : undefined,
+    };
   } catch (error) {
-    console.error('Error deleting task:', error);
-    return { success: false, error: 'Failed to delete task' };
+    console.error('Error deleting tasks:', error);
+    return {
+      success: false,
+      deletedIds: [],
+      failedItems: requestedIds.map((id) => ({
+        id,
+        error: 'Nao foi possivel excluir a tarefa.',
+      })),
+    };
   }
+}
+
+export async function deleteTask(id: string) {
+  return deleteTasksBulk([id]);
 }
 
 // No arquivo app/actions/tasks.ts

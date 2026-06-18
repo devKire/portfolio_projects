@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Circle,
   Clock3,
+  Copy,
   Loader2,
   Pencil,
   Trash2,
@@ -16,6 +17,8 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { haveSameTaskTags } from '@/lib/task-tags';
 import { TaskTagsMenu } from '../task-tags-menu';
+import { copyTaskAsQuickAdd } from '@/lib/copy-task-quick-add';
+import { toast } from 'sonner';
 import type {
   TaskPatch,
   TaskPriority,
@@ -200,6 +203,17 @@ export const TaskCardDisplay = memo(function TaskCardDisplay({
     if (event.key === 'Escape') {
       event.preventDefault();
       cancel();
+    }
+  };
+
+  const handleCopy = async (event: React.MouseEvent) => {
+    event.stopPropagation();
+    try {
+      await copyTaskAsQuickAdd(task);
+      toast.success('Task copiada');
+    } catch (error) {
+      console.error('Failed to copy task:', error);
+      toast.error('Erro ao copiar');
     }
   };
 
@@ -513,6 +527,18 @@ export const TaskCardDisplay = memo(function TaskCardDisplay({
             {saveState === 'saved' && 'salvo'}
             {saveState === 'error' && 'erro'}
           </span>
+
+          <Button
+            data-inline-control
+            size="icon"
+            variant="ghost"
+            onClick={handleCopy}
+            className="h-7 w-7 text-[#777780] hover:text-[#f2f2f3]"
+            title="Copiar no formato Quick Add"
+            aria-label="Copiar tarefa no formato Quick Add"
+          >
+            <Copy className="h-3.5 w-3.5" />
+          </Button>
 
           <Button
             data-inline-control

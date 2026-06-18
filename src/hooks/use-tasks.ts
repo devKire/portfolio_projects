@@ -1,5 +1,5 @@
 // src/hooks/use-tasks.ts
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { getTasks, getTaskStats } from '@/app/actions/tasks';
 import type { TaskFilters } from '@/lib/task-service';
 import { taskTagKey } from '@/lib/task-tags';
@@ -134,6 +134,11 @@ export function useTasks(filters: TaskFilters) {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const allTasksRef = useRef<TaskWithRelations[]>([]);
+
+  useEffect(() => {
+    allTasksRef.current = allTasks;
+  }, [allTasks]);
 
   const fetchTasks = useCallback(async () => {
     setLoading(true);
@@ -210,6 +215,33 @@ export function useTasks(filters: TaskFilters) {
     });
   }, []);
 
+  const removeTasksFromCache = useCallback((ids: string[]) => {
+    if (ids.length === 0) return;
+    const idSet = new Set(ids);
+    const removedTasks = allTasksRef.current.filter((task) =>
+      idSet.has(task.id)
+    );
+
+    setAllTasks((current) => current.filter((task) => !idSet.has(task.id)));
+    setStats((current: any) => {
+      if (!current) return current;
+      const nextStats = { ...current };
+      for (const task of removedTasks) {
+        nextStats.total = Math.max(0, nextStats.total - 1);
+        if (task.status === 'pending') {
+          nextStats.pending = Math.max(0, nextStats.pending - 1);
+        }
+        if (task.status === 'in-progress') {
+          nextStats.inProgress = Math.max(0, nextStats.inProgress - 1);
+        }
+        if (task.status === 'completed') {
+          nextStats.completed = Math.max(0, nextStats.completed - 1);
+        }
+      }
+      return nextStats;
+    });
+  }, []);
+
   return {
     tasks,
     stats,
@@ -218,6 +250,7 @@ export function useTasks(filters: TaskFilters) {
     pagination,
     updateTaskInCache,
     addTasksToCache,
+    removeTasksFromCache,
     refetch: fetchTasks,
   };
 }

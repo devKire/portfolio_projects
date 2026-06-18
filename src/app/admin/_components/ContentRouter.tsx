@@ -15,6 +15,10 @@ const Tasks = dynamic(() => import('../_tabs/Tasks'), {
   loading: () => <ContentLoader />,
 });
 
+const DailyChecklist = dynamic(() => import('../_tabs/DailyChecklist'), {
+  loading: () => <ContentLoader />,
+});
+
 const Projects = dynamic(() => import('../_tabs/Projects'), {
   loading: () => <ContentLoader />,
 });
@@ -57,6 +61,8 @@ export default function ContentRouter({ activeTab }: ContentRouterProps) {
         return <Dashboard />;
       case 'tasks':
         return <Tasks />;
+      case 'daily-checklist':
+        return <DailyChecklist />;
       case 'projects':
         return <Projects />;
       case 'notes':
@@ -79,7 +85,7 @@ export default function ContentRouter({ activeTab }: ContentRouterProps) {
   };
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col">
+    <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden">
       {/* Breadcrumb */}
       <div className="mb-3 hidden shrink-0 items-center gap-2 text-xs lg:flex">
         <span className="text-[#777780]">Admin</span>
@@ -88,7 +94,13 @@ export default function ContentRouter({ activeTab }: ContentRouterProps) {
       </div>
 
       <Suspense fallback={<ContentLoader />}>
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div
+          className={`flex min-h-0 min-w-0 flex-1 flex-col ${
+            activeTab === 'notes'
+              ? 'overflow-hidden'
+              : 'overflow-x-hidden overflow-y-auto'
+          }`}
+        >
           {renderContent()}
         </div>
       </Suspense>

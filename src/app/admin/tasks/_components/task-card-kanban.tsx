@@ -1,12 +1,14 @@
 'use client';
 
 import { memo, useEffect, useRef, useState } from 'react';
-import { Briefcase, Calendar, Loader2, Trash2 } from 'lucide-react';
+import { Briefcase, Calendar, Copy, Loader2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { deleteTask, updateTask } from '@/app/actions/tasks';
+import { updateTask } from '@/app/actions/tasks';
 import { cn } from '@/lib/utils';
 import { haveSameTaskTags } from '@/lib/task-tags';
 import { TaskTagsMenu } from './task-tags-menu';
+import { copyTaskAsQuickAdd } from '@/lib/copy-task-quick-add';
+import { toast } from 'sonner';
 import type {
   TaskPatch,
   TaskPriority,
@@ -16,8 +18,9 @@ import type {
 
 interface TaskCardProps {
   task: TaskWithRelations;
-  onUpdate: () => void;
   onTaskPatch: (patch: TaskPatch) => void;
+  onDeleteTasks: (ids: string[]) => Promise<void>;
+  isDeleting: boolean;
   projects: TaskProjectOption[];
   availableTags: string[];
   onAvailableTagsChange: (tags: string[]) => void;
@@ -39,8 +42,9 @@ function toDateInputValue(value?: Date | string | null) {
 
 export const TaskCard = memo(function TaskCard({
   task,
-  onUpdate,
   onTaskPatch,
+  onDeleteTasks,
+  isDeleting,
   projects,
   availableTags,
   onAvailableTagsChange,
@@ -60,8 +64,18 @@ export const TaskCard = memo(function TaskCard({
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (confirm('Excluir esta tarefa?')) {
-      await deleteTask(task.id);
-      onUpdate();
+      await onDeleteTasks([task.id]);
+    }
+  };
+
+  const handleCopy = async (event: React.MouseEvent) => {
+    event.stopPropagation();
+    try {
+      await copyTaskAsQuickAdd(task);
+      toast.success('Task copiada');
+    } catch (error) {
+      console.error('Failed to copy task:', error);
+      toast.error('Erro ao copiar');
     }
   };
 
@@ -163,16 +177,35 @@ export const TaskCard = memo(function TaskCard({
           </button>
         )}
 
-        <Button
-          data-kanban-control
-          size="icon"
-          variant="ghost"
-          onClick={handleDelete}
-          className="h-6 w-6 text-[#777780] opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 hover:text-red-300"
-        >
-          <span className="sr-only">Excluir tarefa</span>
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
+        <div className="flex items-center gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+          <Button
+            data-kanban-control
+            size="icon"
+            variant="ghost"
+            onClick={handleCopy}
+            className="h-6 w-6 text-[#777780] hover:text-[#f2f2f3]"
+            title="Copiar no formato Quick Add"
+            aria-label="Copiar tarefa no formato Quick Add"
+          >
+            <Copy className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            data-kanban-control
+            size="icon"
+            variant="ghost"
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className="h-6 w-6 text-[#777780] hover:text-red-300"
+            title="Excluir tarefa"
+          >
+            <span className="sr-only">Excluir tarefa</span>
+            {isDeleting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Trash2 className="h-3.5 w-3.5" />
+            )}
+          </Button>
+        </div>
       </div>
 
       <div
@@ -253,6 +286,27 @@ export const TaskCard = memo(function TaskCard({
               void commitPatch(
                 { estimatedHours: Number(event.target.value) || 0 },
                 { estimatedHours: task.estimatedHours || 0 }
+              )
+            }
+            className="w-10 bg-transparent text-xs text-[#dcddde] outline-none"
+          />
+          <span>h</span>
+        </label>
+
+        <label
+          data-kanban-control
+          className="inline-flex h-7 items-center gap-1 rounded-md border border-[#2f2f35] bg-[#111] px-2"
+        >
+          <span className="text-[10px] font-medium">real</span>
+          <input
+            type="number"
+            min="0"
+            step="0.25"
+            value={task.actualHours || 0}
+            onChange={(event) =>
+              void commitPatch(
+                { actualHours: Number(event.target.value) || 0 },
+                { actualHours: task.actualHours || 0 }
               )
             }
             className="w-10 bg-transparent text-xs text-[#dcddde] outline-none"

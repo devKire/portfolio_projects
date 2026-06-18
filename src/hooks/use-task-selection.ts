@@ -21,6 +21,15 @@ export function useTaskSelection() {
     setSelectedIds(new Set());
   }, []);
 
+  const removeFromSelection = useCallback((ids: string[]) => {
+    const idSet = new Set(ids);
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      idSet.forEach((id) => next.delete(id));
+      return next;
+    });
+  }, []);
+
   const isSelected = useCallback(
     (id: string) => selectedIds.has(id),
     [selectedIds]
@@ -28,5 +37,13 @@ export function useTaskSelection() {
 
   const count = useMemo(() => selectedIds.size, [selectedIds]);
 
-  return { selectedIds, count, toggle, selectAll, clearSelection, isSelected };
+  return {
+    selectedIds,
+    count,
+    toggle,
+    selectAll,
+    clearSelection,
+    removeFromSelection,
+    isSelected,
+  };
 }

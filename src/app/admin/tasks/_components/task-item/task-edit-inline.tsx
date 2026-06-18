@@ -4,18 +4,24 @@
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { updateTask } from '@/app/actions/tasks';
+import { parseTaskHoursInput } from '@/lib/task-quick-add-parser';
 import type { TaskProjectOption, TaskWithRelations } from '@/types/tasks';
+import { TaskTagsMenu } from '../task-tags-menu';
 
 interface TaskEditInlineProps {
   task: TaskWithRelations;
   projects: TaskProjectOption[];
+  availableTags: string[];
+  onAvailableTagsChange: (tags: string[]) => void;
   onCancel: () => void;
-  onSuccess: () => void;
+  onSuccess: (task: TaskWithRelations) => void;
 }
 
 export function TaskEditInline({
   task,
   projects,
+  availableTags,
+  onAvailableTagsChange,
   onCancel,
   onSuccess,
 }: TaskEditInlineProps) {
@@ -27,10 +33,19 @@ export function TaskEditInline({
     dueDate: task.dueDate
       ? new Date(task.dueDate).toISOString().split('T')[0]
       : '',
-    estimatedHours: task.estimatedHours || 0,
+    estimatedHours:
+      task.estimatedHours === null || task.estimatedHours === undefined
+        ? ''
+        : String(task.estimatedHours),
+    actualHours:
+      task.actualHours === null || task.actualHours === undefined
+        ? ''
+        : String(task.actualHours),
+    tags: task.tags || [],
     projectId: task.project?.id || task.projectId || '',
   });
   const [loading, setLoading] = useState(false);
+  const [formError, setFormError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -45,32 +60,62 @@ export function TaskEditInline({
     e.preventDefault();
 
     if (!formData.title.trim()) {
-      alert('O título é obrigatório');
+      setFormError('O titulo e obrigatorio.');
       return;
     }
 
+    const hasEstimatedHours = Boolean(formData.estimatedHours.trim());
+    const hasActualHours = Boolean(formData.actualHours.trim());
+    const parsedEstimatedHours = hasEstimatedHours
+      ? parseTaskHoursInput(formData.estimatedHours)
+      : null;
+    const parsedActualHours = hasActualHours
+      ? parseTaskHoursInput(formData.actualHours)
+      : null;
+
+    if (
+      (hasEstimatedHours &&
+        (typeof parsedEstimatedHours !== 'number' ||
+          !Number.isFinite(parsedEstimatedHours) ||
+          parsedEstimatedHours < 0)) ||
+      (hasActualHours &&
+        (typeof parsedActualHours !== 'number' ||
+          !Number.isFinite(parsedActualHours) ||
+          parsedActualHours < 0))
+    ) {
+      setFormError('Informe horas validas e nao negativas.');
+      return;
+    }
+
+    const estimatedHours = parsedEstimatedHours ?? null;
+    const actualHours = parsedActualHours ?? null;
+
+    setFormError('');
     setLoading(true);
 
     try {
       const result = await updateTask(task.id, {
         title: formData.title.trim(),
-        description: formData.description.trim() || undefined,
+        description: formData.description.trim(),
         status: formData.status,
         priority: formData.priority,
-        dueDate: formData.dueDate ? new Date(formData.dueDate) : undefined,
-        estimatedHours: formData.estimatedHours,
+        dueDate: formData.dueDate ? new Date(formData.dueDate) : null,
+        estimatedHours,
+        actualHours,
+        tags: formData.tags,
         projectId: formData.projectId || null,
       });
 
-      if (result.success) {
-        onSuccess();
+      if (result.success && result.data) {
+        onAvailableTagsChange(formData.tags);
+        onSuccess(result.data as TaskWithRelations);
       } else {
         console.error('Failed to update task:', result.error);
-        alert('Erro ao atualizar tarefa');
+        setFormError(result.error || 'Erro ao atualizar tarefa.');
       }
     } catch (error) {
       console.error('Error updating task:', error);
-      alert('Erro ao atualizar tarefa');
+      setFormError('Erro ao atualizar tarefa.');
     } finally {
       setLoading(false);
     }
@@ -178,21 +223,40 @@ export function TaskEditInline({
             Horas Estimadas
           </label>
           <input
-            type="number"
-            min="0"
-            step="0.5"
+            type="text"
+            inputMode="decimal"
             value={formData.estimatedHours}
             onChange={(e) =>
               setFormData((prev) => ({
                 ...prev,
-                estimatedHours: parseFloat(e.target.value) || 0,
+                estimatedHours: e.target.value,
               }))
             }
+            placeholder="2h ou 30min"
             className="w-full rounded-lg border border-[#303036] bg-[#2a2a2a] px-3 py-2 text-sm text-white focus:border-[#6f55d9] focus:outline-none"
           />
         </div>
 
-        <div className="col-span-2">
+        <div>
+          <label className="mb-1 block text-xs font-medium text-[#9b9ba3]">
+            Horas Reais
+          </label>
+          <input
+            type="text"
+            inputMode="decimal"
+            value={formData.actualHours}
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                actualHours: e.target.value,
+              }))
+            }
+            placeholder="1.5h ou 30min"
+            className="w-full rounded-lg border border-[#303036] bg-[#2a2a2a] px-3 py-2 text-sm text-white focus:border-[#6f55d9] focus:outline-none"
+          />
+        </div>
+
+        <div>
           <label className="mb-1 block text-xs font-medium text-[#9b9ba3]">
             Projeto
           </label>
@@ -211,7 +275,42 @@ export function TaskEditInline({
             ))}
           </select>
         </div>
+
+        <div className="col-span-2">
+          <label className="mb-1 block text-xs font-medium text-[#9b9ba3]">
+            Tags
+          </label>
+          <div className="flex min-h-10 flex-wrap items-center gap-1.5 rounded-lg border border-[#303036] bg-[#2a2a2a] px-2 py-1.5">
+            {formData.tags.length > 0 ? (
+              formData.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded bg-[#24242a] px-1.5 py-0.5 text-xs text-[#b8a9ff]"
+                >
+                  #{tag}
+                </span>
+              ))
+            ) : (
+              <span className="text-xs text-[#777780]">Sem tags</span>
+            )}
+            <TaskTagsMenu
+              tags={formData.tags}
+              availableTags={availableTags}
+              onChange={async (tags) => {
+                setFormData((current) => ({ ...current, tags }));
+                return true;
+              }}
+              onAvailableTagsChange={onAvailableTagsChange}
+            />
+          </div>
+        </div>
       </div>
+
+      {formError && (
+        <p className="text-sm text-red-300" role="alert">
+          {formError}
+        </p>
+      )}
 
       {/* Botões de ação */}
       <div className="flex items-center justify-between border-t border-[#2f2f35] pt-2">
