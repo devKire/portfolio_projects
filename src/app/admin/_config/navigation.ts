@@ -4,6 +4,7 @@ import {
   BookOpen,
   Folder,
   Globe,
+  Info,
   ListChecks,
   MessageSquare,
   Pen,
@@ -20,6 +21,7 @@ export const TAB_CONFIG = [
   { id: 'social', label: 'Redes Sociais', icon: Users },
   { id: 'comments', label: 'Comentários', icon: MessageSquare },
   { id: 'analytics', label: 'Analytics', icon: Globe },
+  { id: 'documentation', label: 'Documentação', icon: Info },
   { id: 'settings', label: 'Configurações', icon: Settings },
 ] as const;
 

@@ -31,6 +31,10 @@ const SettingsTab = dynamic(() => import('../_tabs/Settings'), {
   loading: () => <ContentLoader />,
 });
 
+const Documentation = dynamic(() => import('../_tabs/Documentation'), {
+  loading: () => <ContentLoader />,
+});
+
 // Componente para tabs em desenvolvimento
 function ComingSoon({
   icon: Icon,
@@ -77,6 +81,8 @@ export default function ContentRouter({ activeTab }: ContentRouterProps) {
         return <ComingSoon icon={MessageSquare} title="Comentários" />;
       case 'analytics':
         return <ComingSoon icon={Globe} title="Analytics" />;
+      case 'documentation':
+        return <Documentation />;
       case 'settings':
         return <SettingsTab />;
       default:
