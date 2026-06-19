@@ -2,10 +2,9 @@
 
 import { endOfDay, format, startOfDay, subDays } from 'date-fns';
 
+import { requireUser } from '@/lib/auth/session';
+import { requireOwnedLandingPage } from '@/lib/auth/tenant';
 import { db } from '@/lib/prisma';
-
-// Supondo que você tenha uma landingpage padrão
-const DEFAULT_LANDINGPAGE_ID = '3eb3839d-eb78-43ed-9eb7-8f39352d64bb';
 
 export interface DashboardStats {
   portfolioViews: number;
@@ -34,12 +33,15 @@ function createActivity(activity: {
 
 export async function getDashboardStats(): Promise<DashboardStats> {
   try {
+    const user = await requireUser();
+    const landingpage = await requireOwnedLandingPage(user.id);
+    const landingpageId = landingpage.id;
     // 1. Contar visualizações do portfólio (últimos 30 dias)
     const thirtyDaysAgo = subDays(new Date(), 30);
 
     const portfolioViews = await db.pageView.count({
       where: {
-        landingpageId: DEFAULT_LANDINGPAGE_ID,
+        landingpageId,
         createdAt: {
           gte: thirtyDaysAgo,
         },
@@ -49,7 +51,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     // 2. Contar projetos ativos
     const projectsCount = await db.project.count({
       where: {
-        landingpageId: DEFAULT_LANDINGPAGE_ID,
+        userId: user.id,
+        landingpageId,
         status: {
           in: ['completed', 'in-progress'],
         },
@@ -59,7 +62,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     // 3. Buscar interações sociais do banco
     const linkedinFollowers = await db.socialInteraction.aggregate({
       where: {
-        landingpageId: DEFAULT_LANDINGPAGE_ID,
+        landingpageId,
         platform: 'linkedin',
         type: 'follow',
       },
@@ -70,7 +73,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
     const githubFollowers = await db.socialInteraction.aggregate({
       where: {
-        landingpageId: DEFAULT_LANDINGPAGE_ID,
+        landingpageId,
         platform: 'github',
         type: 'follow',
       },
@@ -81,7 +84,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
     const socialMediaComments = await db.socialInteraction.aggregate({
       where: {
-        landingpageId: DEFAULT_LANDINGPAGE_ID,
+        landingpageId,
         type: 'comment',
       },
       _sum: {
@@ -106,7 +109,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     const pageViewsData = await db.pageView.groupBy({
       by: ['createdAt'],
       where: {
-        landingpageId: DEFAULT_LANDINGPAGE_ID,
+        landingpageId,
         createdAt: {
           gte: sevenDaysAgo,
         },
@@ -137,7 +140,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     // 5. Buscar atividades recentes
     const recentPageViews = await db.pageView.findMany({
       where: {
-        landingpageId: DEFAULT_LANDINGPAGE_ID,
+        landingpageId,
       },
       orderBy: {
         createdAt: 'desc',
@@ -148,7 +151,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     // 6. Buscar atualizações recentes de projetos
     const recentProjectUpdates = await db.project.findMany({
       where: {
-        landingpageId: DEFAULT_LANDINGPAGE_ID,
+        userId: user.id,
+        landingpageId,
       },
       orderBy: {
         updatedAt: 'desc',
@@ -159,7 +163,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     // 7. Buscar interações sociais recentes
     const recentSocialInteractions = await db.socialInteraction.findMany({
       where: {
-        landingpageId: DEFAULT_LANDINGPAGE_ID,
+        landingpageId,
       },
       orderBy: {
         createdAt: 'desc',
@@ -248,13 +252,22 @@ export async function trackPageView(
   userAgent?: string
 ) {
   try {
+    const slug = path.split(/[?#]/)[0].split('/').filter(Boolean)[0];
+    if (!slug) return;
+
+    const landingpage = await db.landingPage.findUnique({
+      where: { slug },
+      select: { id: true },
+    });
+    if (!landingpage) return;
+
     await db.pageView.create({
       data: {
         page,
         path,
         ip,
         userAgent,
-        landingpageId: DEFAULT_LANDINGPAGE_ID,
+        landingpageId: landingpage.id,
       },
     });
   } catch (error) {
@@ -267,16 +280,24 @@ export async function trackSocialInteraction(
   platform: string,
   type: string,
   content?: string,
-  count: number = 1
+  count: number = 1,
+  slug?: string
 ) {
   try {
+    if (!slug) return;
+    const landingpage = await db.landingPage.findUnique({
+      where: { slug },
+      select: { id: true },
+    });
+    if (!landingpage) return;
+
     await db.socialInteraction.create({
       data: {
         platform,
         type,
         content,
         count,
-        landingpageId: DEFAULT_LANDINGPAGE_ID,
+        landingpageId: landingpage.id,
       },
     });
   } catch (error) {
@@ -287,6 +308,9 @@ export async function trackSocialInteraction(
 // Função para obter estatísticas detalhadas
 export async function getDetailedStats(timeRange: '7d' | '30d' | '90d') {
   try {
+    const user = await requireUser();
+    const landingpage = await requireOwnedLandingPage(user.id);
+    const landingpageId = landingpage.id;
     let daysAgo: number;
     switch (timeRange) {
       case '7d':
@@ -305,7 +329,7 @@ export async function getDetailedStats(timeRange: '7d' | '30d' | '90d') {
     // Total de visualizações
     const totalViews = await db.pageView.count({
       where: {
-        landingpageId: DEFAULT_LANDINGPAGE_ID,
+        landingpageId,
         createdAt: {
           gte: startDate,
         },
@@ -316,7 +340,7 @@ export async function getDetailedStats(timeRange: '7d' | '30d' | '90d') {
     const viewsByPage = await db.pageView.groupBy({
       by: ['page'],
       where: {
-        landingpageId: DEFAULT_LANDINGPAGE_ID,
+        landingpageId,
         createdAt: {
           gte: startDate,
         },
@@ -341,7 +365,7 @@ export async function getDetailedStats(timeRange: '7d' | '30d' | '90d') {
     const socialByPlatform = await db.socialInteraction.groupBy({
       by: ['platform', 'type'],
       where: {
-        landingpageId: DEFAULT_LANDINGPAGE_ID,
+        landingpageId,
         createdAt: {
           gte: startDate,
         },

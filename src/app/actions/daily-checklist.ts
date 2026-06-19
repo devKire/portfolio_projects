@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { Prisma } from '@prisma/client';
 import { db } from '@/lib/prisma';
 import { DAILY_CHECKLIST_ITEMS } from '@/lib/daily-checklist-items';
+import { requireUser } from '@/lib/auth/session';
 
 export interface DailyChecklistItemInput {
   title: string;
@@ -52,9 +53,12 @@ function slugify(value: string) {
   return base || `item-${Date.now()}`;
 }
 
-async function ensureDailyChecklistItems() {
+async function ensureDailyChecklistItems(userId: string) {
   const existing = await db.dailyChecklistItem.findMany({
-    where: { slug: { in: DAILY_CHECKLIST_ITEMS.map((item) => item.slug) } },
+    where: {
+      userId,
+      slug: { in: DAILY_CHECKLIST_ITEMS.map((item) => item.slug) },
+    },
     select: { slug: true },
   });
   const existingSlugs = new Set(existing.map((item) => item.slug));
@@ -66,6 +70,7 @@ async function ensureDailyChecklistItems() {
 
   await db.dailyChecklistItem.createMany({
     data: missingItems.map((item) => ({
+      userId,
       slug: item.slug,
       title: item.title,
       description: item.description,
@@ -80,14 +85,15 @@ async function ensureDailyChecklistItems() {
   });
 }
 
-async function getHistory(days: number, selectedDate: Date) {
+async function getHistory(userId: string, days: number, selectedDate: Date) {
   const start = addDays(selectedDate, -(days - 1));
   const end = addDays(selectedDate, 1);
 
   const [itemsCount, entries] = await Promise.all([
-    db.dailyChecklistItem.count({ where: { active: true } }),
+    db.dailyChecklistItem.count({ where: { userId, active: true } }),
     db.dailyChecklistEntry.findMany({
       where: {
+        userId,
         date: { gte: start, lt: end },
       },
       select: {
@@ -114,6 +120,7 @@ async function getHistory(days: number, selectedDate: Date) {
 }
 
 async function createChecklistLog(data: {
+  userId: string;
   itemId: string;
   type: string;
   message: string;
@@ -121,6 +128,7 @@ async function createChecklistLog(data: {
 }) {
   await db.taskActivityLog.create({
     data: {
+      userId: data.userId,
       dailyChecklistItemId: data.itemId,
       type: data.type,
       message: data.message,
@@ -131,19 +139,21 @@ async function createChecklistLog(data: {
 
 export async function getDailyChecklist(dateInput: string) {
   try {
-    await ensureDailyChecklistItems();
+    const user = await requireUser();
+    await ensureDailyChecklistItems(user.id);
 
     const date = toDayStart(dateInput);
     const nextDate = addDays(date, 1);
 
     const entriesForDate = db.dailyChecklistEntry.findMany({
-      where: { date },
+      where: { userId: user.id, date },
     });
 
     const [entries, logs, history] = await Promise.all([
       entriesForDate,
       db.taskActivityLog.findMany({
         where: {
+          userId: user.id,
           createdAt: { gte: date, lt: nextDate },
         },
         include: {
@@ -153,18 +163,20 @@ export async function getDailyChecklist(dateInput: string) {
         orderBy: { createdAt: 'desc' },
         take: 50,
       }),
-      getHistory(7, date),
+      getHistory(user.id, 7, date),
     ]);
 
     const entryItemIds = entries.map((entry) => entry.itemId);
     const items = await db.dailyChecklistItem.findMany({
       where: {
+        userId: user.id,
         OR: [{ active: true }, { id: { in: entryItemIds } }],
       },
       orderBy: [{ position: 'asc' }],
     });
 
     const allItems = await db.dailyChecklistItem.findMany({
+      where: { userId: user.id },
       orderBy: [{ position: 'asc' }],
     });
 
@@ -250,9 +262,10 @@ export async function toggleDailyChecklistItem(
   }
 
   try {
+    const user = await requireUser();
     const date = toDayStart(dateInput);
-    const item = await db.dailyChecklistItem.findUnique({
-      where: { id: itemId },
+    const item = await db.dailyChecklistItem.findFirst({
+      where: { id: itemId, userId: user.id },
       select: { id: true, title: true },
     });
 
@@ -262,7 +275,8 @@ export async function toggleDailyChecklistItem(
 
     const entry = await db.dailyChecklistEntry.upsert({
       where: {
-        itemId_date: {
+        userId_itemId_date: {
+          userId: user.id,
           itemId,
           date,
         },
@@ -272,6 +286,7 @@ export async function toggleDailyChecklistItem(
         completedAt: completed ? new Date() : null,
       },
       create: {
+        userId: user.id,
         itemId,
         date,
         completed,
@@ -280,6 +295,7 @@ export async function toggleDailyChecklistItem(
     });
 
     await createChecklistLog({
+      userId: user.id,
       itemId,
       type: completed
         ? 'daily_checklist.completed'
@@ -307,17 +323,19 @@ export async function createDailyChecklistItem(data: DailyChecklistItemInput) {
   }
 
   try {
+    const user = await requireUser();
     const position =
       data.position ??
       ((
         await db.dailyChecklistItem.aggregate({
-          where: { period: data.period },
+          where: { userId: user.id, period: data.period },
           _max: { position: true },
         })
       )._max.position || 0) + 10;
 
     const item = await db.dailyChecklistItem.create({
       data: {
+        userId: user.id,
         slug: `${slugify(data.title)}-${Date.now()}`,
         title: data.title.trim(),
         description: data.description?.trim() || '',
@@ -332,6 +350,7 @@ export async function createDailyChecklistItem(data: DailyChecklistItemInput) {
     });
 
     await createChecklistLog({
+      userId: user.id,
       itemId: item.id,
       type: 'daily_checklist.item_created',
       message: `Item criado: ${item.title}`,
@@ -353,7 +372,10 @@ export async function updateDailyChecklistItem(
   if (!id) return { success: false, error: 'Invalid checklist item' };
 
   try {
-    const existing = await db.dailyChecklistItem.findUnique({ where: { id } });
+    const user = await requireUser();
+    const existing = await db.dailyChecklistItem.findFirst({
+      where: { id, userId: user.id },
+    });
     if (!existing) return { success: false, error: 'Checklist item not found' };
 
     const nextStartTime =
@@ -385,6 +407,7 @@ export async function updateDailyChecklistItem(
     });
 
     await createChecklistLog({
+      userId: user.id,
       itemId: item.id,
       type: 'daily_checklist.item_updated',
       message: `Item editado: ${item.title}`,
@@ -415,7 +438,10 @@ export async function updateDailyChecklistItem(
 
 export async function setDailyChecklistItemActive(id: string, active: boolean) {
   try {
-    const existing = await db.dailyChecklistItem.findUnique({ where: { id } });
+    const user = await requireUser();
+    const existing = await db.dailyChecklistItem.findFirst({
+      where: { id, userId: user.id },
+    });
     if (!existing) return { success: false, error: 'Checklist item not found' };
 
     const item = await db.dailyChecklistItem.update({
@@ -424,6 +450,7 @@ export async function setDailyChecklistItemActive(id: string, active: boolean) {
     });
 
     await createChecklistLog({
+      userId: user.id,
       itemId: item.id,
       type: active
         ? 'daily_checklist.item_restored'
@@ -450,11 +477,15 @@ export async function moveDailyChecklistItem(
   direction: 'up' | 'down'
 ) {
   try {
-    const item = await db.dailyChecklistItem.findUnique({ where: { id } });
+    const user = await requireUser();
+    const item = await db.dailyChecklistItem.findFirst({
+      where: { id, userId: user.id },
+    });
     if (!item) return { success: false, error: 'Checklist item not found' };
 
     const neighbor = await db.dailyChecklistItem.findFirst({
       where: {
+        userId: user.id,
         period: item.period,
         active: item.active,
         position:
@@ -479,6 +510,7 @@ export async function moveDailyChecklistItem(
     ]);
 
     await createChecklistLog({
+      userId: user.id,
       itemId: item.id,
       type: 'daily_checklist.item_reordered',
       message: `Item reordenado: ${item.title}`,

@@ -9,8 +9,53 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  OWNER
+  ADMIN
+  USER
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String?
+  username     String   @unique
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(USER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sessions              UserSession[]
+  landingPages          LandingPage[]
+  projects              Project[]
+  tasks                 Task[]
+  taskTemplates         TaskTemplate[]
+  timeEntries           TimeEntry[]
+  notes                 Note[]
+  noteFolders           NoteFolder[]
+  noteAttachments       NoteAttachment[]
+  dailyChecklistItems   DailyChecklistItem[]
+  dailyChecklistEntries DailyChecklistEntry[]
+  activityLogs          TaskActivityLog[]
+}
+
+model UserSession {
+  id         String   @id @default(uuid())
+  tokenHash  String   @unique
+  userId     String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
 model LandingPage {
   id             String   @id @default(uuid())
+  userId         String
   name           String
   slug           String   @unique
   description    String
@@ -19,11 +64,15 @@ model LandingPage {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   contactInfo        ContactInfo?
   portfolioContent   PortfolioContent?
   projects           Project[]
   pageViews          PageView[]
   socialInteractions SocialInteraction[]
+
+  @@index([userId])
+  @@index([userId, updatedAt])
 }
 
 model PortfolioContent {
@@ -59,6 +108,7 @@ model ContactInfo {
 // Adicione o relacionamento no modelo Project existente
 model Project {
   id              String   @id @default(uuid())
+  userId          String
   title           String
   category        String
   description     String
@@ -76,6 +126,7 @@ model Project {
   updatedAt       DateTime @updatedAt
 
   // Relations
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   landingpage   LandingPage @relation(fields: [landingpageId], references: [id], onDelete: Cascade)
   landingpageId String
 
@@ -84,6 +135,10 @@ model Project {
   features Feature[]
   sprints  Sprint[]
   notes    Note[]
+
+  @@index([userId])
+  @@index([userId, position])
+  @@index([userId, isActive])
 }
 
 // Modelo para administrador
@@ -165,6 +220,7 @@ model Sprint {
 // Template de Tarefas
 model TaskTemplate {
   id             String   @id @default(uuid())
+  userId         String
   name           String
   description    String?
   status         String   @default("pending")
@@ -174,20 +230,28 @@ model TaskTemplate {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   tasks Task[]
+
+  @@index([userId])
 }
 
 // Time Tracking
 model TimeEntry {
   id          String   @id @default(uuid())
   taskId      String
-  userId      String?
+  userId      String
   description String?
   hours       Float
   date        DateTime @default(now())
   createdAt   DateTime @default(now())
 
   task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, taskId])
+  @@index([userId, date])
 }
 
 // Task Dependency
@@ -205,6 +269,7 @@ model TaskDependency {
 
 model Task {
   id             String    @id @default(uuid())
+  userId         String
   title          String
   description    String?
   status         String    @default("pending")
@@ -239,6 +304,7 @@ model Task {
   updatedAt DateTime @updatedAt
 
   // Relações
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   project  Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
   feature  Feature? @relation(fields: [featureId], references: [id], onDelete: SetNull)
   sprint   Sprint?  @relation(fields: [sprintId], references: [id], onDelete: SetNull)
@@ -247,15 +313,18 @@ model Task {
   subtasks Task[]   @relation("TaskToSubtask")
 
   @@unique([noteId, noteTaskKey])
-  @@index([status])
-  @@index([projectId])
-  @@index([sprintId])
-  @@index([noteId])
+  @@index([userId])
+  @@index([userId, status])
+  @@index([userId, projectId])
+  @@index([userId, sprintId])
+  @@index([userId, noteId])
+  @@index([userId, updatedAt])
 }
 
 model DailyChecklistItem {
   id          String   @id @default(uuid())
-  slug        String   @unique
+  userId      String
+  slug        String
   title       String
   description String
   period      String
@@ -268,15 +337,19 @@ model DailyChecklistItem {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  user         User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   entries      DailyChecklistEntry[]
   activityLogs TaskActivityLog[]
 
-  @@index([period])
-  @@index([position])
+  @@unique([userId, slug])
+  @@index([userId])
+  @@index([userId, period])
+  @@index([userId, position])
 }
 
 model DailyChecklistEntry {
   id          String    @id @default(uuid())
+  userId      String
   itemId      String
   date        DateTime
   completed   Boolean   @default(false)
@@ -285,14 +358,17 @@ model DailyChecklistEntry {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  user User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   item DailyChecklistItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
-  @@unique([itemId, date])
-  @@index([date])
+  @@unique([userId, itemId, date])
+  @@index([userId])
+  @@index([userId, date])
 }
 
 model TaskActivityLog {
   id                   String   @id @default(uuid())
+  userId               String
   taskId               String?
   dailyChecklistItemId String?
   type                 String
@@ -300,13 +376,15 @@ model TaskActivityLog {
   metadata             Json?
   createdAt            DateTime @default(now())
 
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   task               Task?               @relation(fields: [taskId], references: [id], onDelete: SetNull)
   dailyChecklistItem DailyChecklistItem? @relation(fields: [dailyChecklistItemId], references: [id], onDelete: SetNull)
 
-  @@index([createdAt])
-  @@index([taskId])
-  @@index([dailyChecklistItemId])
-  @@index([type])
+  @@index([userId])
+  @@index([userId, createdAt])
+  @@index([userId, taskId])
+  @@index([userId, dailyChecklistItemId])
+  @@index([userId, type])
 }
 
 enum NoteVisibility {
@@ -322,8 +400,9 @@ enum NoteStatus {
 
 model Note {
   id                String         @id @default(uuid())
+  userId            String
   title             String
-  slug              String         @unique
+  slug              String
   content           String         @db.Text
   excerpt           String?
   visibility        NoteVisibility @default(PRIVATE)
@@ -335,7 +414,7 @@ model Note {
   viewCount  Int     @default(0)
 
   fileName   String?
-  filePath   String?   @unique
+  filePath   String?
   folderPath String?
   folderName String?
   folderId   String?
@@ -348,6 +427,7 @@ model Note {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   project Project?    @relation(fields: [projectId], references: [id], onDelete: SetNull)
   folder  NoteFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
 
@@ -356,21 +436,24 @@ model Note {
   incoming NoteLink[] @relation("TargetLinks")
   tasks    Task[]
 
-  @@index([slug])
-  @@index([visibility])
-  @@index([status])
-  @@index([trashedAt])
-  @@index([projectId])
-  @@index([folderPath])
-  @@index([folderId])
-  @@index([position])
-  @@index([updatedAt])
+  @@unique([userId, slug])
+  @@unique([userId, filePath])
+  @@index([userId])
+  @@index([userId, visibility])
+  @@index([userId, status])
+  @@index([userId, trashedAt])
+  @@index([userId, projectId])
+  @@index([userId, folderPath])
+  @@index([userId, folderId])
+  @@index([userId, position])
+  @@index([userId, updatedAt])
 }
 
 model NoteFolder {
   id                  String    @id @default(uuid())
+  userId              String
   name                String
-  path                String    @unique
+  path                String
   parentId            String?
   position            Int       @default(0)
   deletedAt           DateTime?
@@ -380,21 +463,24 @@ model NoteFolder {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
+  user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   parent   NoteFolder?  @relation("NoteFolderTree", fields: [parentId], references: [id], onDelete: SetNull)
   children NoteFolder[] @relation("NoteFolderTree")
   notes    Note[]
 
-  @@index([parentId])
-  @@index([path])
-  @@index([position])
-  @@index([deletedAt])
-  @@index([trashedAt])
+  @@unique([userId, path])
+  @@index([userId])
+  @@index([userId, parentId])
+  @@index([userId, position])
+  @@index([userId, deletedAt])
+  @@index([userId, trashedAt])
 }
 
 model NoteAttachment {
   id         String   @id @default(uuid())
+  userId     String
   fileName   String
-  filePath   String   @unique
+  filePath   String
   folderPath String?
   folderName String?
   extension  String?
@@ -405,8 +491,12 @@ model NoteAttachment {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  @@index([folderPath])
-  @@index([fileName])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, filePath])
+  @@index([userId])
+  @@index([userId, folderPath])
+  @@index([userId, fileName])
 }
 
 model NoteTag {

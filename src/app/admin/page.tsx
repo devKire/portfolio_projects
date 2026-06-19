@@ -1,20 +1,19 @@
-// app/admin/page.tsx
-'use client';
+import AdminPanel from './_components/AdminPanel';
+import { requireUser } from '@/lib/auth/session';
 
-import dynamic from 'next/dynamic';
-import { Suspense } from 'react';
-import LoadingSpinner from './_components/LoadingSpinner';
+export default async function AdminPage() {
+  const user = await requireUser();
+  const primaryLandingPage = user.landingPages[0];
 
-// Lazy load do layout principal
-const AdminPanel = dynamic(() => import('./_components/AdminPanel'), {
-  loading: () => <LoadingSpinner />,
-  ssr: false,
-});
-
-export default function AdminPage() {
   return (
-    <Suspense fallback={<LoadingSpinner />}>
-      <AdminPanel />
-    </Suspense>
+    <AdminPanel
+      user={{
+        id: user.id,
+        name: user.name,
+        username: user.username,
+        email: user.email,
+        publicSlug: primaryLandingPage?.slug || user.username,
+      }}
+    />
   );
 }

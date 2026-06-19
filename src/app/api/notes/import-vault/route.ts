@@ -8,6 +8,7 @@ import {
   isUnsafeVaultPath,
   normalizeVaultPath,
 } from '@/lib/notes';
+import { getCurrentUser } from '@/lib/auth/session';
 
 const MAX_ZIP_SIZE = 50 * 1024 * 1024;
 const MAX_INLINE_ATTACHMENT_SIZE = 8 * 1024 * 1024;
@@ -102,6 +103,10 @@ function stripCommonRoot(paths: string[]) {
 
 export async function POST(request: Request) {
   try {
+    if (!(await getCurrentUser())) {
+      return errorResponse('Sessão expirada. Entre novamente.', 401);
+    }
+
     const formData = await request.formData();
     const file = formData.get('file');
 

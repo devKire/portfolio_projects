@@ -3,8 +3,10 @@
 
 import { useClickOutside } from '../_hooks/useClickOutside';
 import Sidebar from './Sidebar';
+import type { AdminUserSummary } from './AdminPanel';
 
 interface MobileDrawerProps {
+  user: AdminUserSummary;
   isOpen: boolean;
   onClose: () => void;
   activeTab: string;
@@ -13,6 +15,7 @@ interface MobileDrawerProps {
 }
 
 export default function MobileDrawer({
+  user,
   isOpen,
   onClose,
   activeTab,
@@ -37,6 +40,7 @@ export default function MobileDrawer({
         className="animate-slide-in absolute inset-y-0 left-0 w-72"
       >
         <Sidebar
+          user={user}
           activeTab={activeTab}
           onTabChange={onTabChange}
           isCollapsed={false}

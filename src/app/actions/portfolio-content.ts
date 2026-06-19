@@ -3,6 +3,9 @@
 import { revalidatePath } from 'next/cache';
 import type { Prisma } from '@prisma/client';
 
+import { requireUser } from '@/lib/auth/session';
+import { requireOwnedLandingPage } from '@/lib/auth/tenant';
+import { normalizeUsername, validatePublicSlug } from '@/lib/auth/validation';
 import { db } from '@/lib/prisma';
 import { DEFAULT_PORTFOLIO_CONTENT } from '@/lib/portfolio-content/defaults';
 import {
@@ -48,19 +51,8 @@ const sectionKeys: PortfolioSectionKey[] = [
   'settings',
 ];
 
-async function getDefaultLandingPageId(landingpageId?: string) {
-  if (landingpageId) return landingpageId;
-
-  const landingpage = await db.landingPage.findFirst({
-    orderBy: { createdAt: 'asc' },
-    select: { id: true },
-  });
-
-  if (!landingpage) {
-    throw new Error('Nenhuma landing page encontrada.');
-  }
-
-  return landingpage.id;
+async function getDefaultLandingPageId(userId: string, landingpageId?: string) {
+  return (await requireOwnedLandingPage(userId, landingpageId)).id;
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -90,9 +82,13 @@ export async function getPortfolioContent(landingpageId?: string): Promise<
   }>
 > {
   try {
-    const resolvedLandingpageId = await getDefaultLandingPageId(landingpageId);
-    const landingpage = await db.landingPage.findUnique({
-      where: { id: resolvedLandingpageId },
+    const user = await requireUser();
+    const resolvedLandingpageId = await getDefaultLandingPageId(
+      user.id,
+      landingpageId
+    );
+    const landingpage = await db.landingPage.findFirst({
+      where: { id: resolvedLandingpageId, userId: user.id },
       include: {
         contactInfo: true,
         portfolioContent: true,
@@ -145,9 +141,13 @@ export async function upsertPortfolioContent(
   content: Partial<PortfolioContentData>
 ): Promise<ActionResult<PortfolioContentData>> {
   try {
-    const resolvedLandingpageId = await getDefaultLandingPageId(landingpageId);
-    const landingpage = await db.landingPage.findUnique({
-      where: { id: resolvedLandingpageId },
+    const user = await requireUser();
+    const resolvedLandingpageId = await getDefaultLandingPageId(
+      user.id,
+      landingpageId
+    );
+    const landingpage = await db.landingPage.findFirst({
+      where: { id: resolvedLandingpageId, userId: user.id },
       include: { portfolioContent: true },
     });
 
@@ -195,6 +195,7 @@ export async function updatePortfolioSection(
   value: Partial<PortfolioContentData[PortfolioSectionKey]>
 ): Promise<ActionResult<PortfolioContentData[PortfolioSectionKey]>> {
   try {
+    const user = await requireUser();
     if (!sectionKeys.includes(section)) {
       return { success: false, error: 'Seção inválida.' };
     }
@@ -203,9 +204,12 @@ export async function updatePortfolioSection(
       return { success: false, error: 'Conteúdo inválido.' };
     }
 
-    const resolvedLandingpageId = await getDefaultLandingPageId(landingpageId);
-    const landingpage = await db.landingPage.findUnique({
-      where: { id: resolvedLandingpageId },
+    const resolvedLandingpageId = await getDefaultLandingPageId(
+      user.id,
+      landingpageId
+    );
+    const landingpage = await db.landingPage.findFirst({
+      where: { id: resolvedLandingpageId, userId: user.id },
       include: { portfolioContent: true },
     });
 
@@ -249,9 +253,10 @@ export async function updateLandingPageInfo(
   data: LandingPageInfoInput
 ): Promise<ActionResult<LandingPageInfoInput>> {
   try {
-    const landingpageId = await getDefaultLandingPageId(data.id);
+    const user = await requireUser();
+    const landingpageId = await getDefaultLandingPageId(user.id, data.id);
     const name = data.name.trim();
-    const slug = data.slug.trim();
+    const slug = normalizeUsername(data.slug);
     const description = data.description.trim();
 
     if (!name || !slug || !description) {
@@ -259,6 +264,17 @@ export async function updateLandingPageInfo(
         success: false,
         error: 'Nome, slug e descrição são obrigatórios.',
       };
+    }
+
+    const slugError = validatePublicSlug(slug);
+    if (slugError) return { success: false, error: slugError };
+
+    const duplicate = await db.landingPage.findFirst({
+      where: { slug, id: { not: landingpageId } },
+      select: { id: true },
+    });
+    if (duplicate) {
+      return { success: false, error: 'Slug público indisponível.' };
     }
 
     const updated = await db.landingPage.update({
@@ -297,7 +313,11 @@ export async function updateContactInfo(
   data: ContactInfoInput
 ): Promise<ActionResult<ContactInfoInput>> {
   try {
-    const landingpageId = await getDefaultLandingPageId(data.landingpageId);
+    const user = await requireUser();
+    const landingpageId = await getDefaultLandingPageId(
+      user.id,
+      data.landingpageId
+    );
     const email = data.email.trim();
 
     if (!email || !email.includes('@')) {

@@ -2,19 +2,26 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { useAuth } from '../_hooks/useAuth';
+import { useRouter } from 'next/navigation';
+import { logoutUser } from '@/app/actions/auth';
 import { useMediaQuery } from '../_hooks/useMediaQuery';
-import { TAB_CONFIG } from '../_config/navigation';
 import AdminLayout from './AdminLayout';
-import LoginModal from './LoginModal';
 import ContentRouter from './ContentRouter';
 
-export default function AdminPanel() {
+export type AdminUserSummary = {
+  id: string;
+  name: string | null;
+  username: string;
+  email: string;
+  publicSlug: string;
+};
+
+export default function AdminPanel({ user }: { user: AdminUserSummary }) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-  const { isAuthenticated, isLoading, login, logout } = useAuth();
   const isMobile = useMediaQuery('(max-width: 1023px)');
 
   const handleTabChange = useCallback((tabId: string) => {
@@ -23,15 +30,15 @@ export default function AdminPanel() {
   }, []);
 
   const handleLogout = useCallback(async () => {
-    await logout();
+    await logoutUser();
     setIsMobileMenuOpen(false);
-  }, [logout]);
-
-  if (isLoading) return null;
-  if (!isAuthenticated) return <LoginModal onLoginSuccess={login} />;
+    router.replace('/login');
+    router.refresh();
+  }, [router]);
 
   return (
     <AdminLayout
+      user={user}
       activeTab={activeTab}
       onTabChange={handleTabChange}
       onLogout={handleLogout}

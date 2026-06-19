@@ -391,90 +391,91 @@ const projects = [
 
 const main = async () => {
   try {
-    await prismaClient.$transaction(
+    const name = process.env.SEED_USER_NAME?.trim();
+    const username = process.env.SEED_USERNAME?.trim().toLowerCase();
+    const email = process.env.SEED_USER_EMAIL?.trim().toLowerCase();
+    const password = process.env.SEED_USER_PASSWORD;
+
+    if (!name || !username || !email || !password) {
+      throw new Error(
+        'Defina SEED_USER_NAME, SEED_USERNAME, SEED_USER_EMAIL e SEED_USER_PASSWORD.'
+      );
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    const result = await prismaClient.$transaction(
       async (tx: any) => {
-        console.log('🗑️  Limpando dados existentes...');
-
-        // Limpar dados existentes na ordem correta (devido a constraints)
-        await tx.project.deleteMany();
-        await tx.contactInfo.deleteMany();
-        await tx.landingPage.deleteMany();
-        await tx.admin.deleteMany();
-
-        console.log('📱 Criando landing page...');
-
-        // Criar landing page
-        const landingPage = await tx.landingPage.create({
-          data: {
-            name: 'Erik Santos',
-            slug: 'erikdossantos',
-            description:
-              'Transformo ideias em sites profissionais, rápidos e modernos que geram resultados reais para o seu negócio. Se você quer presença online de verdade, eu te ajudo a construir.',
-            avatarImageUrl:
-              'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/me.png',
-            coverImageUrl:
-              'https://gudqtxvqbcdmtamnilpl.supabase.co/storage/v1/object/public/images/cover.png',
-          },
+        let user = await tx.user.findFirst({
+          where: { OR: [{ username }, { email }] },
         });
 
-        console.log('📞 Criando informações de contato...');
-
-        // Criar contact info
-        await tx.contactInfo.create({
-          data: {
-            email: 'erikdossantos2006@outlook.com',
-            phone: '(47) 9708-6965',
-            whatsappLink: 'https://wa.me/554797086965',
-            instagramLink: 'https://www.instagram.com/dossantoserik_jesus/',
-            facebookLink:
-              'https://www.facebook.com/profile.php?id=61579313971405',
-            linkedinLink:
-              'https://www.linkedin.com/in/erik-rafael-dos-santos-416b64251/',
-            landingpageId: landingPage.id,
-          },
-        });
-
-        console.log('👨‍💼 Criando administrador padrão...');
-
-        // Criar admin padrão
-        const hashedPassword = await bcrypt.hash('Kirelegend329', 10);
-        await tx.admin.create({
-          data: {
-            username: 'devKire',
-            password: hashedPassword,
-          },
-        });
-
-        console.log('🚀 Populando projetos...');
-
-        // Criar todos os projetos com posições sequenciais
-        for (let i = 0; i < projects.length; i++) {
-          const projectData = projects[i];
-
-          await tx.project.create({
+        if (!user) {
+          user = await tx.user.create({
             data: {
-              ...projectData,
-              position: i,
-              landingpageId: landingPage.id,
+              name,
+              username,
+              email,
+              passwordHash,
+              role: 'OWNER',
             },
           });
-
-          console.log(
-            `✅ Projeto ${i + 1}/${projects.length}: ${projectData.title}`
-          );
         }
 
-        return {
-          landingPage,
-          projectsCount: projects.length,
-        };
+        let landingPage = await tx.landingPage.findFirst({
+          where: { userId: user.id },
+          orderBy: { createdAt: 'asc' },
+        });
+
+        if (!landingPage) {
+          landingPage = await tx.landingPage.create({
+            data: {
+              userId: user.id,
+              name,
+              slug: username,
+              description: `Portfólio de ${name}`,
+              avatarImageUrl: '',
+              coverImageUrl: '',
+            },
+          });
+        }
+
+        await tx.contactInfo.upsert({
+          where: { landingpageId: landingPage.id },
+          create: { landingpageId: landingPage.id, email },
+          update: {},
+        });
+
+        await tx.portfolioContent.upsert({
+          where: { landingpageId: landingPage.id },
+          create: { landingpageId: landingPage.id },
+          update: {},
+        });
+
+        const projectCount = await tx.project.count({
+          where: { userId: user.id },
+        });
+        if (projectCount === 0) {
+          await tx.project.createMany({
+            data: projects.map((project, position) => ({
+              ...project,
+              userId: user.id,
+              landingpageId: landingPage.id,
+              position,
+            })),
+          });
+        }
+
+        return { user, landingPage, projectsCreated: projectCount === 0 };
       },
       { timeout: 30000 }
     );
 
-    console.log(`\n🎉 Seed concluído com sucesso!`);
-    console.log(`📊 Total de projetos: ${projects.length}`);
-    console.log(`🔑 Admin: admin / admin123`);
+    console.log('Seed concluído.');
+    console.log(`Usuário: ${result.user.username}`);
+    console.log(`Portfólio: /${result.landingPage.slug}`);
+    console.log(
+      `Projetos: ${result.projectsCreated ? projects.length : 'já existentes'}`
+    );
   } catch (error) {
     console.error('\n❌ Erro ao executar o seed:', error);
     process.exit(1);

@@ -51,8 +51,6 @@ const SECTION_TABS: {
   { id: 'contact', label: 'Contato final' },
 ];
 
-const DEFAULT_LANDINGPAGE_ID = '3eb3839d-eb78-43ed-9eb7-8f39352d64bb';
-
 function Field({
   label,
   value,
@@ -500,7 +498,7 @@ export default function Settings() {
 
   const loadContent = async () => {
     setLoading(true);
-    const result = await getPortfolioContent(DEFAULT_LANDINGPAGE_ID);
+    const result = await getPortfolioContent();
     if (result.success) {
       setLandingpage(result.data.landingpage);
       setContactInfo(result.data.contactInfo);

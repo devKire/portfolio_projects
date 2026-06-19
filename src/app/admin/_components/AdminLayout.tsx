@@ -5,9 +5,11 @@ import { ReactNode } from 'react';
 import HeaderMobile from './HeaderMobile';
 import Sidebar from './Sidebar';
 import MobileDrawer from './MobileDrawer';
+import type { AdminUserSummary } from './AdminPanel';
 
 interface AdminLayoutProps {
   children: ReactNode;
+  user: AdminUserSummary;
   activeTab: string;
   onTabChange: (tab: string) => void;
   onLogout: () => void;
@@ -21,6 +23,7 @@ interface AdminLayoutProps {
 
 export default function AdminLayout({
   children,
+  user,
   activeTab,
   onTabChange,
   onLogout,
@@ -36,6 +39,7 @@ export default function AdminLayout({
       {/* Sidebar Desktop */}
       <div className="hidden lg:sticky lg:top-0 lg:block lg:h-dvh lg:min-h-0 lg:shrink-0 lg:overflow-hidden">
         <Sidebar
+          user={user}
           activeTab={activeTab}
           onTabChange={onTabChange}
           isCollapsed={isSidebarCollapsed}
@@ -65,6 +69,7 @@ export default function AdminLayout({
 
       {/* Mobile Drawer */}
       <MobileDrawer
+        user={user}
         isOpen={isMobileMenuOpen && isMobile}
         onClose={onCloseMobileMenu}
         activeTab={activeTab}

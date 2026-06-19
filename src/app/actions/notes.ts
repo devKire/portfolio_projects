@@ -18,6 +18,7 @@ import {
   wikiLinkTargetStorageKey,
 } from '@/lib/notes';
 import { extractMarkdownTasks } from '@/lib/note-task-sync';
+import { requireUser } from '@/lib/auth/session';
 
 export type ActionResult<T> =
   | { success: true; data: T }
@@ -128,6 +129,7 @@ function isNoteStatus(value?: NoteStatus): value is NoteStatus {
 }
 
 async function createUniqueSlug(
+  userId: string,
   title: string,
   preferredSlug?: string,
   id?: string
@@ -138,7 +140,7 @@ async function createUniqueSlug(
 
   while (true) {
     const existing = await db.note.findUnique({
-      where: { slug },
+      where: { userId_slug: { userId, slug } },
       select: { id: true },
     });
 
@@ -149,18 +151,19 @@ async function createUniqueSlug(
 }
 
 async function syncNoteRelations(
+  userId: string,
   noteId: string,
   content: string,
   tags: string[]
 ) {
   const links = extractWikiLinks(content);
   const [sourceNote, linkableNotes] = await Promise.all([
-    db.note.findUnique({
-      where: { id: noteId },
+    db.note.findFirst({
+      where: { id: noteId, userId },
       select: { folderPath: true },
     }),
     db.note.findMany({
-      where: { status: { not: 'ARCHIVED' } },
+      where: { userId, status: { not: 'ARCHIVED' } },
       select: {
         id: true,
         title: true,
@@ -215,6 +218,7 @@ async function syncNoteRelations(
 }
 
 async function syncNoteTasks(
+  userId: string,
   noteId: string,
   content: string,
   projectId?: string | null
@@ -233,6 +237,7 @@ async function syncNoteTasks(
             },
           },
           create: {
+            userId,
             title: task.title,
             status: task.completed ? 'completed' : 'pending',
             completedAt: task.completed ? new Date() : null,
@@ -256,6 +261,7 @@ async function syncNoteTasks(
 
   await db.task.updateMany({
     where: {
+      userId,
       noteId,
       noteTaskKey: keys.length ? { notIn: keys } : { not: null },
     },
@@ -266,10 +272,10 @@ async function syncNoteTasks(
   });
 }
 
-async function refreshAllLinkTargets() {
+async function refreshAllLinkTargets(userId: string) {
   const [notes, links] = await Promise.all([
     db.note.findMany({
-      where: { status: { not: 'ARCHIVED' } },
+      where: { userId, status: { not: 'ARCHIVED' } },
       select: {
         id: true,
         title: true,
@@ -279,6 +285,7 @@ async function refreshAllLinkTargets() {
       },
     }),
     db.noteLink.findMany({
+      where: { sourceNote: { userId } },
       select: {
         id: true,
         targetTitle: true,
@@ -364,6 +371,7 @@ function normalizeVaultFileBase(value: string) {
 }
 
 async function createUniqueAttachmentPath(
+  userId: string,
   fileNameInput: string,
   folderPath?: string | null
 ) {
@@ -378,7 +386,7 @@ async function createUniqueAttachmentPath(
 
   while (true) {
     const existing = await db.noteAttachment.findUnique({
-      where: { filePath },
+      where: { userId_filePath: { userId, filePath } },
       select: { id: true },
     });
     if (!existing) {
@@ -402,23 +410,36 @@ function isActiveNoteStatusWhere() {
   return { not: 'ARCHIVED' as const };
 }
 
-async function nextFolderPosition(parentId: string | null) {
+async function getOwnedProjectId(userId: string, projectId?: string | null) {
+  if (!projectId) return null;
+  const project = await db.project.findFirst({
+    where: { id: projectId, userId },
+    select: { id: true },
+  });
+  if (!project) throw new Error('Projeto nao encontrado.');
+  return project.id;
+}
+
+async function nextFolderPosition(userId: string, parentId: string | null) {
   const aggregate = await db.noteFolder.aggregate({
-    where: { parentId, deletedAt: null },
+    where: { userId, parentId, deletedAt: null },
     _max: { position: true },
   });
   return (aggregate._max.position ?? -1) + 1;
 }
 
-async function nextNotePosition(folderId: string | null) {
+async function nextNotePosition(userId: string, folderId: string | null) {
   const aggregate = await db.note.aggregate({
-    where: { folderId, status: isActiveNoteStatusWhere() },
+    where: { userId, folderId, status: isActiveNoteStatusWhere() },
     _max: { position: true },
   });
   return (aggregate._max.position ?? -1) + 1;
 }
 
-async function ensureNoteFolderPath(path: string | null | undefined) {
+async function ensureNoteFolderPath(
+  userId: string,
+  path: string | null | undefined
+) {
   const normalized = path?.trim();
   if (!normalized) return null;
 
@@ -431,14 +452,17 @@ async function ensureNoteFolderPath(path: string | null | undefined) {
 
   for (const segment of segments) {
     currentPath = currentPath ? `${currentPath}/${segment}` : segment;
-    folder = await db.noteFolder.findUnique({ where: { path: currentPath } });
+    folder = await db.noteFolder.findUnique({
+      where: { userId_path: { userId, path: currentPath } },
+    });
     if (!folder) {
       folder = await db.noteFolder.create({
         data: {
+          userId,
           name: segment,
           path: currentPath,
           parentId,
-          position: await nextFolderPosition(parentId),
+          position: await nextFolderPosition(userId, parentId),
         },
       });
     } else if (
@@ -485,28 +509,36 @@ function isDescendantPath(path: string | null | undefined, rootPath: string) {
   );
 }
 
-export async function syncFoldersFromImportedNotes() {
+async function syncFoldersFromImportedNotesForUser(userId: string) {
   try {
     const paths = await db.note.findMany({
-      where: { folderPath: { not: null }, status: isActiveNoteStatusWhere() },
+      where: {
+        userId,
+        folderPath: { not: null },
+        status: isActiveNoteStatusWhere(),
+      },
       distinct: ['folderPath'],
       select: { folderPath: true },
       orderBy: { folderPath: 'asc' },
     });
 
     for (const item of paths) {
-      await ensureNoteFolderPath(item.folderPath);
+      await ensureNoteFolderPath(userId, item.folderPath);
     }
 
     const folders = await db.noteFolder.findMany({
-      where: { deletedAt: null },
+      where: { userId, deletedAt: null },
       select: { id: true, path: true },
     });
     const folderByPath = new Map(
       folders.map((folder) => [folder.path, folder.id])
     );
     const notes = await db.note.findMany({
-      where: { folderPath: { not: null }, status: isActiveNoteStatusWhere() },
+      where: {
+        userId,
+        folderPath: { not: null },
+        status: isActiveNoteStatusWhere(),
+      },
       select: { id: true, folderPath: true, folderId: true },
     });
 
@@ -532,18 +564,29 @@ export async function syncFoldersFromImportedNotes() {
   }
 }
 
+export async function syncFoldersFromImportedNotes() {
+  const user = await requireUser();
+  return syncFoldersFromImportedNotesForUser(user.id);
+}
+
 async function updateFolderPathCascade(
+  userId: string,
   folderId: string,
   nextPath: string,
   nextParentId?: string | null
 ) {
-  const folder = await db.noteFolder.findUnique({ where: { id: folderId } });
+  const folder = await db.noteFolder.findFirst({
+    where: { id: folderId, userId },
+  });
   if (!folder)
     return { success: false as const, error: 'Pasta nao encontrada.' };
 
   const oldPath = folder.path;
   const descendants = await db.noteFolder.findMany({
-    where: { OR: [{ id: folder.id }, { path: { startsWith: `${oldPath}/` } }] },
+    where: {
+      userId,
+      OR: [{ id: folder.id }, { path: { startsWith: `${oldPath}/` } }],
+    },
     orderBy: { path: 'asc' },
   });
   const pathById = new Map<string, string>();
@@ -557,6 +600,7 @@ async function updateFolderPathCascade(
 
   const duplicatePaths = await db.noteFolder.findMany({
     where: {
+      userId,
       path: { in: Array.from(pathById.values()) },
       id: { notIn: descendants.map((item) => item.id) },
     },
@@ -570,6 +614,7 @@ async function updateFolderPathCascade(
 
   const notes = await db.note.findMany({
     where: {
+      userId,
       OR: [
         { folderPath: oldPath },
         { folderPath: { startsWith: `${oldPath}/` } },
@@ -579,6 +624,7 @@ async function updateFolderPathCascade(
   });
   const attachments = await db.noteAttachment.findMany({
     where: {
+      userId,
       OR: [
         { folderPath: oldPath },
         { folderPath: { startsWith: `${oldPath}/` } },
@@ -634,7 +680,7 @@ async function updateFolderPathCascade(
     }),
   ]);
 
-  await refreshAllLinkTargets();
+  await refreshAllLinkTargets(userId);
   revalidateNotes();
   return { success: true as const, data: { path: nextPath } };
 }
@@ -644,18 +690,23 @@ export async function createNoteFolder(input: {
   parentId?: string | null;
 }) {
   try {
+    const user = await requireUser();
     const name = normalizeFolderName(input.name);
     if (!isValidFolderName(name))
       return { success: false, error: 'Informe um nome de pasta valido.' };
 
     const parent = input.parentId
-      ? await db.noteFolder.findUnique({ where: { id: input.parentId } })
+      ? await db.noteFolder.findFirst({
+          where: { id: input.parentId, userId: user.id },
+        })
       : null;
     if (input.parentId && !parent)
       return { success: false, error: 'Pasta pai nao encontrada.' };
 
     const path = joinFolderPath(parent?.path, name);
-    const duplicate = await db.noteFolder.findUnique({ where: { path } });
+    const duplicate = await db.noteFolder.findUnique({
+      where: { userId_path: { userId: user.id, path } },
+    });
     if (duplicate)
       return {
         success: false,
@@ -664,10 +715,11 @@ export async function createNoteFolder(input: {
 
     const folder = await db.noteFolder.create({
       data: {
+        userId: user.id,
         name,
         path,
         parentId: parent?.id || null,
-        position: await nextFolderPosition(parent?.id || null),
+        position: await nextFolderPosition(user.id, parent?.id || null),
       },
     });
 
@@ -681,12 +733,13 @@ export async function createNoteFolder(input: {
 
 export async function renameNoteFolder(id: string, nameInput: string) {
   try {
+    const user = await requireUser();
     const name = normalizeFolderName(nameInput);
     if (!isValidFolderName(name))
       return { success: false, error: 'Informe um nome de pasta valido.' };
 
-    const folder = await db.noteFolder.findUnique({
-      where: { id },
+    const folder = await db.noteFolder.findFirst({
+      where: { id, userId: user.id },
       include: { parent: true },
     });
     if (!folder) return { success: false, error: 'Pasta nao encontrada.' };
@@ -695,7 +748,12 @@ export async function renameNoteFolder(id: string, nameInput: string) {
     if (nextPath === folder.path)
       return { success: true, data: { path: folder.path } };
 
-    return updateFolderPathCascade(folder.id, nextPath, folder.parentId);
+    return updateFolderPathCascade(
+      user.id,
+      folder.id,
+      nextPath,
+      folder.parentId
+    );
   } catch (error) {
     console.error('Error renaming note folder:', error);
     return { success: false, error: 'Nao foi possivel renomear a pasta.' };
@@ -704,7 +762,10 @@ export async function renameNoteFolder(id: string, nameInput: string) {
 
 export async function moveNoteFolder(id: string, parentId: string | null) {
   try {
-    const folder = await db.noteFolder.findUnique({ where: { id } });
+    const user = await requireUser();
+    const folder = await db.noteFolder.findFirst({
+      where: { id, userId: user.id },
+    });
     if (!folder) return { success: false, error: 'Pasta nao encontrada.' };
     if (parentId === id)
       return {
@@ -715,7 +776,9 @@ export async function moveNoteFolder(id: string, parentId: string | null) {
       return { success: true, data: { path: folder.path } };
 
     const parent = parentId
-      ? await db.noteFolder.findUnique({ where: { id: parentId } })
+      ? await db.noteFolder.findFirst({
+          where: { id: parentId, userId: user.id },
+        })
       : null;
     if (parentId && !parent)
       return { success: false, error: 'Pasta destino nao encontrada.' };
@@ -730,7 +793,12 @@ export async function moveNoteFolder(id: string, parentId: string | null) {
     }
 
     const nextPath = joinFolderPath(parent?.path, folder.name);
-    return updateFolderPathCascade(folder.id, nextPath, parent?.id || null);
+    return updateFolderPathCascade(
+      user.id,
+      folder.id,
+      nextPath,
+      parent?.id || null
+    );
   } catch (error) {
     console.error('Error moving note folder:', error);
     return { success: false, error: 'Nao foi possivel mover a pasta.' };
@@ -739,8 +807,9 @@ export async function moveNoteFolder(id: string, parentId: string | null) {
 
 export async function deleteNoteFolder(id: string, mode?: DeleteFolderMode) {
   try {
-    const folder = await db.noteFolder.findUnique({
-      where: { id },
+    const user = await requireUser();
+    const folder = await db.noteFolder.findFirst({
+      where: { id, userId: user.id },
       include: {
         parent: true,
         children: true,
@@ -750,10 +819,14 @@ export async function deleteNoteFolder(id: string, mode?: DeleteFolderMode) {
     if (!folder) return { success: false, error: 'Pasta nao encontrada.' };
 
     const descendantCount = await db.noteFolder.count({
-      where: { path: { startsWith: `${folder.path}/` } },
+      where: {
+        userId: user.id,
+        path: { startsWith: `${folder.path}/` },
+      },
     });
     const nestedNoteCount = await db.note.count({
       where: {
+        userId: user.id,
         OR: [
           { folderPath: folder.path },
           { folderPath: { startsWith: `${folder.path}/` } },
@@ -779,17 +852,19 @@ export async function deleteNoteFolder(id: string, mode?: DeleteFolderMode) {
     if (mode === 'unfiled') {
       const affectedFolders = await db.noteFolder.findMany({
         where: {
+          userId: user.id,
           OR: [{ id: folder.id }, { path: { startsWith: `${folder.path}/` } }],
         },
         select: { id: true },
       });
       const affectedIds = affectedFolders.map((item) => item.id);
       const notes = await db.note.findMany({
-        where: { folderId: { in: affectedIds } },
+        where: { userId: user.id, folderId: { in: affectedIds } },
         select: { id: true, fileName: true },
       });
       const attachments = await db.noteAttachment.findMany({
         where: {
+          userId: user.id,
           OR: [
             { folderPath: folder.path },
             { folderPath: { startsWith: `${folder.path}/` } },
@@ -827,15 +902,15 @@ export async function deleteNoteFolder(id: string, mode?: DeleteFolderMode) {
     } else if (mode === 'parent') {
       const parentPath = folder.parent?.path || null;
       const childFolders = await db.noteFolder.findMany({
-        where: { parentId: folder.id },
+        where: { userId: user.id, parentId: folder.id },
         select: { id: true, name: true },
       });
       const notes = await db.note.findMany({
-        where: { folderPath: folder.path },
+        where: { userId: user.id, folderPath: folder.path },
         select: { id: true, fileName: true },
       });
       const attachments = await db.noteAttachment.findMany({
-        where: { folderPath: folder.path },
+        where: { userId: user.id, folderPath: folder.path },
         select: { id: true, fileName: true },
       });
 
@@ -874,6 +949,7 @@ export async function deleteNoteFolder(id: string, mode?: DeleteFolderMode) {
 
       for (const child of childFolders) {
         await updateFolderPathCascade(
+          user.id,
           child.id,
           joinFolderPath(parentPath, child.name),
           folder.parentId
@@ -894,11 +970,16 @@ export async function moveNoteToFolder(
   folderId: string | null
 ) {
   try {
-    const note = await db.note.findUnique({ where: { id: noteId } });
+    const user = await requireUser();
+    const note = await db.note.findFirst({
+      where: { id: noteId, userId: user.id },
+    });
     if (!note) return { success: false, error: 'Nota nao encontrada.' };
 
     const folder = folderId
-      ? await db.noteFolder.findUnique({ where: { id: folderId } })
+      ? await db.noteFolder.findFirst({
+          where: { id: folderId, userId: user.id },
+        })
       : null;
     if (folderId && !folder)
       return { success: false, error: 'Pasta destino nao encontrada.' };
@@ -911,12 +992,12 @@ export async function moveNoteToFolder(
         folderPath,
         folderName: folderNameFromPath(folderPath),
         filePath: updateFilePath(folderPath, note.fileName),
-        position: await nextNotePosition(folder?.id || null),
+        position: await nextNotePosition(user.id, folder?.id || null),
       },
       include: noteInclude,
     });
 
-    await refreshAllLinkTargets();
+    await refreshAllLinkTargets(user.id);
     revalidateNotes();
     return { success: true, data: { note: updated } };
   } catch (error) {
@@ -927,6 +1008,15 @@ export async function moveNoteToFolder(
 
 export async function reorderNoteFolders(folderIds: string[]) {
   try {
+    const user = await requireUser();
+    const ids = Array.from(new Set(folderIds));
+    const ownedCount = await db.noteFolder.count({
+      where: { id: { in: ids }, userId: user.id },
+    });
+    if (ownedCount !== ids.length) {
+      return { success: false, error: 'Pasta nao encontrada.' };
+    }
+
     await db.$transaction(
       folderIds.map((id, position) =>
         db.noteFolder.update({ where: { id }, data: { position } })
@@ -942,6 +1032,15 @@ export async function reorderNoteFolders(folderIds: string[]) {
 
 export async function reorderNotes(noteIds: string[]) {
   try {
+    const user = await requireUser();
+    const ids = Array.from(new Set(noteIds));
+    const ownedCount = await db.note.count({
+      where: { id: { in: ids }, userId: user.id },
+    });
+    if (ownedCount !== ids.length) {
+      return { success: false, error: 'Nota nao encontrada.' };
+    }
+
     await db.$transaction(
       noteIds.map((id, position) =>
         db.note.update({ where: { id }, data: { position } })
@@ -959,7 +1058,9 @@ export async function getProjectsForNotes(): Promise<
   ActionResult<{ id: string; title: string }[]>
 > {
   try {
+    const user = await requireUser();
     const projects = await db.project.findMany({
+      where: { userId: user.id },
       orderBy: [{ position: 'asc' }, { title: 'asc' }],
       select: { id: true, title: true },
     });
@@ -974,8 +1075,10 @@ export async function getNoteTags(): Promise<
   ActionResult<{ name: string; slug: string; count: number }[]>
 > {
   try {
+    const user = await requireUser();
     const grouped = await db.noteTag.groupBy({
       by: ['slug', 'name'],
+      where: { note: { userId: user.id } },
       _count: { slug: true },
       orderBy: { _count: { slug: 'desc' } },
     });
@@ -996,10 +1099,11 @@ export async function getNoteTags(): Promise<
 
 export async function getNotes(filters: NoteFilters = {}) {
   try {
-    await syncFoldersFromImportedNotes();
+    const user = await requireUser();
+    await syncFoldersFromImportedNotesForUser(user.id);
 
     const search = filters.search?.trim();
-    const where: Prisma.NoteWhereInput = {};
+    const where: Prisma.NoteWhereInput = { userId: user.id };
 
     if (filters.visibility && filters.visibility !== 'ALL') {
       where.visibility = filters.visibility;
@@ -1064,25 +1168,37 @@ export async function getNotes(filters: NoteFilters = {}) {
       unfiledCount,
       linkableNotes,
     ] = await Promise.all([
-      db.note.groupBy({ by: ['status'], _count: { status: true } }),
-      db.note.groupBy({ by: ['visibility'], _count: { visibility: true } }),
+      db.note.groupBy({
+        by: ['status'],
+        where: { userId: user.id },
+        _count: { status: true },
+      }),
+      db.note.groupBy({
+        by: ['visibility'],
+        where: { userId: user.id },
+        _count: { visibility: true },
+      }),
       db.note.count({
-        where: { isFavorite: true, status: { not: 'ARCHIVED' } },
+        where: {
+          userId: user.id,
+          isFavorite: true,
+          status: { not: 'ARCHIVED' },
+        },
       }),
       db.note.findMany({
-        where: { status: { not: 'ARCHIVED' } },
+        where: { userId: user.id, status: { not: 'ARCHIVED' } },
         take: 5,
         orderBy: { updatedAt: 'desc' },
         select: { id: true, title: true, slug: true, updatedAt: true },
       }),
       db.note.findMany({
-        where: { status: { not: 'ARCHIVED' } },
+        where: { userId: user.id, status: { not: 'ARCHIVED' } },
         take: 5,
         orderBy: [{ viewCount: 'desc' }, { updatedAt: 'desc' }],
         select: { id: true, title: true, slug: true, viewCount: true },
       }),
       db.noteFolder.findMany({
-        where: { deletedAt: null },
+        where: { userId: user.id, deletedAt: null },
         orderBy: [{ parentId: 'asc' }, { position: 'asc' }, { name: 'asc' }],
         select: {
           id: true,
@@ -1093,6 +1209,7 @@ export async function getNotes(filters: NoteFilters = {}) {
         },
       }),
       db.noteAttachment.findMany({
+        where: { userId: user.id },
         orderBy: { filePath: 'asc' },
         select: {
           id: true,
@@ -1104,10 +1221,14 @@ export async function getNotes(filters: NoteFilters = {}) {
         },
       }),
       db.note.count({
-        where: { folderPath: null, status: { not: 'ARCHIVED' } },
+        where: {
+          userId: user.id,
+          folderPath: null,
+          status: { not: 'ARCHIVED' },
+        },
       }),
       db.note.findMany({
-        where: { status: { not: 'ARCHIVED' } },
+        where: { userId: user.id, status: { not: 'ARCHIVED' } },
         orderBy: { title: 'asc' },
         select: {
           id: true,
@@ -1122,11 +1243,15 @@ export async function getNotes(filters: NoteFilters = {}) {
     const [folderCounts, trashedFolders, trashFolderCount] = await Promise.all([
       db.note.groupBy({
         by: ['folderId'],
-        where: { folderId: { not: null }, status: { not: 'ARCHIVED' } },
+        where: {
+          userId: user.id,
+          folderId: { not: null },
+          status: { not: 'ARCHIVED' },
+        },
         _count: { _all: true },
       }),
       db.noteFolder.findMany({
-        where: { deletedAt: { not: null } },
+        where: { userId: user.id, deletedAt: { not: null } },
         orderBy: [{ trashedAt: 'desc' }, { name: 'asc' }],
         select: {
           id: true,
@@ -1140,7 +1265,9 @@ export async function getNotes(filters: NoteFilters = {}) {
           parentIdBeforeTrash: true,
         },
       }),
-      db.noteFolder.count({ where: { deletedAt: { not: null } } }),
+      db.noteFolder.count({
+        where: { userId: user.id, deletedAt: { not: null } },
+      }),
     ]);
     const countByFolderId = new Map(
       folderCounts
@@ -1154,7 +1281,7 @@ export async function getNotes(filters: NoteFilters = {}) {
         notes,
         stats: {
           total: await db.note.count({
-            where: { status: { not: 'ARCHIVED' } },
+            where: { userId: user.id, status: { not: 'ARCHIVED' } },
           }),
           favorites: favoriteCount,
           byStatus: Object.fromEntries(
@@ -1207,8 +1334,12 @@ export async function getNote(
   options: { incrementView?: boolean } = {}
 ) {
   try {
+    const user = await requireUser();
     const existing = await db.note.findFirst({
-      where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
+      where: {
+        userId: user.id,
+        OR: [{ id: idOrSlug }, { slug: idOrSlug }],
+      },
       select: { id: true },
     });
 
@@ -1235,6 +1366,7 @@ export async function getNote(
     const related = tagSlugs.length
       ? await db.note.findMany({
           where: {
+            userId: user.id,
             id: { not: note.id },
             tags: { some: { slug: { in: tagSlugs } } },
           },
@@ -1259,16 +1391,19 @@ export async function getNote(
 
 export async function createNote(input: NoteFormInput) {
   try {
+    const user = await requireUser();
     const title = input.title.trim();
     if (!title) return { success: false, error: 'Informe um titulo.' };
 
     const content = input.content || '';
-    const slug = await createUniqueSlug(title, input.slug);
+    const slug = await createUniqueSlug(user.id, title, input.slug);
     const tags = extractNoteTags(content, input.tags);
     const folder = input.folderId
-      ? await db.noteFolder.findUnique({ where: { id: input.folderId } })
+      ? await db.noteFolder.findFirst({
+          where: { id: input.folderId, userId: user.id },
+        })
       : input.folderPath
-        ? await ensureNoteFolderPath(input.folderPath)
+        ? await ensureNoteFolderPath(user.id, input.folderPath)
         : null;
 
     if (input.folderId && !folder) {
@@ -1278,9 +1413,11 @@ export async function createNote(input: NoteFormInput) {
     const folderPath = folder?.path || input.folderPath || null;
     const fileName = `${slug}.md`;
     const filePath = updateFilePath(folderPath, fileName);
+    const projectId = await getOwnedProjectId(user.id, input.projectId);
 
     const note = await db.note.create({
       data: {
+        userId: user.id,
         title,
         slug,
         content,
@@ -1289,20 +1426,20 @@ export async function createNote(input: NoteFormInput) {
           ? input.visibility
           : 'PRIVATE',
         status: isNoteStatus(input.status) ? input.status : 'DRAFT',
-        projectId: input.projectId || null,
+        projectId,
         folderId: folder?.id || null,
         folderPath,
         folderName: folderNameFromPath(folderPath) || input.folderName || null,
         fileName,
         filePath,
         extension: 'md',
-        position: await nextNotePosition(folder?.id || null),
+        position: await nextNotePosition(user.id, folder?.id || null),
       },
     });
 
-    await syncNoteRelations(note.id, content, tags);
-    await syncNoteTasks(note.id, content, note.projectId);
-    await refreshAllLinkTargets();
+    await syncNoteRelations(user.id, note.id, content, tags);
+    await syncNoteTasks(user.id, note.id, content, note.projectId);
+    await refreshAllLinkTargets(user.id);
 
     revalidateNotes();
     return getNote(note.id);
@@ -1314,13 +1451,25 @@ export async function createNote(input: NoteFormInput) {
 
 export async function updateNote(id: string, input: Partial<NoteFormInput>) {
   try {
-    const existing = await db.note.findUnique({ where: { id } });
+    const user = await requireUser();
+    const existing = await db.note.findFirst({
+      where: { id, userId: user.id },
+    });
     if (!existing) return { success: false, error: 'Nota nao encontrada.' };
 
     const title = input.title?.trim() || existing.title;
     const content = input.content ?? existing.content;
-    const slug = await createUniqueSlug(title, input.slug || existing.slug, id);
+    const slug = await createUniqueSlug(
+      user.id,
+      title,
+      input.slug || existing.slug,
+      id
+    );
     const tags = extractNoteTags(content, input.tags);
+    const projectId =
+      input.projectId === undefined
+        ? existing.projectId
+        : await getOwnedProjectId(user.id, input.projectId);
 
     const note = await db.note.update({
       where: { id },
@@ -1336,17 +1485,14 @@ export async function updateNote(id: string, input: Partial<NoteFormInput>) {
           ? input.visibility
           : existing.visibility,
         status: isNoteStatus(input.status) ? input.status : existing.status,
-        projectId:
-          input.projectId === undefined
-            ? existing.projectId
-            : input.projectId || null,
+        projectId,
       },
     });
 
-    await syncNoteRelations(note.id, content, tags);
-    await syncNoteTasks(note.id, content, note.projectId);
+    await syncNoteRelations(user.id, note.id, content, tags);
+    await syncNoteTasks(user.id, note.id, content, note.projectId);
     if (existing.title !== note.title || existing.slug !== note.slug) {
-      await refreshAllLinkTargets();
+      await refreshAllLinkTargets(user.id);
     }
 
     revalidateNotes();
@@ -1359,13 +1505,16 @@ export async function updateNote(id: string, input: Partial<NoteFormInput>) {
 
 export async function renameNote(id: string, titleInput: string) {
   try {
+    const user = await requireUser();
     const title = titleInput.trim();
     if (!title) return { success: false, error: 'Informe um titulo.' };
 
-    const existing = await db.note.findUnique({ where: { id } });
+    const existing = await db.note.findFirst({
+      where: { id, userId: user.id },
+    });
     if (!existing) return { success: false, error: 'Nota nao encontrada.' };
 
-    const slug = await createUniqueSlug(title, slugifyNote(title), id);
+    const slug = await createUniqueSlug(user.id, title, slugifyNote(title), id);
     const data: Prisma.NoteUpdateInput = {
       title,
       slug,
@@ -1382,7 +1531,7 @@ export async function renameNote(id: string, titleInput: string) {
 
       if (filePath) {
         const duplicate = await db.note.findUnique({
-          where: { filePath },
+          where: { userId_filePath: { userId: user.id, filePath } },
           select: { id: true },
         });
         if (duplicate && duplicate.id !== id) {
@@ -1404,7 +1553,7 @@ export async function renameNote(id: string, titleInput: string) {
       include: noteInclude,
     });
 
-    await refreshAllLinkTargets();
+    await refreshAllLinkTargets(user.id);
 
     revalidateNotes();
     return { success: true, data: { note } };
@@ -1416,8 +1565,9 @@ export async function renameNote(id: string, titleInput: string) {
 
 export async function moveNoteToTrash(id: string) {
   try {
-    const existing = await db.note.findUnique({
-      where: { id },
+    const user = await requireUser();
+    const existing = await db.note.findFirst({
+      where: { id, userId: user.id },
       select: { id: true, status: true },
     });
     if (!existing) return { success: false, error: 'Nota nao encontrada.' };
@@ -1446,7 +1596,10 @@ export async function moveNoteToTrash(id: string) {
 
 export async function moveNoteFolderToTrash(id: string) {
   try {
-    const folder = await db.noteFolder.findUnique({ where: { id } });
+    const user = await requireUser();
+    const folder = await db.noteFolder.findFirst({
+      where: { id, userId: user.id },
+    });
     if (!folder) return { success: false, error: 'Pasta nao encontrada.' };
     if (folder.deletedAt) {
       return { success: true, data: { folderId: id, noteCount: 0 } };
@@ -1455,6 +1608,7 @@ export async function moveNoteFolderToTrash(id: string) {
     const trashedAt = new Date();
     const descendants = await db.noteFolder.findMany({
       where: {
+        userId: user.id,
         OR: [{ id: folder.id }, { path: { startsWith: `${folder.path}/` } }],
       },
       orderBy: { path: 'asc' },
@@ -1462,6 +1616,7 @@ export async function moveNoteFolderToTrash(id: string) {
     const folderIds = descendants.map((item) => item.id);
     const notes = await db.note.findMany({
       where: {
+        userId: user.id,
         OR: [
           { folderPath: folder.path },
           { folderPath: { startsWith: `${folder.path}/` } },
@@ -1511,16 +1666,17 @@ export async function moveNoteFolderToTrash(id: string) {
   }
 }
 
-async function restoreFolderTree(folderIds: string[]) {
+async function restoreFolderTree(userId: string, folderIds: string[]) {
   if (!folderIds.length) return [];
   const baseFolders = await db.noteFolder.findMany({
-    where: { id: { in: folderIds }, deletedAt: { not: null } },
+    where: { userId, id: { in: folderIds }, deletedAt: { not: null } },
     orderBy: { pathBeforeTrash: 'asc' },
   });
   if (!baseFolders.length) return [];
 
   const selected = await db.noteFolder.findMany({
     where: {
+      userId,
       deletedAt: { not: null },
       OR: baseFolders.flatMap((folder) => {
         const path = originalFolderPath(folder);
@@ -1545,8 +1701,8 @@ async function restoreFolderTree(folderIds: string[]) {
   for (const root of roots) {
     const originalRootPath = originalFolderPath(root);
     const originalParent = root.parentIdBeforeTrash
-      ? await db.noteFolder.findUnique({
-          where: { id: root.parentIdBeforeTrash },
+      ? await db.noteFolder.findFirst({
+          where: { id: root.parentIdBeforeTrash, userId },
           select: { id: true, path: true, deletedAt: true },
         })
       : null;
@@ -1561,6 +1717,7 @@ async function restoreFolderTree(folderIds: string[]) {
     while (true) {
       const conflict = await db.noteFolder.findFirst({
         where: {
+          userId,
           path: nextRootPath,
           deletedAt: null,
           id: { not: root.id },
@@ -1620,12 +1777,17 @@ async function restoreFolderTree(folderIds: string[]) {
 
 export async function restoreTrashItems(input: TrashSelectionInput = {}) {
   try {
+    const user = await requireUser();
     const noteIds = Array.from(new Set(input.noteIds || []));
     const folderIds = Array.from(new Set(input.folderIds || []));
     const folderPaths = folderIds.length
       ? (
           await db.noteFolder.findMany({
-            where: { id: { in: folderIds }, deletedAt: { not: null } },
+            where: {
+              userId: user.id,
+              id: { in: folderIds },
+              deletedAt: { not: null },
+            },
             select: { path: true, pathBeforeTrash: true },
           })
         ).map((folder) => originalFolderPath(folder))
@@ -1634,6 +1796,7 @@ export async function restoreTrashItems(input: TrashSelectionInput = {}) {
       ? (
           await db.note.findMany({
             where: {
+              userId: user.id,
               status: 'ARCHIVED',
               OR: folderPaths.flatMap((path) => [
                 { folderPath: path },
@@ -1645,11 +1808,15 @@ export async function restoreTrashItems(input: TrashSelectionInput = {}) {
         ).map((note) => note.id)
       : [];
     const allNoteIds = Array.from(new Set([...noteIds, ...noteIdsFromFolders]));
-    const restoredFolders = await restoreFolderTree(folderIds);
+    const restoredFolders = await restoreFolderTree(user.id, folderIds);
 
     const notes = allNoteIds.length
       ? await db.note.findMany({
-          where: { id: { in: allNoteIds }, status: 'ARCHIVED' },
+          where: {
+            userId: user.id,
+            id: { in: allNoteIds },
+            status: 'ARCHIVED',
+          },
           select: {
             id: true,
             statusBeforeTrash: true,
@@ -1668,7 +1835,11 @@ export async function restoreTrashItems(input: TrashSelectionInput = {}) {
       ? new Map(
           (
             await db.noteFolder.findMany({
-              where: { id: { in: candidateFolderIds }, deletedAt: null },
+              where: {
+                userId: user.id,
+                id: { in: candidateFolderIds },
+                deletedAt: null,
+              },
               select: { id: true, path: true, name: true },
             })
           ).map((folder) => [folder.id, folder])
@@ -1694,7 +1865,7 @@ export async function restoreTrashItems(input: TrashSelectionInput = {}) {
       })
     );
 
-    await refreshAllLinkTargets();
+    await refreshAllLinkTargets(user.id);
     revalidateNotes();
     return {
       success: true,
@@ -1711,13 +1882,14 @@ export async function restoreTrashItems(input: TrashSelectionInput = {}) {
 
 export async function restoreAllTrash() {
   try {
+    const user = await requireUser();
     const [notes, folders] = await Promise.all([
       db.note.findMany({
-        where: { status: 'ARCHIVED' },
+        where: { userId: user.id, status: 'ARCHIVED' },
         select: { id: true },
       }),
       db.noteFolder.findMany({
-        where: { deletedAt: { not: null } },
+        where: { userId: user.id, deletedAt: { not: null } },
         select: { id: true },
       }),
     ]);
@@ -1735,11 +1907,16 @@ export async function deleteTrashItemsPermanently(
   input: TrashSelectionInput = {}
 ) {
   try {
+    const user = await requireUser();
     const noteIds = Array.from(new Set(input.noteIds || []));
     const selectedFolderIds = Array.from(new Set(input.folderIds || []));
     const selectedFolders = selectedFolderIds.length
       ? await db.noteFolder.findMany({
-          where: { id: { in: selectedFolderIds }, deletedAt: { not: null } },
+          where: {
+            userId: user.id,
+            id: { in: selectedFolderIds },
+            deletedAt: { not: null },
+          },
           select: { id: true, pathBeforeTrash: true, path: true },
         })
       : [];
@@ -1757,7 +1934,11 @@ export async function deleteTrashItemsPermanently(
         : { id: { in: [] as string[] } };
     const folders = selectedFolders.length
       ? await db.noteFolder.findMany({
-          where: { deletedAt: { not: null }, ...folderWhere },
+          where: {
+            userId: user.id,
+            deletedAt: { not: null },
+            ...folderWhere,
+          },
           select: { id: true, pathBeforeTrash: true },
         })
       : [];
@@ -1769,6 +1950,7 @@ export async function deleteTrashItemsPermanently(
       ? (
           await db.note.findMany({
             where: {
+              userId: user.id,
               status: 'ARCHIVED',
               OR: folderPaths.flatMap((path) => [
                 { folderPath: path },
@@ -1782,11 +1964,15 @@ export async function deleteTrashItemsPermanently(
     const allNoteIds = Array.from(new Set([...noteIds, ...noteIdsFromFolders]));
 
     await db.$transaction([
-      db.note.deleteMany({ where: { id: { in: allNoteIds } } }),
-      db.noteFolder.deleteMany({ where: { id: { in: folderIds } } }),
+      db.note.deleteMany({
+        where: { userId: user.id, id: { in: allNoteIds } },
+      }),
+      db.noteFolder.deleteMany({
+        where: { userId: user.id, id: { in: folderIds } },
+      }),
     ]);
 
-    await refreshAllLinkTargets();
+    await refreshAllLinkTargets(user.id);
     revalidateNotes();
     return {
       success: true,
@@ -1806,10 +1992,14 @@ export async function deleteTrashItemsPermanently(
 
 export async function emptyTrash() {
   try {
+    const user = await requireUser();
     const [notes, folders] = await Promise.all([
-      db.note.findMany({ where: { status: 'ARCHIVED' }, select: { id: true } }),
+      db.note.findMany({
+        where: { userId: user.id, status: 'ARCHIVED' },
+        select: { id: true },
+      }),
       db.noteFolder.findMany({
-        where: { deletedAt: { not: null } },
+        where: { userId: user.id, deletedAt: { not: null } },
         select: { id: true },
       }),
     ]);
@@ -1825,8 +2015,14 @@ export async function emptyTrash() {
 
 export async function deleteNote(id: string) {
   try {
-    await db.note.delete({ where: { id } });
-    await refreshAllLinkTargets();
+    const user = await requireUser();
+    const note = await db.note.findFirst({
+      where: { id, userId: user.id },
+      select: { id: true },
+    });
+    if (!note) return { success: false, error: 'Nota nao encontrada.' };
+    await db.note.delete({ where: { id: note.id } });
+    await refreshAllLinkTargets(user.id);
     revalidateNotes();
     return { success: true, data: { id } };
   } catch (error) {
@@ -1837,6 +2033,7 @@ export async function deleteNote(id: string) {
 
 export async function createNoteAttachment(input: NoteAttachmentInput) {
   try {
+    const user = await requireUser();
     const fileName = normalizeVaultFileBase(input.fileName);
     if (!fileName || isUnsafeVaultPath(fileName)) {
       return { success: false, error: 'Nome de arquivo invalido.' };
@@ -1856,11 +2053,13 @@ export async function createNoteAttachment(input: NoteAttachmentInput) {
     }
 
     const metadata = await createUniqueAttachmentPath(
+      user.id,
       fileName,
       input.folderPath || null
     );
     const attachment = await db.noteAttachment.create({
       data: {
+        userId: user.id,
         ...metadata,
         mimeType,
         size: input.size || null,
@@ -1878,8 +2077,9 @@ export async function createNoteAttachment(input: NoteAttachmentInput) {
 
 export async function toggleFavorite(id: string) {
   try {
-    const note = await db.note.findUnique({
-      where: { id },
+    const user = await requireUser();
+    const note = await db.note.findFirst({
+      where: { id, userId: user.id },
       select: { isFavorite: true },
     });
     if (!note) return { success: false, error: 'Nota nao encontrada.' };
@@ -1900,6 +2100,7 @@ export async function toggleFavorite(id: string) {
 
 export async function importVault(files: VaultImportFile[]) {
   try {
+    const user = await requireUser();
     const usableFiles = files.filter(
       (file) => !isUnsafeVaultPath(file.path) && !isIgnoredVaultPath(file.path)
     );
@@ -1923,6 +2124,7 @@ export async function importVault(files: VaultImportFile[]) {
     const existingAttachments = attachmentFiles.length
       ? await db.noteAttachment.findMany({
           where: {
+            userId: user.id,
             filePath: {
               in: attachmentFiles.map(
                 (file) => getVaultFileMetadata(file.path).filePath
@@ -1952,8 +2154,14 @@ export async function importVault(files: VaultImportFile[]) {
         else otherAttachmentsImported += 1;
 
         return db.noteAttachment.upsert({
-          where: { filePath: metadata.filePath },
+          where: {
+            userId_filePath: {
+              userId: user.id,
+              filePath: metadata.filePath,
+            },
+          },
           create: {
+            userId: user.id,
             ...metadata,
             mimeType: file.mimeType || null,
             size: file.size || null,
@@ -1982,19 +2190,35 @@ export async function importVault(files: VaultImportFile[]) {
 
     for (const file of markdownFiles) {
       const metadata = getVaultFileMetadata(file.path);
-      const folder = await ensureNoteFolderPath(metadata.folderPath);
+      const folder = await ensureNoteFolderPath(user.id, metadata.folderPath);
       const content = file.content || '';
       const title = inferNoteTitleFromPath(metadata.fileName);
       const tags = extractNoteTags(content);
       const existing = await db.note.findUnique({
-        where: { filePath: metadata.filePath },
+        where: {
+          userId_filePath: {
+            userId: user.id,
+            filePath: metadata.filePath,
+          },
+        },
         select: { id: true, slug: true },
       });
-      const slug = await createUniqueSlug(title, existing?.slug, existing?.id);
+      const slug = await createUniqueSlug(
+        user.id,
+        title,
+        existing?.slug,
+        existing?.id
+      );
 
       const note = await db.note.upsert({
-        where: { filePath: metadata.filePath },
+        where: {
+          userId_filePath: {
+            userId: user.id,
+            filePath: metadata.filePath,
+          },
+        },
         create: {
+          userId: user.id,
           title,
           slug,
           content,
@@ -2016,8 +2240,8 @@ export async function importVault(files: VaultImportFile[]) {
         },
       });
 
-      await syncNoteRelations(note.id, content, tags);
-      await syncNoteTasks(note.id, content, note.projectId);
+      await syncNoteRelations(user.id, note.id, content, tags);
+      await syncNoteTasks(user.id, note.id, content, note.projectId);
       results.push({
         id: note.id,
         title: note.title,
@@ -2026,7 +2250,7 @@ export async function importVault(files: VaultImportFile[]) {
       });
     }
 
-    await refreshAllLinkTargets();
+    await refreshAllLinkTargets(user.id);
     revalidateNotes();
 
     return {

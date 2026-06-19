@@ -32,7 +32,6 @@ import {
   updateProject,
 } from '@/app/actions/project';
 
-const DEFAULT_LANDINGPAGE_ID = '3eb3839d-eb78-43ed-9eb7-8f39352d64bb';
 const FALLBACK_PROJECT_IMAGE = '/file.svg';
 
 const DEFAULT_CATEGORIES = [
@@ -92,7 +91,6 @@ const emptyDraft = (): ProjectDraft => ({
   isActive: true,
   status: 'in-progress',
   accentColor: 'from-gray-500/20 to-gray-600/20',
-  landingpageId: DEFAULT_LANDINGPAGE_ID,
 });
 
 function statusLabel(status: string) {
@@ -145,7 +143,7 @@ export default function Projects() {
   const loadProjects = async () => {
     try {
       setLoading(true);
-      const data = await getProjects(DEFAULT_LANDINGPAGE_ID);
+      const data = await getProjects();
       setProjects(data as ProjectWithCounts[]);
     } catch (error) {
       console.error('Error loading projects:', error);
@@ -1088,19 +1086,6 @@ function ProjectForm({
               }
               className="project-input"
               placeholder="from-gray-500/20 to-gray-600/20"
-            />
-          </Field>
-
-          <Field label="Landingpage ID">
-            <input
-              value={draft.landingpageId}
-              onChange={(event) =>
-                onSetDraft((current) => ({
-                  ...current,
-                  landingpageId: event.target.value,
-                }))
-              }
-              className="project-input"
             />
           </Field>
         </div>

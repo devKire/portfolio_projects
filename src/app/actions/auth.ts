@@ -1,98 +1,234 @@
-// app/actions/auth.ts
 'use server';
 
 import bcrypt from 'bcryptjs';
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
+import { Prisma } from '@prisma/client';
 
+import { DAILY_CHECKLIST_ITEMS } from '@/lib/daily-checklist-items';
+import {
+  createSession,
+  deleteCurrentSession,
+  getCurrentUser,
+} from '@/lib/auth/session';
+import {
+  normalizeEmail,
+  normalizeUsername,
+  validateEmail,
+  validatePassword,
+  validateUsername,
+} from '@/lib/auth/validation';
+import { DEFAULT_PORTFOLIO_CONTENT } from '@/lib/portfolio-content/defaults';
 import { db } from '@/lib/prisma';
 
-export async function loginAdmin(formData: FormData) {
+type AuthResult =
+  | {
+      success: true;
+      user: {
+        id: string;
+        name: string | null;
+        username: string;
+        email: string;
+      };
+    }
+  | { success: false; error: string };
+
+function toJson(value: unknown) {
+  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+}
+
+function publicUser(user: {
+  id: string;
+  name: string | null;
+  username: string;
+  email: string;
+}) {
+  return {
+    id: user.id,
+    name: user.name,
+    username: user.username,
+    email: user.email,
+  };
+}
+
+export async function loginUser(formData: FormData): Promise<AuthResult> {
   try {
-    const username = formData.get('username') as string;
-    const password = formData.get('password') as string;
+    const identifier = normalizeEmail(
+      String(formData.get('identifier') || formData.get('username') || '')
+    );
+    const password = String(formData.get('password') || '');
 
-    console.log('Login attempt for:', username);
-
-    // Verificar se existe algum admin
-    const adminCount = await db.admin.count();
-
-    // Se não houver admins, criar um padrão
-    if (adminCount === 0) {
-      console.log('No admin found, creating default...');
-      const hashedPassword = await bcrypt.hash('admin123', 10);
-      await db.admin.create({
-        data: {
-          username: 'admin',
-          password: hashedPassword,
-        },
-      });
+    if (!identifier || !password) {
+      return { success: false, error: 'Informe usuário/email e senha.' };
     }
 
-    // Buscar admin no banco
-    const admin = await db.admin.findUnique({
-      where: { username },
+    const user = await db.user.findFirst({
+      where: {
+        OR: [
+          { email: identifier },
+          { username: normalizeUsername(identifier) },
+        ],
+      },
+      select: {
+        id: true,
+        name: true,
+        username: true,
+        email: true,
+        passwordHash: true,
+      },
     });
 
-    if (!admin) {
-      console.log('Admin not found:', username);
-      return { success: false, error: 'Usuário ou senha inválidos' };
+    if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+      return { success: false, error: 'Credenciais inválidas.' };
     }
 
-    // Verificar senha
-    const isValid = await bcrypt.compare(password, admin.password);
-
-    if (!isValid) {
-      console.log('Invalid password for:', username);
-      return { success: false, error: 'Usuário ou senha inválidos' };
-    }
-
-    // Definir cookie de autenticação
-    const cookieStore = await cookies();
-    cookieStore.set({
-      name: 'admin_authenticated',
-      value: 'true',
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 60 * 60 * 24, // 24 horas
-      path: '/',
-    });
-
-    console.log('Login successful for:', username);
-    return { success: true };
+    await createSession(user.id);
+    return { success: true, user: publicUser(user) };
   } catch (error) {
     console.error('Login error:', error);
-    return {
-      success: false,
-      error: 'Erro interno do servidor. Tente novamente.',
-    };
+    return { success: false, error: 'Não foi possível entrar agora.' };
   }
 }
 
-export async function logoutAdmin() {
+export async function registerUser(formData: FormData): Promise<AuthResult> {
   try {
-    const cookieStore = await cookies();
-    cookieStore.delete('admin_authenticated');
+    const name = String(formData.get('name') || '').trim();
+    const username = normalizeUsername(String(formData.get('username') || ''));
+    const email = normalizeEmail(String(formData.get('email') || ''));
+    const password = String(formData.get('password') || '');
+    const passwordConfirmation = String(
+      formData.get('passwordConfirmation') || ''
+    );
 
-    console.log('Logout successful');
+    if (name.length < 2 || name.length > 80) {
+      return {
+        success: false,
+        error: 'Nome deve ter entre 2 e 80 caracteres.',
+      };
+    }
 
-    // Redirecionar para login
-    redirect('/admin');
+    const usernameError = validateUsername(username);
+    if (usernameError) return { success: false, error: usernameError };
+
+    const emailError = validateEmail(email);
+    if (emailError) return { success: false, error: emailError };
+
+    const passwordError = validatePassword(password);
+    if (passwordError) return { success: false, error: passwordError };
+
+    if (password !== passwordConfirmation) {
+      return { success: false, error: 'Confirmação de senha não confere.' };
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    const user = await db.$transaction(async (tx) => {
+      const createdUser = await tx.user.create({
+        data: {
+          name,
+          username,
+          email,
+          passwordHash,
+        },
+        select: {
+          id: true,
+          name: true,
+          username: true,
+          email: true,
+        },
+      });
+
+      const landingpage = await tx.landingPage.create({
+        data: {
+          userId: createdUser.id,
+          name,
+          slug: username,
+          description: `Portfólio de ${name}`,
+          avatarImageUrl: '',
+          coverImageUrl: '',
+        },
+      });
+
+      await Promise.all([
+        tx.contactInfo.create({
+          data: {
+            landingpageId: landingpage.id,
+            email,
+          },
+        }),
+        tx.portfolioContent.create({
+          data: {
+            landingpageId: landingpage.id,
+            hero: toJson(DEFAULT_PORTFOLIO_CONTENT.hero),
+            about: toJson(DEFAULT_PORTFOLIO_CONTENT.about),
+            services: toJson(DEFAULT_PORTFOLIO_CONTENT.services),
+            process: toJson(DEFAULT_PORTFOLIO_CONTENT.process),
+            contact: toJson(DEFAULT_PORTFOLIO_CONTENT.contact),
+            projects: toJson(DEFAULT_PORTFOLIO_CONTENT.projects),
+            settings: toJson(DEFAULT_PORTFOLIO_CONTENT.settings),
+          },
+        }),
+        tx.dailyChecklistItem.createMany({
+          data: DAILY_CHECKLIST_ITEMS.map((item) => ({
+            userId: createdUser.id,
+            slug: item.slug,
+            title: item.title,
+            description: item.description,
+            period: item.period,
+            timeRange: item.timeRange,
+            startTime: item.startTime,
+            endTime: item.endTime,
+            position: item.position,
+            isSacred: item.isSacred || false,
+          })),
+        }),
+      ]);
+
+      return createdUser;
+    });
+
+    await createSession(user.id);
+    return { success: true, user: publicUser(user) };
   } catch (error) {
-    console.error('Logout error:', error);
-    redirect('/admin');
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    ) {
+      const target = Array.isArray(error.meta?.target)
+        ? error.meta.target.join(',')
+        : String(error.meta?.target || '');
+
+      if (target.includes('username')) {
+        return { success: false, error: 'Username já cadastrado.' };
+      }
+      if (target.includes('email')) {
+        return { success: false, error: 'Email já cadastrado.' };
+      }
+      if (target.includes('slug')) {
+        return { success: false, error: 'Slug público indisponível.' };
+      }
+    }
+
+    console.error('Registration error:', error);
+    return { success: false, error: 'Não foi possível criar a conta.' };
   }
+}
+
+export async function logoutUser() {
+  await deleteCurrentSession();
+  return { success: true };
 }
 
 export async function checkAuth() {
-  try {
-    const cookieStore = await cookies();
-    const isAuthenticated = cookieStore.has('admin_authenticated');
+  const user = await getCurrentUser();
+  return {
+    authenticated: Boolean(user),
+    user: user ? publicUser(user) : null,
+  };
+}
 
-    return { authenticated: isAuthenticated };
-  } catch (error) {
-    console.error('Auth check error:', error);
-    return { authenticated: false };
-  }
+// Compatibility aliases while old imports are removed.
+export async function loginAdmin(formData: FormData) {
+  return loginUser(formData);
+}
+
+export async function logoutAdmin() {
+  return logoutUser();
 }

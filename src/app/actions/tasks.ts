@@ -11,6 +11,7 @@ import type {
 } from '@/types/tasks';
 import { updateMarkdownTaskStatus } from '@/lib/note-task-sync';
 import { mergeTaskTags } from '@/lib/task-tags';
+import { requireUser } from '@/lib/auth/session';
 
 // Types
 export interface CreateTaskInput {
@@ -50,7 +51,55 @@ export interface CreateSprintInput {
   status?: string;
 }
 
+async function validateTaskRelations(userId: string, data: TaskPatch) {
+  const [project, note, feature, sprint, parent] = await Promise.all([
+    data.projectId
+      ? db.project.findFirst({
+          where: { id: data.projectId, userId },
+          select: { id: true },
+        })
+      : null,
+    data.noteId
+      ? db.note.findFirst({
+          where: { id: data.noteId, userId },
+          select: { id: true },
+        })
+      : null,
+    data.featureId
+      ? db.feature.findFirst({
+          where: { id: data.featureId, project: { userId } },
+          select: { id: true, projectId: true },
+        })
+      : null,
+    data.sprintId
+      ? db.sprint.findFirst({
+          where: { id: data.sprintId, project: { userId } },
+          select: { id: true, projectId: true },
+        })
+      : null,
+    data.parentId
+      ? db.task.findFirst({
+          where: { id: data.parentId, userId },
+          select: { id: true },
+        })
+      : null,
+  ]);
+
+  if (data.projectId && !project) throw new Error('Project not found');
+  if (data.noteId && !note) throw new Error('Note not found');
+  if (data.featureId && !feature) throw new Error('Feature not found');
+  if (data.sprintId && !sprint) throw new Error('Sprint not found');
+  if (data.parentId && !parent) throw new Error('Parent task not found');
+  if (data.projectId && feature && feature.projectId !== data.projectId) {
+    throw new Error('Feature does not belong to project');
+  }
+  if (data.projectId && sprint && sprint.projectId !== data.projectId) {
+    throw new Error('Sprint does not belong to project');
+  }
+}
+
 async function createTaskActivityLog(data: {
+  userId: string;
   taskId?: string | null;
   type: string;
   message: string;
@@ -59,6 +108,7 @@ async function createTaskActivityLog(data: {
   try {
     await db.taskActivityLog.create({
       data: {
+        userId: data.userId,
         taskId: data.taskId || null,
         type: data.type,
         message: data.message,
@@ -71,14 +121,15 @@ async function createTaskActivityLog(data: {
 }
 
 async function syncTaskStatusToNote(task: {
+  userId: string;
   noteId?: string | null;
   noteTaskKey?: string | null;
   status?: string | null;
 }) {
   if (!task.noteId || !task.noteTaskKey || !task.status) return;
 
-  const note = await db.note.findUnique({
-    where: { id: task.noteId },
+  const note = await db.note.findFirst({
+    where: { id: task.noteId, userId: task.userId },
     select: { id: true, content: true },
   });
   if (!note) return;
@@ -99,7 +150,10 @@ async function syncTaskStatusToNote(task: {
 
 export async function createTask(data: CreateTaskInput) {
   try {
+    const user = await requireUser();
+    await validateTaskRelations(user.id, data);
     const createData: Prisma.TaskUncheckedCreateInput = {
+      userId: user.id,
       title: data.title,
       description: data.description,
       status: data.status || 'pending',
@@ -139,6 +193,7 @@ export async function createTask(data: CreateTaskInput) {
     });
 
     await createTaskActivityLog({
+      userId: user.id,
       taskId: task.id,
       type: 'task.created',
       message: `Task criada: ${task.title}`,
@@ -180,6 +235,7 @@ export async function createTasksBulk(inputs: BulkTaskInput[]) {
   }
 
   try {
+    const user = await requireUser();
     const projectIds = Array.from(
       new Set(
         inputs
@@ -191,7 +247,7 @@ export async function createTasksBulk(inputs: BulkTaskInput[]) {
     const existingProjectIds = new Set(
       (
         await db.project.findMany({
-          where: { id: { in: projectIds } },
+          where: { id: { in: projectIds }, userId: user.id },
           select: { id: true },
         })
       ).map((project) => project.id)
@@ -239,6 +295,7 @@ export async function createTasksBulk(inputs: BulkTaskInput[]) {
 
       for (const input of inputs) {
         const createData: Prisma.TaskUncheckedCreateInput = {
+          userId: user.id,
           title: input.title.trim(),
           description: input.description?.trim() || undefined,
           status: input.status || 'pending',
@@ -260,6 +317,7 @@ export async function createTasksBulk(inputs: BulkTaskInput[]) {
 
         await tx.taskActivityLog.create({
           data: {
+            userId: user.id,
             taskId: task.id,
             type: 'task.created',
             message: `Task criada: ${task.title}`,
@@ -324,6 +382,8 @@ export async function updateTask(id: string, data: TaskPatch) {
   }
 
   try {
+    const user = await requireUser();
+    await validateTaskRelations(user.id, data);
     const updateData: Prisma.TaskUncheckedUpdateInput = {};
 
     if (data.title !== undefined) updateData.title = data.title;
@@ -363,8 +423,8 @@ export async function updateTask(id: string, data: TaskPatch) {
     }
 
     // Verificar se a task existe antes de atualizar
-    const existingTask = await db.task.findUnique({
-      where: { id },
+    const existingTask = await db.task.findFirst({
+      where: { id, userId: user.id },
     });
 
     if (!existingTask) {
@@ -384,11 +444,12 @@ export async function updateTask(id: string, data: TaskPatch) {
     });
 
     if (data.status !== undefined) {
-      await syncTaskStatusToNote(task);
+      await syncTaskStatusToNote({ ...task, userId: user.id });
     }
 
     if (data.status !== undefined && data.status !== existingTask.status) {
       await createTaskActivityLog({
+        userId: user.id,
         taskId: task.id,
         type:
           data.status === 'completed'
@@ -434,8 +495,9 @@ export async function deleteTasksBulk(
   }
 
   try {
+    const user = await requireUser();
     const tasks = await db.task.findMany({
-      where: { id: { in: requestedIds } },
+      where: { id: { in: requestedIds }, userId: user.id },
       select: { id: true, title: true, status: true, projectId: true },
     });
     const existingIds = new Set(tasks.map((task) => task.id));
@@ -460,12 +522,12 @@ export async function deleteTasksBulk(
       });
 
       await tx.task.updateMany({
-        where: { parentId: { in: deletedIds } },
+        where: { userId: user.id, parentId: { in: deletedIds } },
         data: { parentId: null },
       });
 
       const deletion = await tx.task.deleteMany({
-        where: { id: { in: deletedIds } },
+        where: { id: { in: deletedIds }, userId: user.id },
       });
       if (deletion.count !== deletedIds.length) {
         throw new Error(
@@ -475,6 +537,7 @@ export async function deleteTasksBulk(
 
       await tx.taskActivityLog.createMany({
         data: tasks.map((task) => ({
+          userId: user.id,
           taskId: null,
           type: 'task.deleted',
           message: `Task deletada: ${task.title}`,
@@ -529,6 +592,15 @@ export async function updateTaskPositions(
   updates: { id: string; position: number }[]
 ) {
   try {
+    const user = await requireUser();
+    const ids = Array.from(new Set(updates.map((update) => update.id)));
+    const ownedCount = await db.task.count({
+      where: { id: { in: ids }, userId: user.id },
+    });
+    if (ownedCount !== ids.length) {
+      return { success: false, error: 'Task not found' };
+    }
+
     // Usa uma transaction para garantir que todas as atualizações sejam feitas atomicamente
     await db.$transaction(
       updates.map(({ id, position }) =>
@@ -549,9 +621,13 @@ export async function updateTaskPositions(
 // Project Actions - Buscar projetos do portfólio
 export async function getProjects(options: { includeInactive?: boolean } = {}) {
   try {
+    const user = await requireUser();
     // Buscar da tabela Project (portfólio)
     const projects = await db.project.findMany({
-      where: options.includeInactive ? undefined : { isActive: true },
+      where: {
+        userId: user.id,
+        ...(options.includeInactive ? {} : { isActive: true }),
+      },
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
@@ -573,7 +649,9 @@ export async function getProjects(options: { includeInactive?: boolean } = {}) {
 
 export async function getTaskTags() {
   try {
+    const user = await requireUser();
     const tasks = await db.task.findMany({
+      where: { userId: user.id },
       select: { tags: true },
     });
 
@@ -590,7 +668,8 @@ export async function getTaskTags() {
 // Feature Actions
 export async function getFeatures(projectId?: string) {
   try {
-    const where: any = {};
+    const user = await requireUser();
+    const where: Prisma.FeatureWhereInput = { project: { userId: user.id } };
     if (projectId && projectId.trim() !== '') {
       where.projectId = projectId;
     }
@@ -613,6 +692,13 @@ export async function getFeatures(projectId?: string) {
 
 export async function createFeature(data: CreateFeatureInput) {
   try {
+    const user = await requireUser();
+    const project = await db.project.findFirst({
+      where: { id: data.projectId, userId: user.id },
+      select: { id: true },
+    });
+    if (!project) return { success: false, error: 'Project not found' };
+
     const feature = await db.feature.create({
       data: {
         name: data.name,
@@ -639,6 +725,13 @@ export async function updateFeature(
   data: Partial<CreateFeatureInput>
 ) {
   try {
+    const user = await requireUser();
+    const existing = await db.feature.findFirst({
+      where: { id, project: { userId: user.id } },
+      select: { id: true },
+    });
+    if (!existing) return { success: false, error: 'Feature not found' };
+
     const feature = await db.feature.update({
       where: { id },
       data: {
@@ -658,7 +751,13 @@ export async function updateFeature(
 
 export async function deleteFeature(id: string) {
   try {
-    await db.feature.delete({ where: { id } });
+    const user = await requireUser();
+    const feature = await db.feature.findFirst({
+      where: { id, project: { userId: user.id } },
+      select: { id: true },
+    });
+    if (!feature) return { success: false, error: 'Feature not found' };
+    await db.feature.delete({ where: { id: feature.id } });
     revalidatePath('/admin/tasks');
     return { success: true };
   } catch (error) {
@@ -670,7 +769,8 @@ export async function deleteFeature(id: string) {
 // Sprint Actions
 export async function getSprints(projectId?: string) {
   try {
-    const where: any = {};
+    const user = await requireUser();
+    const where: Prisma.SprintWhereInput = { project: { userId: user.id } };
     if (projectId && projectId.trim() !== '') {
       where.projectId = projectId;
     }
@@ -693,6 +793,13 @@ export async function getSprints(projectId?: string) {
 
 export async function createSprint(data: CreateSprintInput) {
   try {
+    const user = await requireUser();
+    const project = await db.project.findFirst({
+      where: { id: data.projectId, userId: user.id },
+      select: { id: true },
+    });
+    if (!project) return { success: false, error: 'Project not found' };
+
     const sprint = await db.sprint.create({
       data: {
         name: data.name,
@@ -721,6 +828,13 @@ export async function updateSprint(
   data: Partial<CreateSprintInput>
 ) {
   try {
+    const user = await requireUser();
+    const existing = await db.sprint.findFirst({
+      where: { id, project: { userId: user.id } },
+      select: { id: true },
+    });
+    if (!existing) return { success: false, error: 'Sprint not found' };
+
     const sprint = await db.sprint.update({
       where: { id },
       data: {
@@ -742,7 +856,13 @@ export async function updateSprint(
 
 export async function deleteSprint(id: string) {
   try {
-    await db.sprint.delete({ where: { id } });
+    const user = await requireUser();
+    const sprint = await db.sprint.findFirst({
+      where: { id, project: { userId: user.id } },
+      select: { id: true },
+    });
+    if (!sprint) return { success: false, error: 'Sprint not found' };
+    await db.sprint.delete({ where: { id: sprint.id } });
     revalidatePath('/admin/tasks');
     return { success: true };
   } catch (error) {
@@ -754,11 +874,14 @@ export async function deleteSprint(id: string) {
 // Dashboard Stats
 export async function getTaskStats() {
   try {
+    const user = await requireUser();
     const [total, pending, inProgress, completed] = await Promise.all([
-      db.task.count(),
-      db.task.count({ where: { status: 'pending' } }),
-      db.task.count({ where: { status: 'in-progress' } }),
-      db.task.count({ where: { status: 'completed' } }),
+      db.task.count({ where: { userId: user.id } }),
+      db.task.count({ where: { userId: user.id, status: 'pending' } }),
+      db.task.count({
+        where: { userId: user.id, status: 'in-progress' },
+      }),
+      db.task.count({ where: { userId: user.id, status: 'completed' } }),
     ]);
 
     return {
@@ -784,7 +907,8 @@ export async function getTasksWithFilters(filters?: {
   limit?: number;
 }) {
   try {
-    const where: Prisma.TaskWhereInput = {};
+    const user = await requireUser();
+    const where: Prisma.TaskWhereInput = { userId: user.id };
 
     if (filters?.projectId) where.projectId = filters.projectId;
     if (filters?.sprintId) where.sprintId = filters.sprintId;
@@ -865,7 +989,8 @@ export async function getTasks(filters?: {
   search?: string;
 }) {
   try {
-    const where: any = {};
+    const user = await requireUser();
+    const where: Prisma.TaskWhereInput = { userId: user.id };
 
     if (filters?.projectId) where.projectId = filters.projectId;
     if (filters?.sprintId) where.sprintId = filters.sprintId;

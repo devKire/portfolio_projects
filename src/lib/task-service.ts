@@ -1,6 +1,7 @@
 // src/lib/task-service.ts
 import { db } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
+import { requireUser } from '@/lib/auth/session';
 
 export interface TaskFilters {
   projectId?: string;
@@ -29,7 +30,8 @@ export async function getFilteredTasks(
   limit = 20
 ) {
   try {
-    const where: Prisma.TaskWhereInput = {};
+    const user = await requireUser();
+    const where: Prisma.TaskWhereInput = { userId: user.id };
 
     // Filtros exatos
     if (filters.projectId) where.projectId = filters.projectId;
@@ -108,11 +110,14 @@ export type TaskStats = Awaited<ReturnType<typeof getTaskStats>>['data'];
 
 export async function getTaskStats() {
   try {
+    const user = await requireUser();
     const [total, pending, inProgress, completed] = await Promise.all([
-      db.task.count(),
-      db.task.count({ where: { status: 'pending' } }),
-      db.task.count({ where: { status: 'in-progress' } }),
-      db.task.count({ where: { status: 'completed' } }),
+      db.task.count({ where: { userId: user.id } }),
+      db.task.count({ where: { userId: user.id, status: 'pending' } }),
+      db.task.count({
+        where: { userId: user.id, status: 'in-progress' },
+      }),
+      db.task.count({ where: { userId: user.id, status: 'completed' } }),
     ]);
     return { success: true, data: { total, pending, inProgress, completed } };
   } catch (error) {
@@ -126,6 +131,15 @@ export async function updateTaskPosition(
   updates: { id: string; position: number }[]
 ) {
   try {
+    const user = await requireUser();
+    const ids = Array.from(new Set(updates.map((update) => update.id)));
+    const ownedCount = await db.task.count({
+      where: { id: { in: ids }, userId: user.id },
+    });
+    if (ownedCount !== ids.length) {
+      return { success: false, error: 'Task not found' };
+    }
+
     const updatePromises = updates.map((update) =>
       db.task.update({
         where: { id: update.id },
