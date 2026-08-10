@@ -14,6 +14,7 @@ import {
   Clock3,
   Command,
   Copy,
+  Download,
   Edit3,
   FileArchive,
   FileText,
@@ -91,6 +92,7 @@ import {
   type PreviewAttachment,
   type PreviewNote,
 } from './MarkdownPreview';
+import { toggleMarkdownTask } from './markdownPreviewUtils';
 import { useAutoSave, type SaveStatus } from './useAutoSave';
 import {
   WikiLinkAutocomplete,
@@ -1539,6 +1541,7 @@ export default function Notes() {
   const [cursorPos, setCursorPos] = useState(0);
   const [autoSaveStatus, setAutoSaveStatus] = useState<SaveStatus>('idle');
   const [importing, setImporting] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [selectedZip, setSelectedZip] = useState<File | null>(null);
   const [importSummary, setImportSummary] = useState<ImportSummary | null>(
     null
@@ -1587,6 +1590,23 @@ export default function Notes() {
   const previousOpenedNoteIdRef = useRef<string | null>(null);
   const [error, setError] = useState('');
   const debouncedSearch = useDebouncedValue(search);
+
+  const selectLibraryScope = useCallback((nextScope: LibraryScope) => {
+    setScope(nextScope);
+    setActiveFolder(undefined);
+    if (nextScope !== 'tags') setActiveTag('');
+    if (nextScope !== 'projects') setActiveProject('');
+  }, []);
+
+  const selectFolderScope = useCallback(
+    (folderPath: string | null | undefined) => {
+      setScope('all');
+      setActiveFolder(folderPath);
+      setActiveTag('');
+      setActiveProject('');
+    },
+    []
+  );
 
   useEffect(() => {
     if (!renamingNoteId) return;
@@ -2057,8 +2077,7 @@ export default function Notes() {
       const detail = result.data.note as NoteDetail;
       setSelectedNote(detail);
       setDraft(noteToDraft(detail));
-      setScope('all');
-      setActiveFolder(folder?.path || null);
+      selectFolderScope(folder?.path || null);
       setFolderContextMenu(null);
       await load();
     } else {
@@ -2072,10 +2091,10 @@ export default function Notes() {
       getNotes({
         search: debouncedSearch,
         status: scope === 'trash' ? 'ARCHIVED' : 'ALL',
-        tag: activeTag,
-        projectId: activeProject,
+        tag: scope === 'tags' ? activeTag : undefined,
+        projectId: scope === 'projects' ? activeProject : undefined,
         favorite: scope === 'favorites' ? true : undefined,
-        folderPath: activeFolder,
+        folderPath: scope === 'all' ? activeFolder : undefined,
       }),
       getNoteTags(),
       getProjectsForNotes(),
@@ -2307,8 +2326,7 @@ export default function Notes() {
     setFolders((current) => [...current, optimisticFolder]);
     setFolderFormParentId(undefined);
     setFolderName('');
-    setScope('all');
-    setActiveFolder(path);
+    selectFolderScope(path);
     setExpandedFolders((current) => {
       const next = new Set(current);
       path
@@ -3402,6 +3420,53 @@ export default function Notes() {
     }
   };
 
+  const exportVault = async () => {
+    if (exporting) return;
+    setExporting(true);
+    setNoteFeedback({ message: 'Exportando Vault...', tone: 'info' });
+
+    try {
+      const response = await fetch('/api/notes/export-vault');
+      if (!response.ok) {
+        const result = (await response.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        throw new Error(result?.error || 'Nao foi possivel exportar o Vault.');
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get('content-disposition') || '';
+      const encodedName = disposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+      const plainName = disposition.match(/filename="?([^";]+)"?/i)?.[1];
+      const fileName = encodedName
+        ? decodeURIComponent(encodedName)
+        : plainName ||
+          `Knowledge-Vault-${new Date().toISOString().slice(0, 10)}.zip`;
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = fileName;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      setNoteFeedback({
+        message: 'Vault exportado com sucesso.',
+        tone: 'success',
+      });
+    } catch (exportError) {
+      setNoteFeedback({
+        message:
+          exportError instanceof Error
+            ? exportError.message
+            : 'Nao foi possivel exportar o Vault.',
+        tone: 'error',
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const handleEditorPaste = async (
     event: ReactClipboardEvent<HTMLTextAreaElement>
   ) => {
@@ -3746,12 +3811,7 @@ export default function Notes() {
                     <button
                       key={item.id}
                       type="button"
-                      onClick={() => {
-                        setScope(item.id);
-                        if (item.id === 'all') setActiveFolder(undefined);
-                        if (item.id !== 'tags') setActiveTag('');
-                        if (item.id !== 'projects') setActiveProject('');
-                      }}
+                      onClick={() => selectLibraryScope(item.id)}
                       className={`flex w-full items-center justify-between rounded-md px-2 py-2 text-sm ${scope === item.id && (item.id !== 'all' || activeFolder === undefined) ? 'bg-[#2d2940] text-[#c9b8ff]' : 'text-[#b8b8bf] hover:bg-[#24242a] hover:text-white'}`}
                     >
                       <span className="flex items-center gap-2">
@@ -3865,11 +3925,8 @@ export default function Notes() {
                 )}
                 <button
                   type="button"
-                  onClick={() => {
-                    setScope('all');
-                    setActiveFolder(undefined);
-                  }}
-                  className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs ${activeFolder === undefined ? 'bg-[#2d2940] text-[#c9b8ff]' : 'text-[#9b9ba3] hover:bg-[#24242a] hover:text-white'}`}
+                  onClick={() => selectFolderScope(undefined)}
+                  className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs text-[#9b9ba3] hover:bg-[#24242a] hover:text-white"
                 >
                   <span className="flex items-center gap-2">
                     <Inbox className="h-3.5 w-3.5" />
@@ -3911,10 +3968,7 @@ export default function Notes() {
                   >
                     <button
                       type="button"
-                      onClick={() => {
-                        setScope('all');
-                        setActiveFolder(null);
-                      }}
+                      onClick={() => selectFolderScope(null)}
                       className="flex min-w-0 flex-1 items-center justify-between px-2 py-1.5 text-left"
                     >
                       <span className="flex items-center gap-2">
@@ -3957,8 +4011,7 @@ export default function Notes() {
                     });
                   }}
                   onSelect={(folder) => {
-                    setScope('all');
-                    setActiveFolder(folder.path);
+                    selectFolderScope(folder.path);
                     setExpandedFolders(
                       (current) =>
                         new Set([
@@ -4046,6 +4099,21 @@ export default function Notes() {
                     }
                   />
                 </label>
+                <button
+                  type="button"
+                  onClick={() => void exportVault()}
+                  disabled={exporting}
+                  aria-label="Exportar Vault ZIP"
+                  title="Exportar Vault ZIP"
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs text-[#9b9ba3] hover:bg-[#24242a] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8f7cff] disabled:cursor-not-allowed disabled:text-[#777780]"
+                >
+                  {exporting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4" />
+                  )}
+                  {exporting ? 'Exportando...' : 'Exportar Vault ZIP'}
+                </button>
                 {selectedZip && (
                   <div className="space-y-0.5 px-2 text-[11px] text-[#8f8f98]">
                     <div className="truncate text-[#c9c9d1]">
@@ -4725,6 +4793,17 @@ export default function Notes() {
                           currentNote={selectedNote}
                           attachments={attachments}
                           onOpenWikiLink={openWikiLink}
+                          onToggleTask={(lineIndex) =>
+                            setDraft((current) => {
+                              const nextContent = toggleMarkdownTask(
+                                current.content,
+                                lineIndex
+                              );
+                              return nextContent === current.content
+                                ? current
+                                : { ...current, content: nextContent };
+                            })
+                          }
                         />
                       </div>
                     )}

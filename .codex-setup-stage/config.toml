@@ -1,0 +1,12 @@
+# Configuração global do Codex
+
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+web_search = "cached"
+project_doc_max_bytes = 32768
+
+[shell_environment_policy]
+include_only = ["PATH", "HOME", "USER", "SHELL", "PWD", "LANG", "LC_ALL", "TERM"]
+
+[projects."/workspaces/portfolio_projects"]
+trust_level = "trusted"

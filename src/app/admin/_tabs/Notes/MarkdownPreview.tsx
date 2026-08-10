@@ -3,10 +3,12 @@
 import {
   AlertTriangle,
   Bug,
+  Check,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
   ClipboardList,
+  Copy,
   FileText,
   HelpCircle,
   Info,
@@ -19,9 +21,17 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { resolveWikiLinkTarget, slugifyNote } from '@/lib/notes';
+
+import {
+  getFencedCodeLineIndexes,
+  getSafeExternalHref,
+  stripFootnoteDefinitions,
+  tokenizeInline,
+  tokenizeMarkdownBlocks,
+} from './markdownPreviewUtils';
 
 export type PreviewNote = {
   id: string;
@@ -40,11 +50,6 @@ export type PreviewAttachment = {
   mimeType: string | null;
   dataUrl: string | null;
 };
-
-type Footnote = { id: string; content: string };
-type MarkdownBlock =
-  | { type: 'markdown'; content: string }
-  | { type: 'code'; content: string; language: string };
 
 const codeLanguageAliases: Record<string, string> = {
   '': 'text',
@@ -180,6 +185,11 @@ function normalizeCalloutType(type: string) {
   return calloutConfig[lower] ? lower : calloutAliases[lower] || 'note';
 }
 
+function normalizeCodeLanguage(language: string) {
+  const normalized = language.trim().toLowerCase();
+  return codeLanguageAliases[normalized] || normalized || 'text';
+}
+
 function sanitizeHtml(html: string) {
   const allowedTags = new Set([
     'u',
@@ -213,7 +223,15 @@ function sanitizeHtml(html: string) {
       if (!allowedTags.has(tagName)) return '';
       const safeAttrs = String(attrs)
         .replace(/\son\w+=(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '')
-        .replace(/\s(href|src)=(["'])\s*javascript:[\s\S]*?\2/gi, '')
+        .replace(/\s(?:target|rel)=(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '')
+        .replace(
+          /\shref=(["'])(.*?)\1/gi,
+          (_match, quote: string, href: string) =>
+            getSafeExternalHref(href) ? ` href=${quote}${href}${quote}` : ''
+        )
+        .replace(/\shref=([^\s>"']+)/gi, (_match, href: string) =>
+          getSafeExternalHref(href) ? ` href="${href}"` : ''
+        )
         .replace(/\sstyle=(["'])(.*?)\1/gi, (_match, quote, style) => {
           const safeStyle = String(style)
             .split(';')
@@ -226,79 +244,82 @@ function sanitizeHtml(html: string) {
             .join('; ');
           return safeStyle ? ` style=${quote}${safeStyle}${quote}` : '';
         });
+      const externalAttrs =
+        tagName === 'a' ? ' target="_blank" rel="noopener noreferrer"' : '';
       return tag.startsWith('</')
         ? `</${tagName}>`
-        : `<${tagName}${safeAttrs}>`;
+        : `<${tagName}${safeAttrs}${externalAttrs}>`;
     });
 }
 
-function stripFootnoteDefinitions(content: string) {
-  const footnotes: Footnote[] = [];
-  const body = content.replace(
-    /^\[\^([^\]]+)\]:\s+(.+)$/gm,
-    (_match, id, text) => {
-      footnotes.push({ id, content: text });
-      return '';
-    }
+function CodeBlock({
+  content,
+  language,
+}: {
+  content: string;
+  language: string;
+}) {
+  const [copied, setCopied] = useState(false);
+  const resetTimer = useRef<number | null>(null);
+
+  useEffect(
+    () => () => {
+      if (resetTimer.current !== null) window.clearTimeout(resetTimer.current);
+    },
+    []
   );
-  return { body, footnotes };
-}
 
-function normalizeCodeLanguage(language: string) {
-  return codeLanguageAliases[language.trim().toLowerCase()] || 'text';
-}
-
-function appendMarkdownBlocks(blocks: MarkdownBlock[], content: string) {
-  content
-    .split(/\n{2,}/)
-    .filter((block) => block.trim())
-    .forEach((block) => blocks.push({ type: 'markdown', content: block }));
-}
-
-function tokenizeMarkdownBlocks(content: string) {
-  const blocks: MarkdownBlock[] = [];
-  const lines = content.split('\n');
-  let markdownBuffer: string[] = [];
-
-  const flushMarkdown = () => {
-    if (markdownBuffer.length > 0) {
-      appendMarkdownBlocks(blocks, markdownBuffer.join('\n'));
-      markdownBuffer = [];
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopied(true);
+      if (resetTimer.current !== null) window.clearTimeout(resetTimer.current);
+      resetTimer.current = window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setCopied(false);
     }
   };
 
-  for (let index = 0; index < lines.length; index += 1) {
-    const openingFence = lines[index].match(/^\s*(`{3,})(?:\s*([^\s`]+).*)?$/);
-    if (!openingFence) {
-      markdownBuffer.push(lines[index]);
-      continue;
-    }
+  return (
+    <div className="group overflow-hidden rounded-md border border-[#2b2b30] bg-[#111113]">
+      <div className="flex min-h-10 items-center justify-between border-b border-[#2b2b30] bg-[#17171a] px-3 py-1.5">
+        <span className="font-mono text-xs text-[#8f8f98]">{language}</span>
+        <button
+          type="button"
+          onClick={() => void copyCode()}
+          className="inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs text-[#a8a8b0] hover:bg-[#292930] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8f7cff]"
+          aria-label={copied ? 'Código copiado' : 'Copiar código'}
+          title={copied ? 'Código copiado' : 'Copiar código'}
+        >
+          {copied ? (
+            <Check className="h-3.5 w-3.5 text-emerald-300" />
+          ) : (
+            <Copy className="h-3.5 w-3.5" />
+          )}
+          <span>{copied ? 'Copiado' : 'Copiar'}</span>
+        </button>
+      </div>
+      <pre className="overflow-x-auto overflow-y-hidden p-4 text-sm leading-6 whitespace-pre text-[#d4d4d4]">
+        <code className={`language-${language}`} data-language={language}>
+          {content}
+        </code>
+      </pre>
+    </div>
+  );
+}
 
-    flushMarkdown();
-    const fenceLength = openingFence[1].length;
-    const codeLines: string[] = [];
-    let closed = false;
-
-    for (index += 1; index < lines.length; index += 1) {
-      const closingFence = lines[index].match(/^\s*(`{3,})\s*$/);
-      if (closingFence && closingFence[1].length >= fenceLength) {
-        closed = true;
-        break;
-      }
-      codeLines.push(lines[index]);
-    }
-
-    blocks.push({
-      type: 'code',
-      content: codeLines.join('\n'),
-      language: normalizeCodeLanguage(openingFence[2] || ''),
-    });
-
-    if (!closed) break;
-  }
-
-  flushMarkdown();
-  return blocks;
+function ExternalLink({ href, label }: { href: string; label: string }) {
+  const opensNewTab = /^https?:/i.test(href);
+  return (
+    <a
+      href={href}
+      target={opensNewTab ? '_blank' : undefined}
+      rel={opensNewTab ? 'noopener noreferrer' : undefined}
+      className="rounded-sm text-[#9a8cff] underline underline-offset-2 hover:text-[#b8a9ff] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8f7cff]"
+    >
+      {label}
+    </a>
+  );
 }
 
 export function MarkdownPreview({
@@ -307,18 +328,25 @@ export function MarkdownPreview({
   currentNote,
   attachments,
   onOpenWikiLink,
+  onToggleTask,
 }: {
   content: string;
   notes: PreviewNote[];
   currentNote?: PreviewNote | null;
   attachments: PreviewAttachment[];
   onOpenWikiLink: (idOrSlug: string, anchor?: string) => void;
+  onToggleTask: (lineIndex: number) => void;
 }) {
   const [closedCallouts, setClosedCallouts] = useState<Record<string, boolean>>(
     {}
   );
   const { body, footnotes } = useMemo(
     () => stripFootnoteDefinitions(content),
+    [content]
+  );
+  const blocks = useMemo(() => tokenizeMarkdownBlocks(body), [body]);
+  const fencedCodeLines = useMemo(
+    () => getFencedCodeLineIndexes(content),
     [content]
   );
 
@@ -342,81 +370,6 @@ export function MarkdownPreview({
       : null;
   };
 
-  const renderInline = (text: string, keyPrefix: string): ReactNode[] => {
-    const withoutComments = text.replace(/%%[\s\S]*?%%/g, '');
-    return withoutComments
-      .split(
-        /(!?\[\[[^\]]+\]\]|==[^=]+==|\*\*[^*]+\*\*|\*[^*]+\*|~~[^~]+~~|`[^`]+`|\[\^[^\]]+\]|#[^\s#()[\]{}'"`<>.,;:!?\\]+)/g
-      )
-      .map((part, index) => {
-        const key = `${keyPrefix}-${index}`;
-        const embed = part.match(/^!\[\[([^\]|]+)(?:\|([^\]]+))?\]\]$/);
-        if (embed) return renderEmbed(embed[1].trim(), key);
-
-        const wiki = part.match(/^\[\[([^\]|]+)(?:\|([^\]]+))?\]\]$/);
-        if (wiki) {
-          const target = wiki[1].trim();
-          const resolved = resolveNote(target);
-          return (
-            <button
-              key={key}
-              type="button"
-              onClick={() =>
-                resolved && onOpenWikiLink(resolved.note.id, resolved.anchor)
-              }
-              className={`rounded px-1.5 py-0.5 ${resolved ? 'bg-[#34245f] text-[#c9b8ff] hover:bg-[#49347e]' : 'bg-[#3a2b1e] text-[#f2c57c]'}`}
-            >
-              {wiki[2]?.trim() || target}
-            </button>
-          );
-        }
-        if (part.startsWith('==') && part.endsWith('==')) {
-          return (
-            <mark
-              key={key}
-              className="rounded bg-[#d6a94a]/25 px-1 text-[#ffe8a8]"
-            >
-              {part.slice(2, -2)}
-            </mark>
-          );
-        }
-        if (part.startsWith('**') && part.endsWith('**'))
-          return <strong key={key}>{part.slice(2, -2)}</strong>;
-        if (part.startsWith('*') && part.endsWith('*'))
-          return <em key={key}>{part.slice(1, -1)}</em>;
-        if (part.startsWith('~~') && part.endsWith('~~'))
-          return <s key={key}>{part.slice(2, -2)}</s>;
-        if (part.startsWith('`') && part.endsWith('`')) {
-          return (
-            <code
-              key={key}
-              className="rounded bg-[#111113] px-1.5 py-0.5 text-[#9cdcfe]"
-            >
-              {part.slice(1, -1)}
-            </code>
-          );
-        }
-        if (/^\[\^[^\]]+\]$/.test(part)) {
-          return (
-            <sup key={key} className="text-[#b8a9ff]">
-              {part}
-            </sup>
-          );
-        }
-        if (/^#/.test(part)) {
-          return (
-            <span
-              key={key}
-              className="rounded bg-[#292936] px-1.5 py-0.5 text-[#b8a9ff]"
-            >
-              {part}
-            </span>
-          );
-        }
-        return <span key={key}>{part}</span>;
-      });
-  };
-
   const renderEmbed = (target: string, key: string) => {
     const clean = target.split('#')[0].trim();
     const attachment = attachmentByName.get(clean.toLowerCase());
@@ -437,7 +390,7 @@ export function MarkdownPreview({
           href={attachment.dataUrl || '#'}
           className="rounded bg-[#252532] px-2 py-1 text-[#c9b8ff]"
           target="_blank"
-          rel="noreferrer"
+          rel="noopener noreferrer"
         >
           {attachment.fileName}
         </a>
@@ -467,56 +420,142 @@ export function MarkdownPreview({
     );
   };
 
-  const renderLines = (text: string, keyPrefix: string) => {
-    const lines = text.split('\n');
-    const elements: React.ReactNode[] = [];
+  const renderInline = (text: string, keyPrefix: string): ReactNode[] =>
+    tokenizeInline(text).map((token, index) => {
+      const key = `${keyPrefix}-${index}`;
+      switch (token.type) {
+        case 'embed':
+          return renderEmbed(token.target, key);
+        case 'wiki': {
+          const resolved = resolveNote(token.target);
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() =>
+                resolved && onOpenWikiLink(resolved.note.id, resolved.anchor)
+              }
+              className={`rounded px-1.5 py-0.5 ${resolved ? 'bg-[#34245f] text-[#c9b8ff] hover:bg-[#49347e]' : 'bg-[#3a2b1e] text-[#f2c57c]'}`}
+            >
+              {token.alias || token.target}
+            </button>
+          );
+        }
+        case 'external-link':
+          return (
+            <ExternalLink key={key} href={token.href} label={token.label} />
+          );
+        case 'unsafe-link':
+          return <span key={key}>{token.label}</span>;
+        case 'highlight':
+          return (
+            <mark
+              key={key}
+              className="rounded bg-[#d6a94a]/25 px-1 text-[#ffe8a8]"
+            >
+              {token.value}
+            </mark>
+          );
+        case 'strong':
+          return <strong key={key}>{token.value}</strong>;
+        case 'emphasis':
+          return <em key={key}>{token.value}</em>;
+        case 'strikethrough':
+          return <s key={key}>{token.value}</s>;
+        case 'inline-code':
+          return (
+            <code
+              key={key}
+              className="rounded bg-[#111113] px-1.5 py-0.5 text-[#9cdcfe]"
+            >
+              {token.value}
+            </code>
+          );
+        case 'footnote':
+          return (
+            <sup key={key} className="text-[#b8a9ff]">
+              {token.value}
+            </sup>
+          );
+        case 'tag':
+          return (
+            <span
+              key={key}
+              className="rounded bg-[#292936] px-1.5 py-0.5 text-[#b8a9ff]"
+            >
+              {token.value}
+            </span>
+          );
+        case 'text':
+          return <span key={key}>{token.value}</span>;
+      }
+    });
 
-    for (let i = 0; i < lines.length; i += 1) {
-      const line = lines[i];
+  const renderLines = (text: string, keyPrefix: string, startLine: number) => {
+    const lines = text.split('\n');
+    const elements: ReactNode[] = [];
+
+    for (let index = 0; index < lines.length; index += 1) {
+      const line = lines[index];
+      const sourceLine = startLine + index;
       if (!line.trim()) continue;
 
-      if (line.startsWith('|') && lines[i + 1]?.includes('---')) {
+      if (/^\s{0,3}(?:(?:-\s*){3,}|(?:\*\s*){3,}|(?:_\s*){3,})$/.test(line)) {
+        elements.push(
+          <hr
+            key={`${keyPrefix}-hr-${sourceLine}`}
+            className="my-6 border-0 border-t border-[#34343b]"
+          />
+        );
+        continue;
+      }
+
+      if (line.startsWith('|') && lines[index + 1]?.includes('---')) {
         const header = line
           .split('|')
           .slice(1, -1)
           .map((cell) => cell.trim());
-        i += 1;
-        const rows: string[][] = [];
-        while (lines[i + 1]?.startsWith('|')) {
-          i += 1;
-          rows.push(
-            lines[i]
+        index += 1;
+        const rows: { cells: string[]; lineIndex: number }[] = [];
+        while (lines[index + 1]?.startsWith('|')) {
+          index += 1;
+          rows.push({
+            cells: lines[index]
               .split('|')
               .slice(1, -1)
-              .map((cell) => cell.trim())
-          );
+              .map((cell) => cell.trim()),
+            lineIndex: startLine + index,
+          });
         }
         elements.push(
-          <div key={`${keyPrefix}-table-${i}`} className="overflow-x-auto">
+          <div
+            key={`${keyPrefix}-table-${sourceLine}`}
+            className="overflow-x-auto"
+          >
             <table className="w-full border-collapse text-sm">
               <thead>
                 <tr>
-                  {header.map((cell) => (
+                  {header.map((cell, cellIndex) => (
                     <th
-                      key={cell}
+                      key={`${sourceLine}-${cellIndex}`}
                       className="border border-[#34343b] bg-[#24242a] px-3 py-2 text-left text-[#f2f2f3]"
                     >
-                      {cell}
+                      {renderInline(cell, `${keyPrefix}-th-${cellIndex}`)}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row, rowIndex) => (
-                  <tr key={rowIndex}>
-                    {row.map((cell, cellIndex) => (
+                {rows.map((row) => (
+                  <tr key={row.lineIndex}>
+                    {row.cells.map((cell, cellIndex) => (
                       <td
-                        key={`${rowIndex}-${cellIndex}`}
+                        key={`${row.lineIndex}-${cellIndex}`}
                         className="border border-[#34343b] px-3 py-2"
                       >
                         {renderInline(
                           cell,
-                          `${keyPrefix}-td-${rowIndex}-${cellIndex}`
+                          `${keyPrefix}-td-${row.lineIndex}-${cellIndex}`
                         )}
                       </td>
                     ))}
@@ -538,103 +577,92 @@ export function MarkdownPreview({
               ? 'text-2xl'
               : 'text-xl';
         const className = `${size} font-semibold text-[#f2f2f3]`;
-        const children = renderInline(heading[2], `${keyPrefix}-h-${i}`);
+        const children = renderInline(
+          heading[2],
+          `${keyPrefix}-h-${sourceLine}`
+        );
         const headingAnchor = heading[2].trim();
         const headingId = slugifyNote(headingAnchor);
+        const commonProps = {
+          id: headingId,
+          'data-wiki-anchor': headingAnchor,
+          className,
+        };
         if (heading[1].length === 1)
           elements.push(
-            <h1
-              key={`${keyPrefix}-h-${i}`}
-              id={headingId}
-              data-wiki-anchor={headingAnchor}
-              className={className}
-            >
+            <h1 key={`${keyPrefix}-h-${sourceLine}`} {...commonProps}>
               {children}
             </h1>
           );
         else if (heading[1].length === 2)
           elements.push(
-            <h2
-              key={`${keyPrefix}-h-${i}`}
-              id={headingId}
-              data-wiki-anchor={headingAnchor}
-              className={className}
-            >
+            <h2 key={`${keyPrefix}-h-${sourceLine}`} {...commonProps}>
               {children}
             </h2>
           );
         else if (heading[1].length === 3)
           elements.push(
-            <h3
-              key={`${keyPrefix}-h-${i}`}
-              id={headingId}
-              data-wiki-anchor={headingAnchor}
-              className={className}
-            >
+            <h3 key={`${keyPrefix}-h-${sourceLine}`} {...commonProps}>
               {children}
             </h3>
           );
         else if (heading[1].length === 4)
           elements.push(
-            <h4
-              key={`${keyPrefix}-h-${i}`}
-              id={headingId}
-              data-wiki-anchor={headingAnchor}
-              className={className}
-            >
+            <h4 key={`${keyPrefix}-h-${sourceLine}`} {...commonProps}>
               {children}
             </h4>
           );
         else if (heading[1].length === 5)
           elements.push(
-            <h5
-              key={`${keyPrefix}-h-${i}`}
-              id={headingId}
-              data-wiki-anchor={headingAnchor}
-              className={className}
-            >
+            <h5 key={`${keyPrefix}-h-${sourceLine}`} {...commonProps}>
               {children}
             </h5>
           );
         else
           elements.push(
-            <h6
-              key={`${keyPrefix}-h-${i}`}
-              id={headingId}
-              data-wiki-anchor={headingAnchor}
-              className={className}
-            >
+            <h6 key={`${keyPrefix}-h-${sourceLine}`} {...commonProps}>
               {children}
             </h6>
           );
         continue;
       }
 
-      if (/^[-*]\s+\[[ xX]\]/.test(line)) {
-        const items: string[] = [line];
-        while (/^[-*]\s+\[[ xX]\]/.test(lines[i + 1] || '')) {
-          i += 1;
-          items.push(lines[i]);
+      if (
+        !fencedCodeLines.has(sourceLine) &&
+        /^\s*[-*+]\s+\[[ xX]\]/.test(line)
+      ) {
+        const items = [{ content: line, lineIndex: sourceLine }];
+        while (
+          !fencedCodeLines.has(startLine + index + 1) &&
+          /^\s*[-*+]\s+\[[ xX]\]/.test(lines[index + 1] || '')
+        ) {
+          index += 1;
+          items.push({
+            content: lines[index],
+            lineIndex: startLine + index,
+          });
         }
         elements.push(
-          <ul key={`${keyPrefix}-tasks-${i}`} className="space-y-2">
+          <ul key={`${keyPrefix}-tasks-${sourceLine}`} className="space-y-2">
             {items.map((item) => {
-              const checked = /^[-*]\s+\[[xX]\]/.test(item);
+              const checked = /^\s*[-*+]\s+\[[xX]\]/.test(item.content);
+              const label = item.content.replace(
+                /^\s*[-*+]\s+\[[ xX]\]\s*/,
+                ''
+              );
               return (
-                <li key={item} className="flex items-start gap-2">
+                <li key={item.lineIndex} className="flex items-start gap-2">
                   <input
                     type="checkbox"
                     checked={checked}
-                    readOnly
-                    className="mt-1 accent-[#7c5cff]"
+                    onChange={() => onToggleTask(item.lineIndex)}
+                    aria-label={`${checked ? 'Desmarcar' : 'Marcar'} tarefa: ${label}`}
+                    className="mt-1 accent-[#7c5cff] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8f7cff]"
                   />
                   <span
                     className={checked ? 'text-[#8f8f98] line-through' : ''}
                   >
-                    {renderInline(
-                      item.replace(/^[-*]\s+\[[ xX]\]\s*/, ''),
-                      `${keyPrefix}-task-${item}`
-                    )}
+                    {renderInline(label, `${keyPrefix}-task-${item.lineIndex}`)}
                   </span>
                 </li>
               );
@@ -644,19 +672,25 @@ export function MarkdownPreview({
         continue;
       }
 
-      if (/^[-*]\s+/.test(line)) {
-        const items: string[] = [line];
-        while (/^[-*]\s+/.test(lines[i + 1] || '')) {
-          i += 1;
-          items.push(lines[i]);
+      if (/^\s*[-*+]\s+/.test(line)) {
+        const items = [{ content: line, lineIndex: sourceLine }];
+        while (/^\s*[-*+]\s+/.test(lines[index + 1] || '')) {
+          index += 1;
+          items.push({
+            content: lines[index],
+            lineIndex: startLine + index,
+          });
         }
         elements.push(
-          <ul key={`${keyPrefix}-ul-${i}`} className="list-disc space-y-1 pl-6">
+          <ul
+            key={`${keyPrefix}-ul-${sourceLine}`}
+            className="list-disc space-y-1 pl-6"
+          >
             {items.map((item) => (
-              <li key={item}>
+              <li key={item.lineIndex}>
                 {renderInline(
-                  item.replace(/^[-*]\s+/, ''),
-                  `${keyPrefix}-li-${item}`
+                  item.content.replace(/^\s*[-*+]\s+/, ''),
+                  `${keyPrefix}-li-${item.lineIndex}`
                 )}
               </li>
             ))}
@@ -665,10 +699,10 @@ export function MarkdownPreview({
         continue;
       }
 
-      if (/^<[^>]+>/.test(line.trim())) {
+      if (/^<\/?[A-Za-z][A-Za-z0-9-]*(?:\s|>|\/)/.test(line.trim())) {
         elements.push(
           <div
-            key={`${keyPrefix}-html-${i}`}
+            key={`${keyPrefix}-html-${sourceLine}`}
             dangerouslySetInnerHTML={{ __html: sanitizeHtml(line) }}
           />
         );
@@ -685,29 +719,25 @@ export function MarkdownPreview({
           .trim();
         elements.push(
           <p
-            key={`${keyPrefix}-block-ref-${i}`}
+            key={`${keyPrefix}-block-ref-${sourceLine}`}
             id={`block-${blockId}`}
             data-wiki-anchor={`^${blockId}`}
           >
-            {renderInline(blockContent, `${keyPrefix}-block-ref-${i}`)}
+            {renderInline(blockContent, `${keyPrefix}-block-ref-${sourceLine}`)}
           </p>
         );
         continue;
       }
 
       elements.push(
-        <p key={`${keyPrefix}-p-${i}`}>
-          {renderInline(line, `${keyPrefix}-p-${i}`)}
+        <p key={`${keyPrefix}-p-${sourceLine}`}>
+          {renderInline(line, `${keyPrefix}-p-${sourceLine}`)}
         </p>
       );
     }
 
     return elements;
   };
-
-  const blocks = tokenizeMarkdownBlocks(
-    body.replace(/^---\s*\n[\s\S]*?\n---/, '')
-  );
 
   if (!content.trim())
     return <div className="p-8 text-sm text-[#7f7f87]">Preview vazio.</div>;
@@ -716,28 +746,21 @@ export function MarkdownPreview({
     <div className="space-y-4 px-8 py-7 text-[15px] leading-7 text-[#dcddde]">
       {blocks.map((block, index) => {
         if (block.type === 'code') {
-          const language = block.language;
+          const language = normalizeCodeLanguage(block.language);
           return (
-            <div key={index}>
+            <div key={`code-${block.startLine}`}>
               {language === 'mermaid' && (
                 <div className="mb-1 text-xs text-[#8f8f98]">
                   Mermaid preview indisponivel, exibindo fonte.
                 </div>
               )}
-              <pre className="overflow-x-auto overflow-y-hidden rounded-md border border-[#2b2b30] bg-[#111113] p-4 text-sm leading-6 whitespace-pre text-[#d4d4d4]">
-                <code
-                  className={`language-${language}`}
-                  data-language={language}
-                >
-                  {block.content}
-                </code>
-              </pre>
+              <CodeBlock content={block.content} language={language} />
             </div>
           );
         }
 
         const callout = block.content.match(
-          /^>\s*\[!(\w+)\]([+-])?\s*(.*)(?:\n([\s\S]*))?$/
+          /^>\s*\[!([\w-]+)\]([+-])?\s*(.*)(?:\n([\s\S]*))?$/
         );
         if (callout) {
           const type = normalizeCalloutType(callout[1]);
@@ -745,7 +768,7 @@ export function MarkdownPreview({
           const Icon = config.Icon;
           const title = callout[3]?.trim() || config.label;
           const fold = callout[2];
-          const key = `callout-${index}`;
+          const key = `callout-${block.startLine}`;
           const bodyText = block.content
             .split('\n')
             .slice(1)
@@ -759,6 +782,8 @@ export function MarkdownPreview({
             >
               <button
                 type="button"
+                disabled={!fold}
+                aria-expanded={fold ? !closed : undefined}
                 onClick={() =>
                   fold &&
                   setClosedCallouts((current) => ({
@@ -766,7 +791,7 @@ export function MarkdownPreview({
                     [key]: !closed,
                   }))
                 }
-                className="flex w-full items-center gap-2 text-left text-sm font-semibold tracking-normal uppercase"
+                className="flex w-full items-center gap-2 text-left text-sm font-semibold tracking-normal uppercase disabled:cursor-default"
               >
                 {fold ? (
                   closed ? (
@@ -780,7 +805,7 @@ export function MarkdownPreview({
               </button>
               {!closed && bodyText.trim() && (
                 <div className="mt-2 space-y-2 text-[#dcddde]">
-                  {renderLines(bodyText, key)}
+                  {renderLines(bodyText, key, block.startLine + 1)}
                 </div>
               )}
             </div>
@@ -790,20 +815,25 @@ export function MarkdownPreview({
         if (block.content.startsWith('>')) {
           return (
             <blockquote
-              key={index}
+              key={`quote-${block.startLine}`}
               className="border-l-2 border-[#7c5cff] pl-4 text-[#b8b8bf]"
             >
               {renderLines(
                 block.content.replace(/^>\s?/gm, ''),
-                `quote-${index}`
+                `quote-${block.startLine}`,
+                block.startLine
               )}
             </blockquote>
           );
         }
 
         return (
-          <div key={index} className="space-y-3">
-            {renderLines(block.content, `block-${index}`)}
+          <div key={`block-${block.startLine}-${index}`} className="space-y-3">
+            {renderLines(
+              block.content,
+              `block-${block.startLine}`,
+              block.startLine
+            )}
           </div>
         );
       })}

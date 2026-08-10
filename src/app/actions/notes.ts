@@ -2098,7 +2098,10 @@ export async function toggleFavorite(id: string) {
   }
 }
 
-export async function importVault(files: VaultImportFile[]) {
+export async function importVault(
+  files: VaultImportFile[],
+  folderPaths: string[] = []
+) {
   try {
     const user = await requireUser();
     const usableFiles = files.filter(
@@ -2109,6 +2112,21 @@ export async function importVault(files: VaultImportFile[]) {
     );
     if (!markdownFiles.length) {
       return { success: false, error: 'Nenhum arquivo .md encontrado.' };
+    }
+
+    const usableFolderPaths = Array.from(
+      new Set(
+        folderPaths
+          .filter(
+            (path) => !isUnsafeVaultPath(path) && !isIgnoredVaultPath(path)
+          )
+          .map((path) => getVaultFileMetadata(`${path}/placeholder`).folderPath)
+          .filter((path): path is string => Boolean(path))
+      )
+    ).sort((left, right) => left.localeCompare(right));
+
+    for (const folderPath of usableFolderPaths) {
+      await ensureNoteFolderPath(user.id, folderPath);
     }
 
     const rawAttachmentFiles = usableFiles.filter((file) => {

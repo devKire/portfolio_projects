@@ -83,9 +83,9 @@ function sanitizeSvg(svg: string) {
     .replace(/\s(?:href|xlink:href)=(["'])\s*javascript:[\s\S]*?\1/gi, '');
 }
 
-function stripCommonRoot(paths: string[]) {
+function getCommonRoot(paths: string[]) {
   const normalized = paths.map(normalizeVaultPath).filter(Boolean);
-  if (normalized.length === 0) return new Map<string, string>();
+  if (normalized.length === 0) return null;
   const firstSegments = normalized.map((path) => path.split('/')[0]);
   const commonRoot = firstSegments[0];
   const hasCommonRoot =
@@ -93,12 +93,15 @@ function stripCommonRoot(paths: string[]) {
     firstSegments.every((segment) => segment === commonRoot) &&
     normalized.every((path) => path.includes('/'));
 
-  return new Map(
-    normalized.map((path) => [
-      path,
-      hasCommonRoot ? path.split('/').slice(1).join('/') : path,
-    ])
-  );
+  return hasCommonRoot ? commonRoot : null;
+}
+
+function stripCommonRoot(path: string, commonRoot: string | null) {
+  if (!commonRoot) return path;
+  if (path === commonRoot) return '';
+  return path.startsWith(`${commonRoot}/`)
+    ? path.slice(commonRoot.length + 1)
+    : path;
 }
 
 export async function POST(request: Request) {
@@ -141,12 +144,11 @@ export async function POST(request: Request) {
       .filter((entry) => !entry.dir)
       .map((entry) => normalizeVaultPath(entry.name))
       .filter((path) => !isUnsafeVaultPath(path) && !isIgnoredVaultPath(path));
-    const pathWithoutRoot = stripCommonRoot(safeFilePaths);
+    const commonRoot = getCommonRoot(safeFilePaths);
 
     for (const entry of entries) {
       const normalizedEntryPath = normalizeVaultPath(entry.name);
-      const path =
-        pathWithoutRoot.get(normalizedEntryPath) || normalizedEntryPath;
+      const path = stripCommonRoot(normalizedEntryPath, commonRoot);
 
       if (entry.dir) {
         const folderPath = normalizeVaultPath(path).replace(/\/$/, '');
@@ -223,7 +225,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await importVault(importFiles);
+    const result = await importVault(importFiles, Array.from(folders));
     if (!result.success || !result.data) {
       return errorResponse(
         result.error || 'Nao foi possivel importar o vault.'

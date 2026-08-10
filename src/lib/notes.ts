@@ -178,6 +178,17 @@ export function normalizeNoteTag(tag: string) {
   return /^\d+$/.test(normalized) ? '' : normalized;
 }
 
+export function getLeadingFrontmatterEndLine(content: string) {
+  const lines = content.split(/\r?\n/);
+  if (!/^---\s*$/.test(lines[0] || '')) return null;
+
+  for (let index = 1; index < lines.length; index += 1) {
+    if (/^---\s*$/.test(lines[index])) return index;
+  }
+
+  return null;
+}
+
 export function extractNoteTags(content: string, explicitTags: string[] = []) {
   const tags = new Set<string>();
 
@@ -186,9 +197,10 @@ export function extractNoteTags(content: string, explicitTags: string[] = []) {
     if (normalized) tags.add(normalized);
   }
 
-  const frontmatter = content.match(/^---\s*\n([\s\S]*?)\n---/);
-  if (frontmatter) {
-    const lines = frontmatter[1].split('\n');
+  const contentLines = content.split(/\r?\n/);
+  const frontmatterEndLine = getLeadingFrontmatterEndLine(content);
+  if (frontmatterEndLine !== null) {
+    const lines = contentLines.slice(1, frontmatterEndLine);
     let inTags = false;
     for (const line of lines) {
       const keyValue = line.match(/^tags:\s*(.*)$/i);
@@ -208,7 +220,7 @@ export function extractNoteTags(content: string, explicitTags: string[] = []) {
         continue;
       }
       if (inTags) {
-        const item = line.match(/^\s*-\s*(.+)$/);
+        const item = line.match(/^\s*[-*]\s*(.+)$/);
         if (item) {
           const normalized = normalizeNoteTag(
             item[1].replace(/^['"]|['"]$/g, '')
@@ -221,9 +233,11 @@ export function extractNoteTags(content: string, explicitTags: string[] = []) {
     }
   }
 
-  const withoutCode = content
-    .replace(/^---\s*\n[\s\S]*?\n---/, '')
-    .replace(/```[\s\S]*?```/g, ' ');
+  const withoutFrontmatter =
+    frontmatterEndLine === null
+      ? content
+      : contentLines.slice(frontmatterEndLine + 1).join('\n');
+  const withoutCode = withoutFrontmatter.replace(/```[\s\S]*?```/g, ' ');
   const tagRegex = /(^|[\s([{'"`])#([^\s#()[\]{}'"`<>.,;:!?\\]+)/g;
   let match: RegExpExecArray | null;
 
@@ -292,11 +306,20 @@ export function normalizeVaultPath(path: string) {
 }
 
 export function isUnsafeVaultPath(path: string) {
+  const decoded = (() => {
+    try {
+      return decodeURIComponent(path);
+    } catch {
+      return path;
+    }
+  })();
+  const rawNormalized = decoded.replace(/\\/g, '/');
   const normalized = normalizeVaultPath(path);
   const parts = normalized.split('/');
   return (
-    normalized.startsWith('/') ||
-    normalized.includes('\0') ||
+    rawNormalized.startsWith('/') ||
+    /^[A-Za-z]:\//.test(rawNormalized) ||
+    rawNormalized.includes('\0') ||
     parts.some((part) => part === '..')
   );
 }
