@@ -156,13 +156,14 @@ test('Calendar: actions validam organização, equipe, participantes e autoriza�
 
 test('Chat: actions escopam channel/message por organização e bloqueiam thread recursiva', () => {
   const action = source('src/app/actions/chat.ts');
+  const messages = source('src/lib/chat/messages.ts');
   const authorization = source('src/lib/chat/authorization.ts');
-  assert.match(action, /requireChatChannelPost/);
+  assert.match(messages, /requireChatChannelPost/);
   assert.match(
-    action,
+    messages,
     /access\.channel\.organizationId !== input\.organizationId/
   );
-  assert.match(action, /replyToId: null/);
+  assert.match(messages, /replyToId: null/);
   assert.match(action, /requireChatMessageModeration/);
   assert.match(action, /message\.authorId !== user\.id/);
   assert.match(authorization, /canViewChannel/);

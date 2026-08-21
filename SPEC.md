@@ -101,10 +101,15 @@ V36|CalendarEvent pessoal é visível apenas ao criador/convidados; evento organ
 V37|visibilidade de CalendarEvent por equipe é derivada da membership atual da Team, não materializada como participantes; convidados explícitos permanecem materializados em CalendarEventParticipant.
 V38|recorrência Calendar é expandida somente no intervalo solicitado e usa calendário no timezone IANA do evento, preservando horário local através de DST.
 V39|ChatChannel nunca atravessa Organization; ORGANIZATION deriva membership da organização, TEAM deriva membership atual da equipe e PRIVATE/DIRECT exige ChatChannelMember explícito.
-V40|Chat usa polling de 4s apenas para o canal ativo e 12s para metadados como fallback compatível com deployment serverless; não declara presença online.
+V40|Chat usa sync incremental de 5s apenas para o canal ativo e 15s para metadados, reforçado por focus/visibilitychange, como fallback compatível com deployment serverless; não declara presença online.
 V41|unread de Chat é calculado por ChatChannelReadState.lastReadAt/lastReadMessageId; não existe flag fake por mensagem/usuário.
 V42|threads aceitam somente um nível (`replyToId` deve apontar para mensagem raiz); paginação retorna no máximo 50 mensagens por página.
 V43|CalendarEvent compartilhado no Chat permanece referência por `eventId`; o servidor valida que toda a audiência do canal pode visualizar o evento antes de persistir a mensagem.
+V44|ChatAttachment usa BYTEA privado no PostgreSQL com metadata separada; upload aceita no máximo 5 arquivos, 3 MB por arquivo e 8 MB por mensagem, bloqueia SVG/executáveis e exige extensão, MIME e assinatura compatíveis.
+V45|download de ChatAttachment passa por rota autenticada e só retorna bytes quando usuário pode ver mensagem e canal; mensagem apagada torna seus anexos inacessíveis ao cliente comum.
+V46|usuário edita apenas a própria mensagem por 15 minutos; OWNER/ADMIN nunca alteram texto alheio e podem apenas moderar via soft delete fora de DM. Pin em ORGANIZATION/TEAM exige manager, PRIVATE exige gestor/criador do canal e DIRECT aceita participante.
+V47|ChatReaction é única por mensagem/usuário/emoji; mutations de reação, pin, edit e delete atualizam `ChatMessage.updatedAt` para convergência incremental entre abas.
+V48|referências de CalendarEvent, Task, Ticket e KCS permanecem estruturadas; antes de persistir, o backend valida que a audiência derivada do canal também possui acesso ao recurso.
 
 §N
 id|status|goal|cites
@@ -114,3 +119,4 @@ T20|x|separar EMPTY/DEMO e limpar onboarding real|V35
 T21|x|implementar Calendar backend/UI, recorrência, participantes, Work e Dashboard|V36,V37,V38
 T22|x|implementar Chat, DMs, threads, menções, paginação, polling e unread real|V39,V40,V41,V42
 T23|x|integrar Calendar ↔ Chat e reforçar guardrails multi-tenant|V43
+T24|x|completar Chat com optimistic/retry, busca, pins, reactions, threads, attachments protegidos, mídia e links diretos|V40,V41,V42,V44,V45,V46,V47,V48

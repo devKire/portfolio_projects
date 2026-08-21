@@ -11,7 +11,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { getUpcomingCalendarEvents } from '@/app/actions/calendar';
-import { getChatUnreadCount } from '@/app/actions/chat';
+import { getChatCollaborationCounts } from '@/app/actions/chat';
 import { getOperationalDashboard } from '@/app/actions/dashboard';
 import type { OrganizationContext } from '@/lib/organizations/context';
 import type {
@@ -79,6 +79,7 @@ export default function Dashboard({
     }[]
   >([]);
   const [chatUnread, setChatUnread] = useState<number | null>(null);
+  const [chatMentions, setChatMentions] = useState<number | null>(null);
   const requestId = useRef(0);
   const dataRef = useRef<OperationalDashboardData | null>(null);
   const previousOrganizationId = useRef(activeOrganization?.id || null);
@@ -142,13 +143,16 @@ export default function Dashboard({
     const [calendarResult, chatResult] = await Promise.all([
       getUpcomingCalendarEvents(activeOrganization?.id || null, 8),
       activeOrganization
-        ? getChatUnreadCount(activeOrganization.id)
+        ? getChatCollaborationCounts(activeOrganization.id)
         : Promise.resolve({ success: true as const, data: null }),
     ]);
     if (calendarResult.success) {
       setUpcomingEvents(calendarResult.data as typeof upcomingEvents);
     }
-    if (chatResult.success) setChatUnread(chatResult.data);
+    if (chatResult.success) {
+      setChatUnread(chatResult.data?.unreadCount ?? null);
+      setChatMentions(chatResult.data?.mentionCount ?? null);
+    }
   }, [activeOrganization?.id]);
 
   useEffect(() => {
@@ -409,6 +413,9 @@ export default function Dashboard({
               </p>
               <p className="mt-1 text-sm text-[#858590]">
                 {activeOrganization.name}
+              </p>
+              <p className="mt-2 text-xs text-violet-200">
+                {chatMentions ?? '—'} menções não lidas
               </p>
               <button
                 type="button"

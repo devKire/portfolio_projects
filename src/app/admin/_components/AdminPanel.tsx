@@ -1,7 +1,7 @@
 // app/admin/_components/AdminPanel.tsx
 'use client';
 
-import { useState, useCallback, useTransition } from 'react';
+import { useState, useCallback, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { logoutUser } from '@/app/actions/auth';
 import {
@@ -40,9 +40,26 @@ export default function AdminPanel({
 
   const isMobile = useMediaQuery('(max-width: 1023px)');
 
+  useEffect(() => {
+    const syncTabFromUrl = () => {
+      const tab = new URLSearchParams(window.location.search).get('tab');
+      if (tab) setActiveTab(tab);
+    };
+    syncTabFromUrl();
+    window.addEventListener('popstate', syncTabFromUrl);
+    return () => window.removeEventListener('popstate', syncTabFromUrl);
+  }, []);
+
   const handleTabChange = useCallback((tabId: string) => {
     setActiveTab(tabId);
     setIsMobileMenuOpen(false);
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', tabId);
+    if (tabId !== 'chat') {
+      url.searchParams.delete('channel');
+      url.searchParams.delete('message');
+    }
+    window.history.pushState(null, '', url);
   }, []);
 
   const handleLogout = useCallback(async () => {

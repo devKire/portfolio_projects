@@ -75,8 +75,21 @@ export function canModerateMessage(input: {
   role: OrganizationRole;
   actorId: string;
   authorId: string;
+  channelType?: ChatChannelType;
 }) {
+  if (input.channelType === 'DIRECT') return input.actorId === input.authorId;
   return input.actorId === input.authorId || isOrganizationManager(input.role);
+}
+
+export function canPinMessage(input: {
+  role: OrganizationRole;
+  type: ChatChannelType;
+  isChannelMember: boolean;
+  canManageChannel: boolean;
+}) {
+  if (input.type === 'DIRECT') return input.isChannelMember;
+  if (input.type === 'PRIVATE') return input.canManageChannel;
+  return isOrganizationManager(input.role);
 }
 
 export function canManageKcs(role: OrganizationRole) {

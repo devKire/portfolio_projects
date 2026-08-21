@@ -124,6 +124,9 @@ model User {
   calendarParticipations  CalendarEventParticipant[]
   chatChannelsCreated     ChatChannel[]              @relation("ChatChannelCreator")
   chatMessages            ChatMessage[]              @relation("ChatMessageAuthor")
+  chatMessagesPinned      ChatMessage[]              @relation("ChatMessagePinnedBy")
+  chatMessagesDeleted     ChatMessage[]              @relation("ChatMessageDeletedBy")
+  chatReactions           ChatReaction[]
   chatUserMentions        ChatMessageUserMention[]
 }
 
@@ -166,6 +169,8 @@ model Organization {
   calendarTeams    CalendarEventTeam[]
   chatChannels     ChatChannel[]
   chatMessages     ChatMessage[]
+  chatAttachments  ChatAttachment[]
+  chatReactions    ChatReaction[]
   chatTeamMentions ChatMessageTeamMention[]
 
   @@index([createdById])
@@ -291,6 +296,7 @@ model Ticket {
   linkedTask     Task?            @relation("TicketLinkedTask", fields: [linkedTaskId], references: [id], onDelete: SetNull)
   activities     TicketActivity[]
   calendarEvents CalendarEvent[]
+  sharedMessages ChatMessage[]
 
   @@index([organizationId, status])
   @@index([organizationId, queueId, status])
@@ -589,6 +595,7 @@ model Task {
   subtasks       Task[]          @relation("TaskToSubtask")
   linkedTicket   Ticket?         @relation("TicketLinkedTask")
   calendarEvents CalendarEvent[]
+  sharedMessages ChatMessage[]
 
   @@unique([noteId, noteTaskKey])
   @@index([userId])
@@ -724,25 +731,87 @@ model ChatMessage {
   content        String    @db.Text
   replyToId      String?
   eventId        String?
+  taskId         String?
+  ticketId       String?
+  noteId         String?
+  clientNonce    String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   editedAt       DateTime?
   deletedAt      DateTime?
+  deletedById    String?
+  pinnedAt       DateTime?
+  pinnedById     String?
 
   channel      ChatChannel              @relation(fields: [channelId, organizationId], references: [id, organizationId], onDelete: Cascade)
   organization Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   author       User                     @relation("ChatMessageAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  pinnedBy     User?                    @relation("ChatMessagePinnedBy", fields: [pinnedById], references: [id], onDelete: SetNull)
+  deletedBy    User?                    @relation("ChatMessageDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
   replyTo      ChatMessage?             @relation("ChatThread", fields: [replyToId], references: [id], onDelete: Cascade)
   replies      ChatMessage[]            @relation("ChatThread")
   event        CalendarEvent?           @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  task         Task?                    @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  ticket       Ticket?                  @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+  note         Note?                    @relation(fields: [noteId], references: [id], onDelete: SetNull)
+  attachments  ChatAttachment[]
+  reactions    ChatReaction[]
   userMentions ChatMessageUserMention[]
   teamMentions ChatMessageTeamMention[]
 
   @@unique([id, organizationId])
+  @@unique([channelId, authorId, clientNonce])
   @@index([channelId, createdAt])
+  @@index([channelId, updatedAt])
+  @@index([channelId, pinnedAt])
+  @@index([authorId, channelId, createdAt])
   @@index([organizationId, authorId, createdAt])
   @@index([replyToId, createdAt])
   @@index([eventId])
+  @@index([taskId])
+  @@index([ticketId])
+  @@index([noteId])
+}
+
+model ChatAttachment {
+  id             String   @id @default(uuid())
+  messageId      String
+  organizationId String
+  fileName       String
+  originalName   String
+  mimeType       String
+  extension      String
+  size           Int
+  storageKey     String   @unique
+  data           Bytes
+  width          Int?
+  height         Int?
+  createdAt      DateTime @default(now())
+
+  message      ChatMessage  @relation(fields: [messageId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+  @@index([organizationId, createdAt])
+  @@index([organizationId, fileName])
+  @@index([createdAt])
+}
+
+model ChatReaction {
+  id             String   @id @default(uuid())
+  messageId      String
+  organizationId String
+  userId         String
+  emoji          String
+  createdAt      DateTime @default(now())
+
+  message      ChatMessage  @relation(fields: [messageId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+  @@index([messageId, emoji])
+  @@index([organizationId, userId, createdAt])
 }
 
 model ChatMessageUserMention {
@@ -972,11 +1041,12 @@ model Note {
   project      Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
   folder       NoteFolder?   @relation(fields: [folderId], references: [id], onDelete: SetNull)
 
-  tags     NoteTag[]
-  outgoing NoteLink[]    @relation("SourceLinks")
-  incoming NoteLink[]    @relation("TargetLinks")
-  tasks    Task[]
-  comments NoteComment[]
+  tags           NoteTag[]
+  outgoing       NoteLink[]    @relation("SourceLinks")
+  incoming       NoteLink[]    @relation("TargetLinks")
+  tasks          Task[]
+  comments       NoteComment[]
+  sharedMessages ChatMessage[]
 
   @@unique([id, organizationId])
   @@unique([scopeKey, slug])

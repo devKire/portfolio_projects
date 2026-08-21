@@ -4,6 +4,7 @@ import { OrganizationAuthorizationError } from '@/lib/organizations/authorizatio
 import {
   canManageChannel,
   canModerateMessage,
+  canPinMessage,
   canPostMessage,
   canViewChannel,
 } from '@/lib/organizations/policy';
@@ -64,19 +65,26 @@ export async function getChatChannelAccess(userId: string, channelId: string) {
     isChannelMember: Boolean(channelMembership),
   };
   if (!canViewChannel(policyInput)) throw new OrganizationAuthorizationError();
+  const canManage = canManageChannel({
+    role: membership.role,
+    type: channel.type,
+    actorId: userId,
+    createdById: channel.createdById,
+    isChannelMember: Boolean(channelMembership),
+  });
   return {
     channel,
     membership,
     isTeamMember: Boolean(teamMembership),
     isChannelMember: Boolean(channelMembership),
-    canManage: canManageChannel({
+    canManage,
+    canPost: canPostMessage(policyInput),
+    canPin: canPinMessage({
       role: membership.role,
       type: channel.type,
-      actorId: userId,
-      createdById: channel.createdById,
       isChannelMember: Boolean(channelMembership),
+      canManageChannel: canManage,
     }),
-    canPost: canPostMessage(policyInput),
   };
 }
 
@@ -112,9 +120,74 @@ export async function requireChatMessageModeration(
       role: access.membership.role,
       actorId: userId,
       authorId: message.authorId,
+      channelType: access.channel.type,
     })
   ) {
     throw new OrganizationAuthorizationError();
   }
   return { message, access };
+}
+
+export async function getChatMessageAccess(userId: string, messageId: string) {
+  const message = await db.chatMessage.findUnique({
+    where: { id: messageId },
+    select: {
+      id: true,
+      channelId: true,
+      organizationId: true,
+      authorId: true,
+      replyToId: true,
+      createdAt: true,
+      updatedAt: true,
+      deletedAt: true,
+      pinnedAt: true,
+    },
+  });
+  if (!message) throw new OrganizationAuthorizationError();
+  const access = await getChatChannelAccess(userId, message.channelId);
+  if (access.channel.organizationId !== message.organizationId) {
+    throw new OrganizationAuthorizationError();
+  }
+  return { message, access };
+}
+
+export async function getChatAttachmentAccess(
+  userId: string,
+  attachmentId: string
+) {
+  const attachment = await db.chatAttachment.findUnique({
+    where: { id: attachmentId },
+    select: {
+      id: true,
+      messageId: true,
+      organizationId: true,
+      fileName: true,
+      originalName: true,
+      mimeType: true,
+      extension: true,
+      size: true,
+      data: true,
+      message: {
+        select: {
+          channelId: true,
+          organizationId: true,
+          deletedAt: true,
+        },
+      },
+    },
+  });
+  if (!attachment || attachment.message.deletedAt) {
+    throw new OrganizationAuthorizationError();
+  }
+  const access = await getChatChannelAccess(
+    userId,
+    attachment.message.channelId
+  );
+  if (
+    access.channel.organizationId !== attachment.organizationId ||
+    attachment.message.organizationId !== attachment.organizationId
+  ) {
+    throw new OrganizationAuthorizationError();
+  }
+  return { attachment, access };
 }
