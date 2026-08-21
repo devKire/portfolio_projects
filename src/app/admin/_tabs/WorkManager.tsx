@@ -53,6 +53,7 @@ import type {
   WorkKind,
   WorkLane,
   WorkPriority,
+  WorkManagerIntent,
   WorkWorkspace,
 } from '@/types/work';
 
@@ -89,29 +90,47 @@ const priorityClasses: Record<WorkPriority, string> = {
 export default function WorkManager({
   userId,
   organization,
+  initialIntent,
 }: {
   userId: string;
   organization: OrganizationSummary | null;
+  initialIntent?: WorkManagerIntent | null;
 }) {
   const organizationId = organization?.id || null;
   const [workspace, setWorkspace] = useState<WorkWorkspace | null>(null);
   const [section, setSection] = useState<Section>('work');
   const [scope, setScope] = useState<TaskScope>(
-    organizationId ? 'mine' : 'personal'
+    initialIntent?.scope || (organizationId ? 'mine' : 'personal')
   );
-  const [filters, setFilters] = useState<WorkItemFilters>({});
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [filters, setFilters] = useState<WorkItemFilters>({
+    kind: initialIntent?.kind,
+    lane: initialIntent?.lane,
+    priority: initialIntent?.priority,
+    teamId: initialIntent?.teamId,
+    assigneeId: initialIntent?.assigneeId,
+    queueId: initialIntent?.queueId,
+    projectId: initialIntent?.projectId,
+    dueDateRange: initialIntent?.dueDateRange,
+  });
+  const [viewMode, setViewMode] = useState<ViewMode>(
+    initialIntent?.view || 'list'
+  );
   const [composer, setComposer] = useState<Composer>(null);
   const [projects, setProjects] = useState<TaskProjectOption[]>([]);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [selectedKey, setSelectedKey] = useState<string | null>(
+    initialIntent?.itemKey || null
+  );
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const previousOrganizationId = useRef(organizationId);
 
   useEffect(() => {
+    if (previousOrganizationId.current === organizationId) return;
+    previousOrganizationId.current = organizationId;
     setScope(organizationId ? 'mine' : 'personal');
     setFilters({});
     setSelectedKey(null);
@@ -131,7 +150,8 @@ export default function WorkManager({
       organizationId,
       scope,
       teamId: scope === 'team' ? filters.teamId : undefined,
-      assigneeId: filters.assigneeId,
+      assigneeId:
+        filters.assigneeId === 'unassigned' ? undefined : filters.assigneeId,
     });
     if (result.success) {
       setWorkspace(result.data);
@@ -652,10 +672,16 @@ function WorkFilters({
           label="Responsável"
           value={filters.assigneeId || ''}
           onChange={(value) => set('assigneeId', value)}
-          options={members.map((member) => [
-            member.id,
-            member.name || `@${member.username}`,
-          ])}
+          options={[
+            ...members.map(
+              (member) =>
+                [member.id, member.name || `@${member.username}`] as [
+                  string,
+                  string,
+                ]
+            ),
+            ['unassigned', 'Sem responsável'],
+          ]}
         />
       )}
       <FilterSelect

@@ -56,13 +56,63 @@ test('V2: task and ticket filters compose access with AND', () => {
   const tasks = source('src/app/actions/tasks.ts');
   const service = source('src/lib/task-service.ts');
   const tickets = source('src/app/actions/tickets.ts');
+  const ticketAccess = source('src/lib/tickets/access.ts');
 
   assert.match(tasks, /AND: \[accessWhere, filterWhere\]/);
   assert.match(service, /AND: \[accessWhere, filterWhere\]/);
+  assert.match(tickets, /buildTicketAccessWhere/);
   assert.match(
-    tickets,
-    /AND: \[accessWhere, baseFilters, mineWhere, searchWhere\]/
+    ticketAccess,
+    /AND: \[visibilityWhere, filterWhere, mineWhere, searchWhere\]/
   );
+});
+
+test('V26-V30: Dashboard aggregates reuse scoped access predicates', () => {
+  const dashboard = source('src/lib/dashboard/operational.ts');
+  const dashboardAction = source('src/app/actions/dashboard.ts');
+  const ticketAccess = source('src/lib/tickets/access.ts');
+
+  assert.match(dashboardAction, /buildOperationalDashboard\(user, filters\)/);
+  assert.match(
+    dashboard,
+    /requireOrganizationMembership\(user\.id, organizationId\)/
+  );
+  assert.match(dashboard, /buildTaskAccessWhere\(user\.id/);
+  assert.match(dashboard, /ticketVisibilityWhere\(user\.id, role\)/);
+  assert.match(dashboard, /scopeKey: personalNoteScope\(user\.id\)/);
+  assert.match(dashboard, /scopeKey: organizationNoteScope\(organizationId\)/);
+  assert.match(
+    dashboard,
+    /NOT: \{ linkedTicket: \{ is: canonicalTicketWhere \} \}/
+  );
+  assert.match(dashboard, /task: \{ is: taskSnapshotWhere \}/);
+  assert.match(dashboard, /ticket: \{ is: ticketSnapshotWhere \}/);
+  assert.match(ticketAccess, /requireOrganizationMembership/);
+});
+
+test('V29: Dashboard UI has no fake comparisons or untyped state', () => {
+  const dashboard = source('src/app/admin/_tabs/Dashboard.tsx');
+  const dashboardAction = source('src/app/actions/dashboard.ts');
+
+  assert.doesNotMatch(dashboard, /useState<any>/);
+  assert.doesNotMatch(dashboard, /calculateChange\(/);
+  assert.doesNotMatch(dashboard, /href=["']#["']/);
+  assert.doesNotMatch(
+    dashboardAction,
+    /Retornar dados simulados em caso de erro/
+  );
+});
+
+test('V28: Dashboard deep-links use typed Work Manager intents', () => {
+  const router = source('src/app/admin/_components/ContentRouter.tsx');
+  const dashboard = source('src/app/admin/_tabs/Dashboard.tsx');
+  const workManager = source('src/app/admin/_tabs/WorkManager.tsx');
+
+  assert.match(router, /organizationContext=\{organizationContext\}/);
+  assert.match(router, /setWorkIntent\(intent\)/);
+  assert.match(router, /initialIntent=\{workIntent\}/);
+  assert.match(dashboard, /itemKey: item\.key/);
+  assert.match(workManager, /initialIntent\?: WorkManagerIntent \| null/);
 });
 
 test('V4/V8: migration is additive and enforces same-organization joins', () => {

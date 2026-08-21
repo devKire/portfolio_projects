@@ -90,6 +90,7 @@ export default function AdminPanel({
         userId={user.id}
         organizationContext={organizationContext}
         onOrganizationContextChange={refreshOrganizationContext}
+        onTabChange={handleTabChange}
       />
     </AdminLayout>
   );

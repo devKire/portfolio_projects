@@ -4,7 +4,13 @@ import { endOfDay, format, startOfDay, subDays } from 'date-fns';
 
 import { requireUser } from '@/lib/auth/session';
 import { requireOwnedLandingPage } from '@/lib/auth/tenant';
+import { buildOperationalDashboard } from '@/lib/dashboard/operational';
+import { OrganizationAuthorizationError } from '@/lib/organizations/authorization';
 import { db } from '@/lib/prisma';
+import type {
+  DashboardFilters,
+  OperationalDashboardData,
+} from '@/types/dashboard';
 
 export interface DashboardStats {
   portfolioViews: number;
@@ -29,6 +35,32 @@ function createActivity(activity: {
   type: ActivityType;
 }) {
   return activity;
+}
+
+export type OperationalDashboardResult =
+  | { success: true; data: OperationalDashboardData }
+  | { success: false; error: string };
+
+export async function getOperationalDashboard(
+  filters: Partial<DashboardFilters>
+): Promise<OperationalDashboardResult> {
+  try {
+    const user = await requireUser();
+    const data = await buildOperationalDashboard(user, filters);
+    return { success: true, data };
+  } catch (error) {
+    if (error instanceof OrganizationAuthorizationError) {
+      return { success: false, error: error.message };
+    }
+    console.error('Error fetching operational dashboard:', error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Não foi possível carregar o dashboard operacional.',
+    };
+  }
 }
 
 export async function getDashboardStats(): Promise<DashboardStats> {
@@ -210,18 +242,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     };
   } catch (error) {
     console.error('Error fetching dashboard stats:', error);
-
-    // Retornar dados simulados em caso de erro
-    return {
-      portfolioViews: 0,
-      linkedinFollowers: 0,
-      githubFollowers: 0,
-      socialMediaComments: 0,
-      projectsCount: 0,
-      lastUpdated: format(new Date(), 'dd/MM/yyyy HH:mm'),
-      pageViewsByDay: [],
-      recentActivities: [],
-    };
+    throw error;
   }
 }
 
@@ -386,10 +407,6 @@ export async function getDetailedStats(timeRange: '7d' | '30d' | '90d') {
     };
   } catch (error) {
     console.error('Error fetching detailed stats:', error);
-    return {
-      totalViews: 0,
-      topPages: [],
-      socialByPlatform: [],
-    };
+    throw error;
   }
 }

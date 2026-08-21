@@ -144,8 +144,12 @@ export function filterWorkItems(items: WorkItem[], filters: WorkItemFilters) {
     if (filters.lane && item.lane !== filters.lane) return false;
     if (filters.priority && item.priority !== filters.priority) return false;
     if (filters.teamId && item.teamId !== filters.teamId) return false;
-    if (filters.assigneeId && item.assigneeId !== filters.assigneeId) {
-      return false;
+    if (filters.assigneeId) {
+      if (filters.assigneeId === 'unassigned') {
+        if (item.assigneeId) return false;
+      } else if (item.assigneeId !== filters.assigneeId) {
+        return false;
+      }
     }
     if (filters.queueId) {
       if (item.kind !== 'TICKET' || item.queueId !== filters.queueId) {

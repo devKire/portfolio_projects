@@ -1,5 +1,5 @@
 §G
-Evoluir colaboração existente: Notes/KCS compartilham engine, conteúdo pessoal transfere com segurança para KCS e Tasks/Tickets operam em um Work Manager canônico, preservando dados e fluxos especializados.
+Evoluir colaboração existente: conhecimento e trabalho compartilham engines seguros; Dashboard vira central operacional multi-escopo com dados reais, sem romper analytics público.
 
 §C
 
@@ -21,6 +21,7 @@ Evoluir colaboração existente: Notes/KCS compartilham engine, conteúdo pessoa
 - I.kcs: novas Server Actions escopadas de pastas, notas, links e anexos KCS.
 - I.knowledge: editor compartilhado, transferências pessoais → KCS e comentários organizacionais de Note.
 - I.work: `WorkItem` discriminado adapta Task/Ticket; entidades e actions especializadas permanecem fonte de persistência/autorização.
+- I.dashboard: `getOperationalDashboard(filters)` entrega DTO agregado, tipado e autorizado; analytics público legado permanece separado.
 - I.admin: `AdminPanel`/`Sidebar`/`ContentRouter` recebem contexto organizacional e novas tabs.
 
 §V
@@ -50,6 +51,11 @@ Evoluir colaboração existente: Notes/KCS compartilham engine, conteúdo pessoa
 - V23: Kanban converte lane → status pela entidade; nenhuma operação grava enum/status de Ticket em Task ou status de Task em Ticket.
 - V24: unificação de UI não contorna autorização, fila, histórico, comentários, bulk/quick-add ou regras especializadas de Task/Ticket.
 - V25: `NoteComment.organizationId` corresponde ao `organizationId` da Note por constraint; leitura e mutação também exigem membership no servidor.
+- V26: toda métrica, série e contagem operacional aplica o mesmo predicado de acesso do registro Task/Ticket/Note; aggregate nunca amplia visibilidade.
+- V27: escopos Dashboard são exclusivos: pessoal usa `organizationId = null` + dono/scopeKey; organização exige membership da sessão; minha visão combina somente recursos pessoais e organizacionais relacionados ao usuário.
+- V28: Dashboard e Work Manager usam representação canônica: Task vinculada é suprimida somente quando o Ticket correspondente é acessível, inclusive em KPIs, gráficos e listas.
+- V29: comparação usa período imediatamente anterior de igual duração; divisor anterior zero/ausente retorna `null`/`—`; erro de query nunca é apresentado como zero real.
+- V30: feed e listas recentes selecionam campos mínimos e só retornam relações previamente escopadas; títulos, atores e opções de filtro externos nunca vazam.
 
 §T
 id|status|goal|cites
@@ -66,6 +72,10 @@ T10|x|extrair editor compartilhado e integrar Notes/KCS read-only por capabiliti
 T11|x|criar adapter/query/actions WorkItem sem duplicação de linked Ticket/Task|V2,V5,V6,V22,V23,V24,I.tasks,I.tickets,I.work
 T12|x|integrar List/Kanban/criação/detalhe/filas no Work Manager e limpar navegação|V22,V23,V24,I.admin,I.work
 T13|x|testar IDOR, transferências, comentários, adapter e executar validação final|V10,V12,V16,V17,V18,V19,V20,V21,V22,V23,V24,V25
+T14|x|tipar filtros/DTO e extrair predicado reutilizável de acesso Ticket|V2,V10,V26,V27,V30,I.dashboard,I.tickets
+T15|x|implementar aggregates, períodos, listas e analytics operacional server-side|V26,V27,V28,V29,V30,I.dashboard,I.work
+T16|x|refatorar Dashboard responsivo, filtros, gráficos leves, estados e deep-links Work|V22,V28,V29,I.admin,I.dashboard,I.work
+T17|x|adicionar guardrails Dashboard, validar Prisma/test/lint/build e publicar main|V10,V12,V26,V27,V28,V29,V30
 
 §B
 id|date|cause|fix
@@ -77,3 +87,5 @@ B5|2026-08-20|agregador Work repassava unions heterogêneas de erro de Task/Tick
 B6|2026-08-20|`decodeURIComponent` direto podia rejeitar toda transferência ao encontrar link Markdown com percent-encoding malformado|V19
 B7|2026-08-20|arquivo `'use server'` de comentários exportava constante runtime além de actions assíncronas, incompatível com a fronteira do App Router|V17
 B8|2026-08-20|reexport de Server Actions por outro módulo `'use server'` foi interpretado pelo compilador Next como export não assíncrono|V18
+B9|2026-08-21|normalização genérica alargou literals de período/grupos do DTO Dashboard e quebrou TypeScript strict|V12
+B10|2026-08-21|`concat` do filtro sem responsável alargou tuple `[value,label]` para `string[]`|V12

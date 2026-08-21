@@ -19,12 +19,15 @@ import {
 } from '@/lib/organizations/authorization';
 import {
   canManageQueue,
-  canViewAllTickets,
   ORGANIZATION_MANAGER_ROLES,
   ticketStatusActivityType,
 } from '@/lib/organizations/policy';
 import { db } from '@/lib/prisma';
 import { getAccessibleTask } from '@/lib/tasks/access';
+import {
+  buildTicketAccessWhere,
+  type TicketAccessFilters,
+} from '@/lib/tickets/access';
 
 const TICKET_STATUSES = new Set<TicketStatus>([
   'OPEN',
@@ -222,15 +225,7 @@ export async function removeTicketQueueAgent(input: {
   }
 }
 
-export type TicketFilters = {
-  status?: TicketStatus;
-  priority?: TicketPriority;
-  queueId?: string;
-  teamId?: string;
-  assigneeId?: string;
-  mine?: boolean;
-  search?: string;
-};
+export type TicketFilters = TicketAccessFilters;
 
 export async function getTicketWorkspace(
   organizationId: string,
@@ -238,50 +233,11 @@ export async function getTicketWorkspace(
 ) {
   try {
     const user = await requireUser();
-    const membership = await requireOrganizationMembership(
+    const { membership, visibilityWhere, where } = await buildTicketAccessWhere(
       user.id,
-      organizationId
-    );
-    const accessWhere: Prisma.TicketWhereInput = canViewAllTickets(
-      membership.role
-    )
-      ? {}
-      : {
-          OR: [
-            { requesterId: user.id },
-            { assigneeId: user.id },
-            { queue: { agents: { some: { userId: user.id } } } },
-            { team: { members: { some: { userId: user.id } } } },
-            { queue: { team: { members: { some: { userId: user.id } } } } },
-          ],
-        };
-    const baseFilters: Prisma.TicketWhereInput = {
-      ...(filters.status ? { status: filters.status } : {}),
-      ...(filters.priority ? { priority: filters.priority } : {}),
-      ...(filters.queueId ? { queueId: filters.queueId } : {}),
-      ...(filters.teamId ? { teamId: filters.teamId } : {}),
-      ...(filters.assigneeId ? { assigneeId: filters.assigneeId } : {}),
-    };
-    const mineWhere: Prisma.TicketWhereInput = filters.mine
-      ? { OR: [{ requesterId: user.id }, { assigneeId: user.id }] }
-      : {};
-    const searchWhere: Prisma.TicketWhereInput = filters.search
-      ? {
-          OR: [
-            { title: { contains: filters.search, mode: 'insensitive' } },
-            {
-              description: {
-                contains: filters.search,
-                mode: 'insensitive',
-              },
-            },
-          ],
-        }
-      : {};
-    const where: Prisma.TicketWhereInput = {
       organizationId,
-      AND: [accessWhere, baseFilters, mineWhere, searchWhere],
-    };
+      filters
+    );
 
     const [tickets, queues, stats] = await Promise.all([
       db.ticket.findMany({
@@ -322,7 +278,7 @@ export async function getTicketWorkspace(
       }),
       db.ticket.groupBy({
         by: ['status'],
-        where: { organizationId, ...accessWhere },
+        where: { organizationId, AND: [visibilityWhere] },
         _count: { status: true },
       }),
     ]);

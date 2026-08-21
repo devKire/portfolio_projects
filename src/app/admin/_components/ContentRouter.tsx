@@ -2,7 +2,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { Suspense } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import {
   Globe,
   MessageSquare,
@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import ContentLoader from './ContentLoader';
 import type { OrganizationContext } from '@/lib/organizations/context';
+import type { WorkManagerIntent } from '@/types/work';
 
 // Lazy loading dos módulos pesados
 const Dashboard = dynamic(() => import('../_tabs/Dashboard'), {
@@ -74,6 +75,7 @@ interface ContentRouterProps {
   userId: string;
   organizationContext: OrganizationContext;
   onOrganizationContextChange: () => Promise<void>;
+  onTabChange: (tabId: string) => void;
 }
 
 export default function ContentRouter({
@@ -81,14 +83,35 @@ export default function ContentRouter({
   userId,
   organizationContext,
   onOrganizationContextChange,
+  onTabChange,
 }: ContentRouterProps) {
+  const [workIntent, setWorkIntent] = useState<WorkManagerIntent | null>(null);
+  useEffect(() => {
+    if (
+      activeTab !== 'work' &&
+      activeTab !== 'tasks' &&
+      activeTab !== 'tickets'
+    ) {
+      setWorkIntent(null);
+    }
+  }, [activeTab]);
   const activeOrganization = organizationContext.organizations.find(
     (item) => item.id === organizationContext.activeOrganizationId
   );
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard />;
+        return (
+          <Dashboard
+            userId={userId}
+            organizationContext={organizationContext}
+            onOpenWork={(intent) => {
+              setWorkIntent(intent);
+              onTabChange('work');
+            }}
+            onOpenKnowledge={onTabChange}
+          />
+        );
       case 'work':
       case 'tasks':
       case 'tickets':
@@ -96,6 +119,7 @@ export default function ContentRouter({
           <WorkManager
             userId={userId}
             organization={activeOrganization || null}
+            initialIntent={workIntent}
           />
         );
       case 'daily-checklist':
@@ -131,7 +155,17 @@ export default function ContentRouter({
       case 'settings':
         return <SettingsTab />;
       default:
-        return <Dashboard />;
+        return (
+          <Dashboard
+            userId={userId}
+            organizationContext={organizationContext}
+            onOpenWork={(intent) => {
+              setWorkIntent(intent);
+              onTabChange('work');
+            }}
+            onOpenKnowledge={onTabChange}
+          />
+        );
     }
   };
 

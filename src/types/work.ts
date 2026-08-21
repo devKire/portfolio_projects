@@ -130,6 +130,20 @@ export type WorkItemFilters = {
   dueDateRange?: 'today' | 'week' | 'overdue' | 'none';
 };
 
+export type WorkManagerIntent = {
+  scope?: WorkScope;
+  kind?: WorkKind;
+  lane?: WorkLane;
+  priority?: WorkPriority;
+  teamId?: string;
+  assigneeId?: string;
+  queueId?: string;
+  projectId?: string;
+  dueDateRange?: WorkItemFilters['dueDateRange'];
+  itemKey?: string;
+  view?: 'list' | 'kanban';
+};
+
 export type WorkWorkspace = {
   items: WorkItem[];
   queues: QueueRow[];
