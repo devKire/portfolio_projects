@@ -1,6 +1,6 @@
 import type { PortfolioContentData } from './types';
 
-export const DEFAULT_PORTFOLIO_CONTENT: PortfolioContentData = {
+export const DEMO_PORTFOLIO_CONTENT: PortfolioContentData = {
   hero: {
     verifiedBadge: '✓ Verificado',
     headlineLine1: 'Transformo Ideias em ',
@@ -440,3 +440,128 @@ export const DEFAULT_PORTFOLIO_CONTENT: PortfolioContentData = {
     defaultWhatsappMessage: 'Olá! Gostaria de conversar sobre um projeto',
   },
 };
+
+export function createEmptyPortfolioContent(identity?: {
+  name?: string | null;
+  username?: string | null;
+  email?: string | null;
+}): PortfolioContentData {
+  const displayName =
+    identity?.name?.trim() || identity?.username?.trim() || 'Seu nome';
+  const username = identity?.username?.trim() || 'seu-usuario';
+  const email = identity?.email?.trim() || '';
+  return {
+    hero: {
+      ...DEMO_PORTFOLIO_CONTENT.hero,
+      verifiedBadge: '',
+      headlineLine1: displayName,
+      headlineLine2: 'Portfólio',
+      headlineLine3: 'em construção',
+      rotatingWords: [],
+      subheadline: `Página pessoal de ${displayName}. Edite este conteúdo no painel administrativo.`,
+      serviceHighlights: [],
+      primaryCta: {
+        label: email ? 'Entrar em contato' : 'Editar contato',
+        hrefType: 'custom',
+        href: email ? `mailto:${email}` : '',
+      },
+      secondaryCta: {
+        label: 'Ver projetos',
+        hrefType: 'section',
+        targetSection: 'projetos',
+      },
+      microcopy: '',
+      dashboardPreview: {
+        ...DEMO_PORTFOLIO_CONTENT.hero.dashboardPreview,
+        searchLabel: `${username}/portfolio`,
+        statusLabel: '',
+        badge: '',
+        title: 'Seu portfólio',
+        progressLabel: '',
+        progressValue: 0,
+        secondaryProgressLabel: '',
+        cards: [],
+        processLabel: '',
+        processMicrocopy: '',
+        desktopProcessSteps: [],
+        mobileProcessSteps: [],
+        previewTitle: '',
+        previewBadge: '',
+        metricsTitle: '',
+        metrics: [],
+      },
+    },
+    about: {
+      ...DEMO_PORTFOLIO_CONTENT.about,
+      badge: '',
+      titleLine1: 'Sobre',
+      titleHighlight: displayName,
+      subtitleTemplate: 'Conte sua trajetória, experiência e objetivos.',
+      availabilityLabel: '',
+      techTitle: 'Tecnologias',
+      technologies: [],
+      satisfaction: { value: '', label: '', microcopy: '' },
+      differentiator: {
+        title: 'Diferenciais',
+        description: 'Adicione seus diferenciais profissionais.',
+        items: [],
+      },
+      cta: {
+        title: 'Contato',
+        description: email || 'Adicione seus canais de contato.',
+        primaryLabel: 'Entrar em contato',
+        secondaryLabel: 'Copiar email',
+        copiedLabel: 'Copiado',
+      },
+    },
+    services: {
+      titlePrefix: 'Serviços',
+      titleHighlight: '',
+      subtitle: 'Adicione os serviços que você oferece.',
+      services: [],
+      finalCta: {
+        title: 'Seu próximo projeto',
+        description: 'Personalize esta chamada no painel.',
+        label: 'Entrar em contato',
+        microcopy: '',
+      },
+    },
+    process: {
+      badge: '',
+      titlePrefix: 'Processo',
+      titleHighlight: '',
+      titleSuffix: '',
+      subtitle: 'Descreva como você trabalha.',
+      includedLabel: '',
+      steps: [],
+      guarantees: [],
+      finalCta: {
+        title: 'Vamos conversar?',
+        description: 'Personalize esta seção com sua proposta.',
+        label: 'Entrar em contato',
+      },
+    },
+    contact: {
+      titlePrefix: 'Entre em',
+      titleHighlight: 'contato',
+      subtitlePrefix: '',
+      subtitleHighlight: '',
+      subtitleSuffix: email || 'Adicione seus dados de contato.',
+      primaryCtaLabel: 'Enviar mensagem',
+      separatorLabel: 'ou',
+      emailLabel: 'Email',
+      copiedEmailLabel: 'Copiado',
+      phoneLabel: 'Telefone',
+      trustMicrocopy: '',
+    },
+    projects: {
+      organizerTabs: ['Projetos', 'Estudos de caso'],
+    },
+    settings: {
+      publicPageButtonLabel: 'Ver página',
+      defaultWhatsappMessage: '',
+    },
+  };
+}
+
+export const EMPTY_PORTFOLIO_CONTENT = createEmptyPortfolioContent();

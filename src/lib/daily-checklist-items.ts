@@ -12,7 +12,7 @@ export interface DailyChecklistTemplateItem {
   isSacred?: boolean;
 }
 
-export const DAILY_CHECKLIST_ITEMS: DailyChecklistTemplateItem[] = [
+export const DEMO_DAILY_CHECKLIST_ITEMS: DailyChecklistTemplateItem[] = [
   {
     slug: 'wakeup',
     title: 'WakeUp',
@@ -172,7 +172,7 @@ export const DAILY_CHECKLIST_ITEMS: DailyChecklistTemplateItem[] = [
   },
 ];
 
-export const DAILY_CHECKLIST_REMINDERS = [
+export const DEMO_DAILY_CHECKLIST_REMINDERS = [
   'Regra dos 5 Minutos',
   'Batching de E-mail',
   'Visualizacao / marcar progresso',

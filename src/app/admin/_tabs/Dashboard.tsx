@@ -1,8 +1,17 @@
 'use client';
 
-import { AlertCircle, Building2, Clock3, RotateCcw } from 'lucide-react';
+import {
+  AlertCircle,
+  Building2,
+  CalendarDays,
+  Clock3,
+  MessageCircle,
+  RotateCcw,
+} from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { getUpcomingCalendarEvents } from '@/app/actions/calendar';
+import { getChatUnreadCount } from '@/app/actions/chat';
 import { getOperationalDashboard } from '@/app/actions/dashboard';
 import type { OrganizationContext } from '@/lib/organizations/context';
 import type {
@@ -37,11 +46,13 @@ export default function Dashboard({
   organizationContext,
   onOpenWork,
   onOpenKnowledge,
+  onOpenModule,
 }: {
   userId: string;
   organizationContext: OrganizationContext;
   onOpenWork: (intent: WorkManagerIntent) => void;
   onOpenKnowledge: (tab: 'notes' | 'kcs') => void;
+  onOpenModule: (tab: 'calendar' | 'chat') => void;
 }) {
   const activeOrganization =
     organizationContext.organizations.find(
@@ -56,6 +67,18 @@ export default function Dashboard({
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [clock, setClock] = useState(() => Date.now());
+  const [upcomingEvents, setUpcomingEvents] = useState<
+    {
+      id: string;
+      title: string;
+      occurrenceStartAt: string;
+      type: string;
+      organizationId: string | null;
+      teams: { team: { name: string } }[];
+      participants: { id: string }[];
+    }[]
+  >([]);
+  const [chatUnread, setChatUnread] = useState<number | null>(null);
   const requestId = useRef(0);
   const dataRef = useRef<OperationalDashboardData | null>(null);
   const previousOrganizationId = useRef(activeOrganization?.id || null);
@@ -114,6 +137,23 @@ export default function Dashboard({
     const timeout = window.setTimeout(() => void load(filters), 280);
     return () => window.clearTimeout(timeout);
   }, [filters, load]);
+
+  const loadCollaboration = useCallback(async () => {
+    const [calendarResult, chatResult] = await Promise.all([
+      getUpcomingCalendarEvents(activeOrganization?.id || null, 8),
+      activeOrganization
+        ? getChatUnreadCount(activeOrganization.id)
+        : Promise.resolve({ success: true as const, data: null }),
+    ]);
+    if (calendarResult.success) {
+      setUpcomingEvents(calendarResult.data as typeof upcomingEvents);
+    }
+    if (chatResult.success) setChatUnread(chatResult.data);
+  }, [activeOrganization?.id]);
+
+  useEffect(() => {
+    void loadCollaboration();
+  }, [loadCollaboration]);
 
   const updateFilters = useCallback((patch: Partial<DashboardFilters>) => {
     setFilters((current) => {
@@ -283,6 +323,108 @@ export default function Dashboard({
         onOpenWork={openWork}
         onOpenKnowledge={() => openKnowledge()}
       />
+
+      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(260px,0.6fr)]">
+        <section className="rounded-2xl border border-[#303036] bg-[#19191d] p-4 sm:p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 text-sky-300">
+                <CalendarDays className="h-4 w-4" />
+                <span className="text-xs font-semibold uppercase">
+                  Próximos eventos
+                </span>
+              </div>
+              <h2 className="mt-1 font-semibold text-white">
+                Agenda do workspace
+              </h2>
+            </div>
+            <button
+              type="button"
+              onClick={() => onOpenModule('calendar')}
+              className="min-h-10 rounded-lg border border-white/10 px-3 text-xs text-white hover:bg-white/[0.05]"
+            >
+              Abrir calendário
+            </button>
+          </div>
+          <div className="mt-4 space-y-2">
+            {upcomingEvents.length ? (
+              upcomingEvents.slice(0, 5).map((event) => (
+                <button
+                  key={`${event.id}:${event.occurrenceStartAt}`}
+                  type="button"
+                  onClick={() => onOpenModule('calendar')}
+                  className="flex min-h-14 w-full items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.025] p-3 text-left hover:border-sky-400/30"
+                >
+                  <span className="w-14 shrink-0 text-center text-xs font-semibold text-sky-200">
+                    {new Intl.DateTimeFormat('pt-BR', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    }).format(new Date(event.occurrenceStartAt))}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium text-white">
+                      {event.title}
+                    </span>
+                    <span className="mt-1 block truncate text-xs text-[#858590]">
+                      {event.type === 'MEETING'
+                        ? 'Reunião'
+                        : event.organizationId
+                          ? 'Organização'
+                          : 'Pessoal'}
+                      {event.teams.length
+                        ? ` · ${event.teams.map((team) => team.team.name).join(', ')}`
+                        : ''}
+                    </span>
+                  </span>
+                </button>
+              ))
+            ) : (
+              <p className="rounded-xl border border-dashed border-white/10 px-4 py-8 text-center text-sm text-[#858590]">
+                Nenhum evento futuro visível.
+              </p>
+            )}
+          </div>
+          {upcomingEvents.find((event) => event.type === 'MEETING') && (
+            <p className="mt-3 text-xs text-[#92929c]">
+              Próxima reunião:{' '}
+              <strong className="text-[#d0d0d7]">
+                {
+                  upcomingEvents.find((event) => event.type === 'MEETING')
+                    ?.title
+                }
+              </strong>
+            </p>
+          )}
+        </section>
+        <section className="rounded-2xl border border-[#303036] bg-[#19191d] p-4 sm:p-5">
+          <div className="flex items-center gap-2 text-violet-300">
+            <MessageCircle className="h-4 w-4" />
+            <span className="text-xs font-semibold uppercase">Chat</span>
+          </div>
+          <h2 className="mt-2 font-semibold text-white">Mensagens não lidas</h2>
+          {activeOrganization ? (
+            <>
+              <p className="mt-5 text-4xl font-semibold text-white">
+                {chatUnread ?? '—'}
+              </p>
+              <p className="mt-1 text-sm text-[#858590]">
+                {activeOrganization.name}
+              </p>
+              <button
+                type="button"
+                onClick={() => onOpenModule('chat')}
+                className="mt-5 min-h-10 w-full rounded-lg bg-violet-500 px-3 text-sm font-semibold text-white hover:bg-violet-400"
+              >
+                Abrir Chat
+              </button>
+            </>
+          ) : (
+            <p className="mt-5 text-sm text-[#858590]">
+              Selecione uma organização para acessar o Chat.
+            </p>
+          )}
+        </section>
+      </div>
 
       {!hasResults && (
         <section className="rounded-2xl border border-dashed border-[#3a3a43] bg-[#18181c] p-8 text-center">

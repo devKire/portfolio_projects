@@ -7,7 +7,7 @@ import { requireUser } from '@/lib/auth/session';
 import { requireOwnedLandingPage } from '@/lib/auth/tenant';
 import { normalizeUsername, validatePublicSlug } from '@/lib/auth/validation';
 import { db } from '@/lib/prisma';
-import { DEFAULT_PORTFOLIO_CONTENT } from '@/lib/portfolio-content/defaults';
+import { EMPTY_PORTFOLIO_CONTENT } from '@/lib/portfolio-content/defaults';
 import {
   deepMergeWithDefaults,
   resolvePortfolioContent,
@@ -227,13 +227,13 @@ export async function updatePortfolioSection(
       where: { landingpageId: resolvedLandingpageId },
       create: {
         landingpageId: resolvedLandingpageId,
-        hero: toJsonObject(DEFAULT_PORTFOLIO_CONTENT.hero),
-        about: toJsonObject(DEFAULT_PORTFOLIO_CONTENT.about),
-        services: toJsonObject(DEFAULT_PORTFOLIO_CONTENT.services),
-        process: toJsonObject(DEFAULT_PORTFOLIO_CONTENT.process),
-        contact: toJsonObject(DEFAULT_PORTFOLIO_CONTENT.contact),
-        projects: toJsonObject(DEFAULT_PORTFOLIO_CONTENT.projects),
-        settings: toJsonObject(DEFAULT_PORTFOLIO_CONTENT.settings),
+        hero: toJsonObject(EMPTY_PORTFOLIO_CONTENT.hero),
+        about: toJsonObject(EMPTY_PORTFOLIO_CONTENT.about),
+        services: toJsonObject(EMPTY_PORTFOLIO_CONTENT.services),
+        process: toJsonObject(EMPTY_PORTFOLIO_CONTENT.process),
+        contact: toJsonObject(EMPTY_PORTFOLIO_CONTENT.contact),
+        projects: toJsonObject(EMPTY_PORTFOLIO_CONTENT.projects),
+        settings: toJsonObject(EMPTY_PORTFOLIO_CONTENT.settings),
         [section]: toJsonObject(mergedSection),
       },
       update: {
@@ -370,12 +370,12 @@ export async function resetPortfolioSectionToDefault(
   section: PortfolioSectionKey
 ): Promise<ActionResult<PortfolioContentData[PortfolioSectionKey]>> {
   return updatePortfolioSection(landingpageId, section, {
-    ...(DEFAULT_PORTFOLIO_CONTENT[section] as object),
+    ...(EMPTY_PORTFOLIO_CONTENT[section] as object),
   } as Partial<PortfolioContentData[PortfolioSectionKey]>);
 }
 
 export async function resetAllPortfolioContentToDefault(
   landingpageId?: string
 ): Promise<ActionResult<PortfolioContentData>> {
-  return upsertPortfolioContent(landingpageId, DEFAULT_PORTFOLIO_CONTENT);
+  return upsertPortfolioContent(landingpageId, EMPTY_PORTFOLIO_CONTENT);
 }

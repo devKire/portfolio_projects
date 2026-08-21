@@ -12,12 +12,15 @@ import {
 import {
   extractAttachmentReferences,
   joinKnowledgePath,
-  relativeKnowledgePath,
+  planKnowledgeFolderTree,
   replaceKnowledgePathPrefix,
   reserveUniqueFilePath,
   reserveUniqueFolderPath,
   reserveUniqueSlug,
+  resolveKnowledgeReferencePath,
+  rewriteResolvedKnowledgeReferences,
   rewriteKnowledgeReference,
+  safeKnowledgeTransferRelativePath,
 } from '@/lib/knowledge/transfer-planning';
 import { normalizeVaultPath } from '@/lib/notes';
 import {
@@ -48,6 +51,11 @@ type TransferAttachment = {
   fileName: string;
   filePath: string;
   folderPath: string | null;
+};
+
+type ReferencedAttachment = {
+  attachment: TransferAttachment;
+  references: string[];
 };
 
 function personalScope(userId: string): KnowledgeScopeWhere {
@@ -140,34 +148,40 @@ function selectReferencedAttachments(
   noteFolderPath: string | null,
   attachments: TransferAttachment[]
 ) {
-  const selected = new Map<string, TransferAttachment>();
+  const selected = new Map<string, ReferencedAttachment>();
   for (const reference of extractAttachmentReferences(content)) {
     const normalized = normalizeVaultPath(reference);
-    const relativePath = noteFolderPath
-      ? joinKnowledgePath(noteFolderPath, normalized)
-      : normalized;
+    const resolvedPath = resolveKnowledgeReferencePath(
+      noteFolderPath,
+      reference
+    );
     const exact = attachments.find(
       (attachment) =>
         normalizeVaultPath(attachment.filePath) === normalized ||
-        normalizeVaultPath(attachment.filePath) === relativePath
+        normalizeVaultPath(attachment.filePath) === resolvedPath
     );
-    if (exact) {
-      selected.set(exact.id, exact);
-      continue;
-    }
-    const sameFolder = attachments.find(
-      (attachment) =>
-        attachment.fileName === normalized.split('/').at(-1) &&
-        attachment.folderPath === noteFolderPath
-    );
-    if (sameFolder) {
-      selected.set(sameFolder.id, sameFolder);
-      continue;
-    }
-    const byName = attachments.filter(
-      (attachment) => attachment.fileName === normalized.split('/').at(-1)
-    );
-    if (byName.length === 1) selected.set(byName[0].id, byName[0]);
+    const sameFolder = exact
+      ? null
+      : attachments.find(
+          (attachment) =>
+            attachment.fileName === normalized.split('/').at(-1) &&
+            attachment.folderPath === noteFolderPath
+        );
+    const byName =
+      exact || sameFolder
+        ? []
+        : attachments.filter(
+            (attachment) => attachment.fileName === normalized.split('/').at(-1)
+          );
+    const attachment =
+      exact || sameFolder || (byName.length === 1 ? byName[0] : null);
+    if (!attachment) continue;
+    const current = selected.get(attachment.id) || {
+      attachment,
+      references: [],
+    };
+    current.references.push(reference);
+    selected.set(attachment.id, current);
   }
   return Array.from(selected.values());
 }
@@ -307,39 +321,23 @@ export async function movePersonalNoteToOrganization(input: {
       );
       let nextContent = note.content;
       const attachmentIds: string[] = [];
-      for (const attachment of referencedAttachments) {
-        const relativeFolder =
-          note.folderPath &&
-          attachment.folderPath?.startsWith(`${note.folderPath}/`)
-            ? attachment.folderPath.slice(note.folderPath.length + 1)
-            : !note.folderPath
-              ? attachment.folderPath
-              : null;
-        const targetFolderPath = relativeFolder
-          ? joinKnowledgePath(destination?.path || null, relativeFolder)
-          : destination?.path || null;
-        const preferredPath = joinKnowledgePath(
-          targetFolderPath,
+      const attachmentPlans = referencedAttachments.map((referenced) => {
+        const attachment = referenced.attachment;
+        const relativeTarget = safeKnowledgeTransferRelativePath(
+          referenced.references[0] || attachment.fileName,
           attachment.fileName
+        );
+        const preferredPath = joinKnowledgePath(
+          destination?.path || null,
+          relativeTarget
         );
         const nextPath = reserveUniqueFilePath(
           preferredPath,
           usedAttachmentPaths
         );
         const nextFileName = nextPath.split('/').at(-1) || attachment.fileName;
-        const oldRelative = relativeKnowledgePath(
-          note.folderPath,
-          attachment.filePath
-        );
-        const nextRelative = relativeKnowledgePath(
-          destination?.path || null,
-          nextPath
-        );
-        nextContent = rewriteKnowledgeReference(
-          nextContent,
-          [attachment.filePath, attachment.fileName, oldRelative],
-          nextRelative
-        );
+        const targetFolderPath =
+          nextPath.split('/').slice(0, -1).join('/') || null;
         if (nextPath !== preferredPath) {
           adjustments.push({
             type: 'attachment',
@@ -347,17 +345,34 @@ export async function movePersonalNoteToOrganization(input: {
             to: nextPath,
           });
         }
+        return {
+          attachment,
+          fileName: nextFileName,
+          filePath: nextPath,
+          folderPath: targetFolderPath,
+        };
+      });
+      nextContent = rewriteResolvedKnowledgeReferences(
+        nextContent,
+        note.folderPath,
+        destination?.path || null,
+        attachmentPlans.map((plan) => ({
+          fromPath: plan.attachment.filePath,
+          toPath: plan.filePath,
+        }))
+      );
+      for (const plan of attachmentPlans) {
         await tx.noteAttachment.update({
-          where: { id: attachment.id },
+          where: { id: plan.attachment.id },
           data: {
             ...targetScope,
-            fileName: nextFileName,
-            filePath: nextPath,
-            folderPath: targetFolderPath,
-            folderName: folderName(targetFolderPath),
+            fileName: plan.fileName,
+            filePath: plan.filePath,
+            folderPath: plan.folderPath,
+            folderName: folderName(plan.folderPath),
           },
         });
-        attachmentIds.push(attachment.id);
+        attachmentIds.push(plan.attachment.id);
       }
 
       const detachedTasks = await tx.task.updateMany({
@@ -491,53 +506,31 @@ export async function movePersonalFolderToOrganization(input: {
       const usedFolderPaths = new Set(
         targetFolders.map((folder) => folder.path)
       );
-      const activeFolderByPath = new Map(
-        targetFolders
-          .filter((folder) => !folder.deletedAt)
-          .map((folder) => [folder.path, folder])
-      );
-      const folderTargets = new Map<
-        string,
-        { id: string; name: string; path: string; reused: boolean }
-      >();
-
-      for (const folder of folders.sort(
-        (left, right) =>
-          left.path.split('/').length - right.path.split('/').length
-      )) {
-        const parentTarget =
-          folder.id === root.id
-            ? destination
-            : folder.parentId
-              ? folderTargets.get(folder.parentId) || null
-              : destination;
+      const folderPlans = planKnowledgeFolderTree({
+        folders,
+        rootId: root.id,
+        destination: destination
+          ? { id: destination.id, path: destination.path }
+          : null,
+        usedPaths: usedFolderPaths,
+      });
+      const folderTargets = new Map(folderPlans.map((plan) => [plan.id, plan]));
+      for (const plan of folderPlans) {
         const candidate = joinKnowledgePath(
-          parentTarget?.path || null,
-          folder.name
+          plan.parentId
+            ? folderTargets.get(plan.parentId)?.path ||
+                destination?.path ||
+                null
+            : null,
+          folders.find((folder) => folder.id === plan.id)?.name || plan.name
         );
-        const existing = activeFolderByPath.get(candidate);
-        if (existing) {
-          folderTargets.set(folder.id, {
-            id: existing.id,
-            name: existing.name,
-            path: existing.path,
-            reused: true,
-          });
+        if (plan.path !== candidate) {
           adjustments.push({
             type: 'folder',
-            from: folder.path,
-            to: existing.path,
+            from: candidate,
+            to: plan.path,
           });
-          continue;
         }
-        const path = reserveUniqueFolderPath(candidate, usedFolderPaths);
-        const name = folderName(path) || folder.name;
-        if (path !== candidate) {
-          adjustments.push({ type: 'folder', from: candidate, to: path });
-        }
-        const target = { id: folder.id, name, path, reused: false };
-        folderTargets.set(folder.id, target);
-        activeFolderByPath.set(path, { ...folder, ...target });
       }
 
       const mapFolderPath = (path: string | null) => {
@@ -554,20 +547,13 @@ export async function movePersonalFolderToOrganization(input: {
 
       for (const folder of folders) {
         const target = folderTargets.get(folder.id)!;
-        if (target.reused) continue;
-        const parentId =
-          folder.id === root.id
-            ? destination?.id || null
-            : folder.parentId
-              ? folderTargets.get(folder.parentId)?.id || null
-              : destination?.id || null;
         await tx.noteFolder.update({
           where: { id: folder.id },
           data: {
             ...targetScope,
             name: target.name,
             path: target.path,
-            parentId,
+            parentId: target.parentId,
           },
         });
       }
@@ -635,46 +621,28 @@ export async function movePersonalFolderToOrganization(input: {
       });
 
       for (const plan of notePlans) {
-        let content = plan.content;
-        for (const attachmentPlan of attachmentPlans) {
-          const oldRelative = relativeKnowledgePath(
-            plan.note.folderPath,
-            attachmentPlan.attachment.filePath
-          );
-          const nextRelative = relativeKnowledgePath(
-            plan.folderPath,
-            attachmentPlan.filePath
-          );
-          content = rewriteKnowledgeReference(
-            content,
-            [
-              attachmentPlan.attachment.filePath,
-              attachmentPlan.attachment.fileName,
-              oldRelative,
-            ],
-            nextRelative
-          );
-        }
+        let content = rewriteResolvedKnowledgeReferences(
+          plan.content,
+          plan.note.folderPath,
+          plan.folderPath,
+          [
+            ...attachmentPlans.map((attachmentPlan) => ({
+              fromPath: attachmentPlan.attachment.filePath,
+              toPath: attachmentPlan.filePath,
+            })),
+            ...notePlans.flatMap((targetPlan) =>
+              targetPlan.note.filePath
+                ? [
+                    {
+                      fromPath: targetPlan.note.filePath,
+                      toPath: targetPlan.filePath,
+                    },
+                  ]
+                : []
+            ),
+          ]
+        );
         for (const targetPlan of notePlans) {
-          const oldRelative = targetPlan.note.filePath
-            ? relativeKnowledgePath(
-                plan.note.folderPath,
-                targetPlan.note.filePath
-              )
-            : null;
-          const nextRelative = relativeKnowledgePath(
-            plan.folderPath,
-            targetPlan.filePath
-          );
-          content = rewriteKnowledgeReference(
-            content,
-            [
-              targetPlan.note.filePath || '',
-              targetPlan.note.fileName || '',
-              oldRelative || '',
-            ],
-            nextRelative
-          );
           if (targetPlan.slug !== targetPlan.note.slug) {
             content = rewriteKnowledgeReference(
               content,
@@ -732,15 +700,6 @@ export async function movePersonalFolderToOrganization(input: {
             filePath: plan.filePath,
             fileName: plan.fileName,
           },
-        });
-      }
-
-      const reusedSourceIds = folders
-        .filter((folder) => folderTargets.get(folder.id)?.reused)
-        .map((folder) => folder.id);
-      if (reusedSourceIds.length) {
-        await tx.noteFolder.deleteMany({
-          where: { id: { in: reusedSourceIds }, ...sourceScope },
         });
       }
 

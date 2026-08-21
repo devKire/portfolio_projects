@@ -3,7 +3,6 @@
 import bcrypt from 'bcryptjs';
 import { Prisma } from '@prisma/client';
 
-import { DAILY_CHECKLIST_ITEMS } from '@/lib/daily-checklist-items';
 import {
   createSession,
   deleteCurrentSession,
@@ -16,7 +15,7 @@ import {
   validatePassword,
   validateUsername,
 } from '@/lib/auth/validation';
-import { DEFAULT_PORTFOLIO_CONTENT } from '@/lib/portfolio-content/defaults';
+import { createEmptyPortfolioContent } from '@/lib/portfolio-content/defaults';
 import { db } from '@/lib/prisma';
 
 type AuthResult =
@@ -146,6 +145,11 @@ export async function registerUser(formData: FormData): Promise<AuthResult> {
         },
       });
 
+      const emptyPortfolio = createEmptyPortfolioContent({
+        name,
+        username,
+        email,
+      });
       await Promise.all([
         tx.contactInfo.create({
           data: {
@@ -156,28 +160,14 @@ export async function registerUser(formData: FormData): Promise<AuthResult> {
         tx.portfolioContent.create({
           data: {
             landingpageId: landingpage.id,
-            hero: toJson(DEFAULT_PORTFOLIO_CONTENT.hero),
-            about: toJson(DEFAULT_PORTFOLIO_CONTENT.about),
-            services: toJson(DEFAULT_PORTFOLIO_CONTENT.services),
-            process: toJson(DEFAULT_PORTFOLIO_CONTENT.process),
-            contact: toJson(DEFAULT_PORTFOLIO_CONTENT.contact),
-            projects: toJson(DEFAULT_PORTFOLIO_CONTENT.projects),
-            settings: toJson(DEFAULT_PORTFOLIO_CONTENT.settings),
+            hero: toJson(emptyPortfolio.hero),
+            about: toJson(emptyPortfolio.about),
+            services: toJson(emptyPortfolio.services),
+            process: toJson(emptyPortfolio.process),
+            contact: toJson(emptyPortfolio.contact),
+            projects: toJson(emptyPortfolio.projects),
+            settings: toJson(emptyPortfolio.settings),
           },
-        }),
-        tx.dailyChecklistItem.createMany({
-          data: DAILY_CHECKLIST_ITEMS.map((item) => ({
-            userId: createdUser.id,
-            slug: item.slug,
-            title: item.title,
-            description: item.description,
-            period: item.period,
-            timeRange: item.timeRange,
-            startTime: item.startTime,
-            endTime: item.endTime,
-            position: item.position,
-            isSacred: item.isSacred || false,
-          })),
         }),
       ]);
 

@@ -152,6 +152,15 @@ export async function createOrganization(
           role: 'OWNER',
         },
       });
+      await tx.chatChannel.create({
+        data: {
+          organizationId: created.id,
+          name: 'Geral',
+          description: 'Canal geral da organização.',
+          type: 'ORGANIZATION',
+          createdById: user.id,
+        },
+      });
       return created;
     });
     await setActiveOrganization(organization.id);

@@ -1,6 +1,6 @@
 import type { Prisma } from '@prisma/client';
 
-import { DEFAULT_PORTFOLIO_CONTENT } from './defaults';
+import { EMPTY_PORTFOLIO_CONTENT } from './defaults';
 import type { PortfolioContentData, PortfolioSectionKey } from './types';
 
 type PlainObject = Record<string, unknown>;
@@ -43,29 +43,26 @@ export function resolvePortfolioContent(
   content?: Partial<Record<PortfolioSectionKey, Prisma.JsonValue | null>> | null
 ): PortfolioContentData {
   return {
-    hero: deepMergeWithDefaults(DEFAULT_PORTFOLIO_CONTENT.hero, content?.hero),
-    about: deepMergeWithDefaults(
-      DEFAULT_PORTFOLIO_CONTENT.about,
-      content?.about
-    ),
+    hero: deepMergeWithDefaults(EMPTY_PORTFOLIO_CONTENT.hero, content?.hero),
+    about: deepMergeWithDefaults(EMPTY_PORTFOLIO_CONTENT.about, content?.about),
     services: deepMergeWithDefaults(
-      DEFAULT_PORTFOLIO_CONTENT.services,
+      EMPTY_PORTFOLIO_CONTENT.services,
       content?.services
     ),
     process: deepMergeWithDefaults(
-      DEFAULT_PORTFOLIO_CONTENT.process,
+      EMPTY_PORTFOLIO_CONTENT.process,
       content?.process
     ),
     contact: deepMergeWithDefaults(
-      DEFAULT_PORTFOLIO_CONTENT.contact,
+      EMPTY_PORTFOLIO_CONTENT.contact,
       content?.contact
     ),
     projects: deepMergeWithDefaults(
-      DEFAULT_PORTFOLIO_CONTENT.projects,
+      EMPTY_PORTFOLIO_CONTENT.projects,
       (content as { projects?: Prisma.JsonValue | null } | null)?.projects
     ),
     settings: deepMergeWithDefaults(
-      DEFAULT_PORTFOLIO_CONTENT.settings,
+      EMPTY_PORTFOLIO_CONTENT.settings,
       content?.settings
     ),
   };
@@ -75,5 +72,5 @@ export function resolvePortfolioSection<K extends PortfolioSectionKey>(
   section: K,
   value: unknown
 ): PortfolioContentData[K] {
-  return deepMergeWithDefaults(DEFAULT_PORTFOLIO_CONTENT[section], value);
+  return deepMergeWithDefaults(EMPTY_PORTFOLIO_CONTENT[section], value);
 }

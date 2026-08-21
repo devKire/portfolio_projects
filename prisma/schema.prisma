@@ -48,6 +48,45 @@ enum TicketActivityType {
   CLOSED
 }
 
+enum CalendarEventType {
+  EVENT
+  MEETING
+  REMINDER
+  FOCUS
+}
+
+enum CalendarEventVisibility {
+  INVITE_ONLY
+  ORGANIZATION
+  TEAMS
+}
+
+enum CalendarEventStatus {
+  CONFIRMED
+  CANCELLED
+}
+
+enum CalendarParticipantResponse {
+  PENDING
+  ACCEPTED
+  DECLINED
+  TENTATIVE
+}
+
+enum CalendarRecurrenceFrequency {
+  NONE
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum ChatChannelType {
+  ORGANIZATION
+  TEAM
+  PRIVATE
+  DIRECT
+}
+
 model User {
   id           String   @id @default(uuid())
   name         String?
@@ -61,23 +100,31 @@ model User {
   sessions                UserSession[]
   landingPages            LandingPage[]
   projects                Project[]
-  tasks                   Task[]                @relation("TaskOwner")
-  tasksCreated            Task[]                @relation("TaskCreator")
-  tasksAssigned           Task[]                @relation("TaskAssignee")
+  tasks                   Task[]                     @relation("TaskOwner")
+  tasksCreated            Task[]                     @relation("TaskCreator")
+  tasksAssigned           Task[]                     @relation("TaskAssignee")
   taskTemplates           TaskTemplate[]
   timeEntries             TimeEntry[]
   notes                   Note[]
   noteFolders             NoteFolder[]
   noteAttachments         NoteAttachment[]
-  noteComments            NoteComment[]          @relation("NoteCommentAuthor")
+  noteComments            NoteComment[]              @relation("NoteCommentAuthor")
+  dailyRoutines           DailyRoutine[]
+  dailyRoutineSchedules   DailyRoutineSchedule[]
+  routineDateOverrides    RoutineDateOverride[]
   dailyChecklistItems     DailyChecklistItem[]
   dailyChecklistEntries   DailyChecklistEntry[]
   activityLogs            TaskActivityLog[]
   organizationMemberships OrganizationMember[]
-  organizationsCreated    Organization[]        @relation("OrganizationCreator")
-  requestedTickets        Ticket[]              @relation("TicketRequester")
-  assignedTickets         Ticket[]              @relation("TicketAssignee")
-  ticketActivities        TicketActivity[]      @relation("TicketActivityActor")
+  organizationsCreated    Organization[]             @relation("OrganizationCreator")
+  requestedTickets        Ticket[]                   @relation("TicketRequester")
+  assignedTickets         Ticket[]                   @relation("TicketAssignee")
+  ticketActivities        TicketActivity[]           @relation("TicketActivityActor")
+  calendarEventsCreated   CalendarEvent[]            @relation("CalendarEventCreator")
+  calendarParticipations  CalendarEventParticipant[]
+  chatChannelsCreated     ChatChannel[]              @relation("ChatChannelCreator")
+  chatMessages            ChatMessage[]              @relation("ChatMessageAuthor")
+  chatUserMentions        ChatMessageUserMention[]
 }
 
 model UserSession {
@@ -105,16 +152,21 @@ model Organization {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  createdBy       User                 @relation("OrganizationCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  members         OrganizationMember[]
-  teams           Team[]
-  ticketQueues    TicketQueue[]
-  tickets         Ticket[]
-  tasks           Task[]
-  notes           Note[]
-  noteFolders     NoteFolder[]
-  noteAttachments NoteAttachment[]
-  noteComments    NoteComment[]
+  createdBy        User                     @relation("OrganizationCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  members          OrganizationMember[]
+  teams            Team[]
+  ticketQueues     TicketQueue[]
+  tickets          Ticket[]
+  tasks            Task[]
+  notes            Note[]
+  noteFolders      NoteFolder[]
+  noteAttachments  NoteAttachment[]
+  noteComments     NoteComment[]
+  calendarEvents   CalendarEvent[]
+  calendarTeams    CalendarEventTeam[]
+  chatChannels     ChatChannel[]
+  chatMessages     ChatMessage[]
+  chatTeamMentions ChatMessageTeamMention[]
 
   @@index([createdById])
   @@index([active, name])
@@ -128,10 +180,12 @@ model OrganizationMember {
   joinedAt       DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
 
-  organization     Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization     Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user             User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
   teamMemberships  TeamMember[]
   queueMemberships TicketQueueAgent[]
+  chatMemberships  ChatChannelMember[]
+  chatReadStates   ChatChannelReadState[]
 
   @@unique([organizationId, userId])
   @@index([userId])
@@ -147,11 +201,14 @@ model Team {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  members      TeamMember[]
-  ticketQueues TicketQueue[]
-  tasks        Task[]
-  tickets      Ticket[]
+  organization     Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members          TeamMember[]
+  ticketQueues     TicketQueue[]
+  tasks            Task[]
+  tickets          Ticket[]
+  calendarEvents   CalendarEventTeam[]
+  chatChannels     ChatChannel[]
+  chatTeamMentions ChatMessageTeamMention[]
 
   @@unique([organizationId, name])
   @@unique([id, organizationId])
@@ -226,13 +283,14 @@ model Ticket {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
-  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  queue        TicketQueue      @relation(fields: [queueId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  requester    User             @relation("TicketRequester", fields: [requesterId], references: [id], onDelete: Restrict)
-  assignee     User?            @relation("TicketAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
-  team         Team?            @relation(fields: [teamId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  linkedTask   Task?            @relation("TicketLinkedTask", fields: [linkedTaskId], references: [id], onDelete: SetNull)
-  activities   TicketActivity[]
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  queue          TicketQueue      @relation(fields: [queueId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  requester      User             @relation("TicketRequester", fields: [requesterId], references: [id], onDelete: Restrict)
+  assignee       User?            @relation("TicketAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  team           Team?            @relation(fields: [teamId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  linkedTask     Task?            @relation("TicketLinkedTask", fields: [linkedTaskId], references: [id], onDelete: SetNull)
+  activities     TicketActivity[]
+  calendarEvents CalendarEvent[]
 
   @@index([organizationId, status])
   @@index([organizationId, queueId, status])
@@ -340,10 +398,11 @@ model Project {
   landingpageId String
 
   // Adicione esta relação para tasks
-  tasks    Task[] // Relacionamento com tasks
-  features Feature[]
-  sprints  Sprint[]
-  notes    Note[]
+  tasks          Task[] // Relacionamento com tasks
+  features       Feature[]
+  sprints        Sprint[]
+  notes          Note[]
+  calendarEvents CalendarEvent[]
 
   @@index([userId])
   @@index([userId, position])
@@ -517,18 +576,19 @@ model Task {
   updatedAt DateTime @updatedAt
 
   // Relações
-  user         User          @relation("TaskOwner", fields: [userId], references: [id], onDelete: Cascade)
-  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  team         Team?         @relation(fields: [teamId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  createdBy    User?         @relation("TaskCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  assignee     User?         @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
-  project      Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  feature      Feature?      @relation(fields: [featureId], references: [id], onDelete: SetNull)
-  sprint       Sprint?       @relation(fields: [sprintId], references: [id], onDelete: SetNull)
-  note         Note?         @relation(fields: [noteId], references: [id], onDelete: SetNull)
-  parent       Task?         @relation("TaskToSubtask", fields: [parentId], references: [id])
-  subtasks     Task[]        @relation("TaskToSubtask")
-  linkedTicket Ticket?       @relation("TicketLinkedTask")
+  user           User            @relation("TaskOwner", fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization?   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  team           Team?           @relation(fields: [teamId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  createdBy      User?           @relation("TaskCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  assignee       User?           @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  project        Project?        @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  feature        Feature?        @relation(fields: [featureId], references: [id], onDelete: SetNull)
+  sprint         Sprint?         @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  note           Note?           @relation(fields: [noteId], references: [id], onDelete: SetNull)
+  parent         Task?           @relation("TaskToSubtask", fields: [parentId], references: [id])
+  subtasks       Task[]          @relation("TaskToSubtask")
+  linkedTicket   Ticket?         @relation("TicketLinkedTask")
+  calendarEvents CalendarEvent[]
 
   @@unique([noteId, noteTaskKey])
   @@index([userId])
@@ -543,9 +603,249 @@ model Task {
   @@index([createdById])
 }
 
+model CalendarEvent {
+  id                  String                      @id @default(uuid())
+  title               String
+  description         String?                     @db.Text
+  startAt             DateTime
+  endAt               DateTime
+  allDay              Boolean                     @default(false)
+  timezone            String
+  creatorId           String
+  organizationId      String?
+  location            String?
+  meetingUrl          String?
+  type                CalendarEventType           @default(EVENT)
+  visibility          CalendarEventVisibility     @default(INVITE_ONLY)
+  status              CalendarEventStatus         @default(CONFIRMED)
+  recurrenceFrequency CalendarRecurrenceFrequency @default(NONE)
+  recurrenceInterval  Int                         @default(1)
+  recurrenceWeekdays  Int[]                       @default([])
+  recurrenceUntil     DateTime?
+  taskId              String?
+  ticketId            String?
+  projectId           String?
+  createdAt           DateTime                    @default(now())
+  updatedAt           DateTime                    @updatedAt
+
+  creator        User                       @relation("CalendarEventCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  organization   Organization?              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  participants   CalendarEventParticipant[]
+  teams          CalendarEventTeam[]
+  task           Task?                      @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  ticket         Ticket?                    @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+  project        Project?                   @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  sharedMessages ChatMessage[]
+
+  @@unique([id, organizationId])
+  @@index([creatorId, startAt])
+  @@index([organizationId, startAt])
+  @@index([startAt, endAt])
+  @@index([recurrenceFrequency, recurrenceUntil])
+  @@index([taskId])
+  @@index([ticketId])
+  @@index([projectId])
+}
+
+model CalendarEventParticipant {
+  id          String                      @id @default(uuid())
+  eventId     String
+  userId      String
+  response    CalendarParticipantResponse @default(PENDING)
+  invitedAt   DateTime                    @default(now())
+  respondedAt DateTime?
+
+  event CalendarEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([userId, response])
+}
+
+model CalendarEventTeam {
+  id             String @id @default(uuid())
+  eventId        String
+  organizationId String
+  teamId         String
+
+  event        CalendarEvent @relation(fields: [eventId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  team         Team          @relation(fields: [teamId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([eventId, teamId])
+  @@index([organizationId, teamId])
+}
+
+model ChatChannel {
+  id             String          @id @default(uuid())
+  organizationId String
+  name           String
+  description    String?         @db.Text
+  type           ChatChannelType
+  teamId         String?
+  directKey      String?
+  createdById    String
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  team         Team?                  @relation(fields: [teamId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  createdBy    User                   @relation("ChatChannelCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  members      ChatChannelMember[]
+  messages     ChatMessage[]
+  readStates   ChatChannelReadState[]
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, name])
+  @@unique([organizationId, directKey])
+  @@index([organizationId, type])
+  @@index([organizationId, teamId])
+}
+
+model ChatChannelMember {
+  id             String   @id @default(uuid())
+  channelId      String
+  organizationId String
+  userId         String
+  createdAt      DateTime @default(now())
+
+  channel            ChatChannel        @relation(fields: [channelId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  organizationMember OrganizationMember @relation(fields: [organizationId, userId], references: [organizationId, userId], onDelete: Cascade)
+
+  @@unique([channelId, userId])
+  @@index([organizationId, userId])
+}
+
+model ChatMessage {
+  id             String    @id @default(uuid())
+  channelId      String
+  organizationId String
+  authorId       String
+  content        String    @db.Text
+  replyToId      String?
+  eventId        String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  editedAt       DateTime?
+  deletedAt      DateTime?
+
+  channel      ChatChannel              @relation(fields: [channelId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  organization Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  author       User                     @relation("ChatMessageAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  replyTo      ChatMessage?             @relation("ChatThread", fields: [replyToId], references: [id], onDelete: Cascade)
+  replies      ChatMessage[]            @relation("ChatThread")
+  event        CalendarEvent?           @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  userMentions ChatMessageUserMention[]
+  teamMentions ChatMessageTeamMention[]
+
+  @@unique([id, organizationId])
+  @@index([channelId, createdAt])
+  @@index([organizationId, authorId, createdAt])
+  @@index([replyToId, createdAt])
+  @@index([eventId])
+}
+
+model ChatMessageUserMention {
+  id             String @id @default(uuid())
+  messageId      String
+  organizationId String
+  userId         String
+
+  message ChatMessage @relation(fields: [messageId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([organizationId, userId])
+}
+
+model ChatMessageTeamMention {
+  id             String @id @default(uuid())
+  messageId      String
+  organizationId String
+  teamId         String
+
+  message      ChatMessage  @relation(fields: [messageId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  team         Team         @relation(fields: [teamId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([messageId, teamId])
+  @@index([organizationId, teamId])
+}
+
+model ChatChannelReadState {
+  id                String   @id @default(uuid())
+  channelId         String
+  organizationId    String
+  userId            String
+  lastReadAt        DateTime @default(now())
+  lastReadMessageId String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  channel            ChatChannel        @relation(fields: [channelId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  organizationMember OrganizationMember @relation(fields: [organizationId, userId], references: [organizationId, userId], onDelete: Cascade)
+
+  @@unique([channelId, userId])
+  @@index([organizationId, userId])
+}
+
+model DailyRoutine {
+  id          String   @id @default(uuid())
+  userId      String
+  name        String
+  description String?
+  color       String?
+  active      Boolean  @default(true)
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user      User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     DailyChecklistItem[]
+  schedules DailyRoutineSchedule[]
+  overrides RoutineDateOverride[]
+  entries   DailyChecklistEntry[]
+
+  @@unique([id, userId])
+  @@unique([userId, name])
+  @@index([userId, active])
+  @@index([userId, isDefault])
+}
+
+model DailyRoutineSchedule {
+  id        String   @id @default(uuid())
+  userId    String
+  routineId String
+  weekday   Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  routine DailyRoutine @relation(fields: [routineId, userId], references: [id, userId], onDelete: Cascade)
+
+  @@unique([userId, weekday])
+  @@index([routineId])
+}
+
+model RoutineDateOverride {
+  id        String   @id @default(uuid())
+  userId    String
+  routineId String
+  date      DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  routine DailyRoutine @relation(fields: [routineId, userId], references: [id, userId], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([routineId, date])
+}
+
 model DailyChecklistItem {
   id          String   @id @default(uuid())
   userId      String
+  routineId   String
   slug        String
   title       String
   description String
@@ -560,32 +860,47 @@ model DailyChecklistItem {
   updatedAt   DateTime @updatedAt
 
   user         User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  routine      DailyRoutine          @relation(fields: [routineId, userId], references: [id, userId], onDelete: Restrict)
   entries      DailyChecklistEntry[]
   activityLogs TaskActivityLog[]
 
-  @@unique([userId, slug])
+  @@unique([id, userId])
+  @@unique([userId, routineId, slug])
   @@index([userId])
-  @@index([userId, period])
-  @@index([userId, position])
+  @@index([routineId, active])
+  @@index([routineId, period])
+  @@index([routineId, position])
 }
 
 model DailyChecklistEntry {
-  id          String    @id @default(uuid())
-  userId      String
-  itemId      String
-  date        DateTime
-  completed   Boolean   @default(false)
-  completedAt DateTime?
-  note        String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id                      String    @id @default(uuid())
+  userId                  String
+  routineId               String
+  itemId                  String
+  date                    DateTime
+  completed               Boolean   @default(false)
+  completedAt             DateTime?
+  note                    String?
+  routineNameSnapshot     String
+  itemTitleSnapshot       String
+  itemDescriptionSnapshot String
+  periodSnapshot          String
+  timeRangeSnapshot       String
+  startTimeSnapshot       String?
+  endTimeSnapshot         String?
+  positionSnapshot        Int
+  isSacredSnapshot        Boolean
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 
-  user User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  item DailyChecklistItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  user    User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  routine DailyRoutine       @relation(fields: [routineId, userId], references: [id, userId], onDelete: Restrict)
+  item    DailyChecklistItem @relation(fields: [itemId, userId], references: [id, userId], onDelete: Restrict)
 
   @@unique([userId, itemId, date])
   @@index([userId])
   @@index([userId, date])
+  @@index([routineId, date])
 }
 
 model TaskActivityLog {
@@ -657,8 +972,8 @@ model Note {
   folder       NoteFolder?   @relation(fields: [folderId], references: [id], onDelete: SetNull)
 
   tags     NoteTag[]
-  outgoing NoteLink[] @relation("SourceLinks")
-  incoming NoteLink[] @relation("TargetLinks")
+  outgoing NoteLink[]    @relation("SourceLinks")
+  incoming NoteLink[]    @relation("TargetLinks")
   tasks    Task[]
   comments NoteComment[]
 

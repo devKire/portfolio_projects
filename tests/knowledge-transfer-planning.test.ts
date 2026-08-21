@@ -60,3 +60,96 @@ test('V20: attachment extraction and rewrites preserve Markdown forms', () => {
     '![[assets/diagrama-2.png]]\n[manual](docs/manual.pdf)'
   );
 });
+
+import {
+  planKnowledgeFolderTree,
+  relativeKnowledgePath,
+  resolveKnowledgeReferencePath,
+  rewriteResolvedKnowledgeReferences,
+  safeKnowledgeTransferRelativePath,
+} from '../src/lib/knowledge/transfer-planning.ts';
+
+test('KCS: referências relativas com ponto e parent directory resolvem o attachment real', () => {
+  assert.equal(
+    resolveKnowledgeReferencePath('Docs/Sub', '../assets/server.png'),
+    'Docs/assets/server.png'
+  );
+  assert.equal(
+    resolveKnowledgeReferencePath('Docs/Sub', './assets/server.png'),
+    'Docs/Sub/assets/server.png'
+  );
+  assert.equal(
+    safeKnowledgeTransferRelativePath('../assets/server.png', 'server.png'),
+    'assets/server.png'
+  );
+  assert.equal(
+    relativeKnowledgePath('KCS/Docs/Sub', 'KCS/Docs/assets/server-2.png'),
+    '../assets/server-2.png'
+  );
+});
+
+test('KCS: colisão de attachment reescreve Markdown e embed wiki para o novo caminho', () => {
+  const content = [
+    '![Servidor](../assets/server.png)',
+    '![[../assets/server.png]]',
+  ].join('\n');
+  assert.equal(
+    rewriteResolvedKnowledgeReferences(content, 'Docs/Sub', 'KCS/Docs/Sub', [
+      {
+        fromPath: 'Docs/assets/server.png',
+        toPath: 'KCS/Docs/assets/server-2.png',
+      },
+    ]),
+    ['![Servidor](../assets/server-2.png)', '![[../assets/server-2.png]]'].join(
+      '\n'
+    )
+  );
+});
+
+test('KCS: árvore transferida mantém parentId e posição relativa sob colisão da raiz', () => {
+  const plans = planKnowledgeFolderTree({
+    rootId: 'infra',
+    destination: { id: 'docs', path: 'Documentação' },
+    usedPaths: new Set(['Documentação/Infraestrutura']),
+    folders: [
+      {
+        id: 'linux',
+        name: 'Linux',
+        path: 'Infraestrutura/Servidores/Linux',
+        parentId: 'servers',
+      },
+      {
+        id: 'infra',
+        name: 'Infraestrutura',
+        path: 'Infraestrutura',
+        parentId: null,
+      },
+      {
+        id: 'servers',
+        name: 'Servidores',
+        path: 'Infraestrutura/Servidores',
+        parentId: 'infra',
+      },
+    ],
+  });
+  assert.deepEqual(
+    plans.map(({ id, path, parentId }) => ({ id, path, parentId })),
+    [
+      {
+        id: 'infra',
+        path: 'Documentação/Infraestrutura-2',
+        parentId: 'docs',
+      },
+      {
+        id: 'servers',
+        path: 'Documentação/Infraestrutura-2/Servidores',
+        parentId: 'infra',
+      },
+      {
+        id: 'linux',
+        path: 'Documentação/Infraestrutura-2/Servidores/Linux',
+        parentId: 'servers',
+      },
+    ]
+  );
+});

@@ -51,6 +51,14 @@ const Kcs = dynamic(() => import('../_tabs/Kcs'), {
   loading: () => <ContentLoader />,
 });
 
+const Calendar = dynamic(() => import('../_tabs/Calendar'), {
+  loading: () => <ContentLoader />,
+});
+
+const Chat = dynamic(() => import('../_tabs/Chat'), {
+  loading: () => <ContentLoader />,
+});
+
 // Componente para tabs em desenvolvimento
 function ComingSoon({
   icon: Icon,
@@ -110,6 +118,7 @@ export default function ContentRouter({
               onTabChange('work');
             }}
             onOpenKnowledge={onTabChange}
+            onOpenModule={onTabChange}
           />
         );
       case 'work':
@@ -124,6 +133,14 @@ export default function ContentRouter({
         );
       case 'daily-checklist':
         return <DailyChecklist />;
+      case 'calendar':
+        return (
+          <Calendar userId={userId} organization={activeOrganization || null} />
+        );
+      case 'chat':
+        return (
+          <Chat userId={userId} organization={activeOrganization || null} />
+        );
       case 'projects':
         return <Projects />;
       case 'notes':
@@ -164,6 +181,7 @@ export default function ContentRouter({
               onTabChange('work');
             }}
             onOpenKnowledge={onTabChange}
+            onOpenModule={onTabChange}
           />
         );
     }
@@ -181,7 +199,7 @@ export default function ContentRouter({
       <Suspense fallback={<ContentLoader />}>
         <div
           className={`flex min-h-0 min-w-0 flex-1 flex-col ${
-            activeTab === 'notes' || activeTab === 'kcs'
+            activeTab === 'notes' || activeTab === 'kcs' || activeTab === 'chat'
               ? 'overflow-hidden'
               : 'overflow-x-hidden overflow-y-auto'
           }`}

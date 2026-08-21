@@ -138,3 +138,31 @@
     @apply h-11 w-full rounded-md border border-slate-800 bg-slate-900/70 px-3 text-sm text-slate-100 transition outline-none placeholder:text-slate-500 focus:border-sky-500 disabled:cursor-not-allowed disabled:opacity-50;
   }
 }
+
+.input-calendar {
+  min-height: 2.75rem;
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  background: #202026;
+  padding-inline: 0.75rem;
+  color: white;
+  outline: none;
+}
+.input-calendar:focus {
+  border-color: rgb(56 189 248 / 0.8);
+}
+
+.chat-input {
+  min-height: 2.625rem;
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  background: #202026;
+  padding-inline: 0.75rem;
+  color: white;
+  outline: none;
+}
+.chat-input:focus {
+  border-color: rgb(139 92 246 / 0.8);
+}

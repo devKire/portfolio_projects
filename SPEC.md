@@ -89,3 +89,28 @@ B7|2026-08-20|arquivo `'use server'` de comentários exportava constante runtime
 B8|2026-08-20|reexport de Server Actions por outro módulo `'use server'` foi interpretado pelo compilador Next como export não assíncrono|V18
 B9|2026-08-21|normalização genérica alargou literals de período/grupos do DTO Dashboard e quebrou TypeScript strict|V12
 B10|2026-08-21|`concat` do filtro sem responsável alargou tuple `[value,label]` para `string[]`|V12
+
+§E
+id|rule
+V31|transferência Note/Folder pessoal → KCS resolve referências Markdown relativas (`./`/`../`), move somente attachments referenciados na Note isolada, move todos os attachments da árvore em Folder, preserva payload (`dataUrl`, mime, size, extension) e renomeia colisões antes de escrever.
+V32|árvore KCS transferida mantém os mesmos IDs de folders movidos, recalcula `parentId` top-down e nunca mescla silenciosamente uma pasta pessoal com pasta organizacional homônima.
+V33|DailyRoutine pertence a um único usuário; Schedule atribui no máximo uma rotina por weekday e RoutineDateOverride substitui somente uma data sem alterar a programação futura.
+V34|DailyChecklistEntry materializa snapshot completo da rotina/item ao abrir o dia; edição posterior não altera histórico e itens/rotinas com histórico usam RESTRICT, devendo ser arquivados.
+V35|registerUser cria LandingPage e PortfolioContent neutros usando nome/username/email da conta; templates DEMO permanecem separados e não criam rotina ou projetos no cadastro real.
+V36|CalendarEvent pessoal é visível apenas ao criador/convidados; evento organizacional exige membership e `ORGANIZATION`, `TEAMS` ou `INVITE_ONLY` é avaliado no servidor.
+V37|visibilidade de CalendarEvent por equipe é derivada da membership atual da Team, não materializada como participantes; convidados explícitos permanecem materializados em CalendarEventParticipant.
+V38|recorrência Calendar é expandida somente no intervalo solicitado e usa calendário no timezone IANA do evento, preservando horário local através de DST.
+V39|ChatChannel nunca atravessa Organization; ORGANIZATION deriva membership da organização, TEAM deriva membership atual da equipe e PRIVATE/DIRECT exige ChatChannelMember explícito.
+V40|Chat usa polling de 4s apenas para o canal ativo e 12s para metadados como fallback compatível com deployment serverless; não declara presença online.
+V41|unread de Chat é calculado por ChatChannelReadState.lastReadAt/lastReadMessageId; não existe flag fake por mensagem/usuário.
+V42|threads aceitam somente um nível (`replyToId` deve apontar para mensagem raiz); paginação retorna no máximo 50 mensagens por página.
+V43|CalendarEvent compartilhado no Chat permanece referência por `eventId`; o servidor valida que toda a audiência do canal pode visualizar o evento antes de persistir a mensagem.
+
+§N
+id|status|goal|cites
+T18|x|corrigir transferência recursiva KCS, attachments, colisões e referências relativas|V31,V32
+T19|x|criar rotinas, schedule, override, snapshots e migration de compatibilidade|V33,V34
+T20|x|separar EMPTY/DEMO e limpar onboarding real|V35
+T21|x|implementar Calendar backend/UI, recorrência, participantes, Work e Dashboard|V36,V37,V38
+T22|x|implementar Chat, DMs, threads, menções, paginação, polling e unread real|V39,V40,V41,V42
+T23|x|integrar Calendar ↔ Chat e reforçar guardrails multi-tenant|V43
