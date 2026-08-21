@@ -2,7 +2,6 @@
 
 import type { NoteStatus } from '@prisma/client';
 import {
-  Eye,
   Download,
   FilePlus2,
   Folder,
@@ -30,7 +29,12 @@ import {
   updateKcsNote,
 } from '@/app/actions/kcs';
 import type { OrganizationContext } from '@/lib/organizations/context';
-import { MarkdownPreview } from './Notes/MarkdownPreview';
+import type { KnowledgeCapabilities } from '@/types/knowledge';
+import {
+  KnowledgeNoteEditor,
+  type KnowledgeEditorMode,
+} from './Notes/KnowledgeNoteEditor';
+import { NoteComments } from './Notes/NoteComments';
 
 type OrganizationSummary = OrganizationContext['organizations'][number];
 
@@ -69,6 +73,8 @@ type KcsWorkspace = {
   folders: KcsFolder[];
   notes: KcsNote[];
   attachments: KcsAttachment[];
+  role: OrganizationSummary['role'];
+  capabilities: KnowledgeCapabilities;
 };
 
 const inputClass =
@@ -76,8 +82,10 @@ const inputClass =
 
 export default function Kcs({
   organization,
+  userId,
 }: {
   organization: OrganizationSummary | null;
+  userId: string;
 }) {
   const organizationId = organization?.id || null;
   const [workspace, setWorkspace] = useState<KcsWorkspace | null>(null);
@@ -87,7 +95,7 @@ export default function Kcs({
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(Boolean(organizationId));
   const [busy, setBusy] = useState<string | null>(null);
-  const [preview, setPreview] = useState(false);
+  const [mode, setMode] = useState<KnowledgeEditorMode>('preview');
   const [draft, setDraft] = useState({
     title: '',
     content: '',
@@ -127,6 +135,7 @@ export default function Kcs({
     () => workspace?.notes.find((note) => note.id === selectedId) || null,
     [selectedId, workspace]
   );
+  const canManageKcs = Boolean(workspace?.capabilities.canManageKcsContent);
 
   useEffect(() => {
     if (!selected) {
@@ -179,7 +188,7 @@ export default function Kcs({
   }
 
   const save = () => {
-    if (!selectedId || !organizationId) return;
+    if (!selectedId || !organizationId || !canManageKcs) return;
     void run(
       'save',
       () =>
@@ -197,7 +206,7 @@ export default function Kcs({
   };
 
   const handleAttachment = async (file: File) => {
-    if (!organizationId) return;
+    if (!organizationId || !canManageKcs) return;
     setBusy('attachment');
     try {
       const dataUrl = await readDataUrl(file);
@@ -361,14 +370,16 @@ export default function Kcs({
                 if (file) void importVault(file);
               }}
             />
-            <button
-              type="button"
-              disabled={busy !== null}
-              onClick={() => vaultInputRef.current?.click()}
-              className="flex h-8 items-center gap-1.5 rounded-md border border-[#303036] px-2.5 text-xs text-[#b9b9c1] disabled:opacity-50"
-            >
-              <Upload className="h-3.5 w-3.5" /> Importar Vault
-            </button>
+            {canManageKcs && (
+              <button
+                type="button"
+                disabled={busy !== null}
+                onClick={() => vaultInputRef.current?.click()}
+                className="flex h-8 items-center gap-1.5 rounded-md border border-[#303036] px-2.5 text-xs text-[#b9b9c1] disabled:opacity-50"
+              >
+                <Upload className="h-3.5 w-3.5" /> Importar Vault
+              </button>
+            )}
             <button
               type="button"
               disabled={busy !== null}
@@ -387,26 +398,28 @@ export default function Kcs({
             <h2 className="text-xs font-semibold tracking-wide text-[#9b9ba3] uppercase">
               Pastas
             </h2>
-            <button
-              type="button"
-              onClick={() => {
-                const name = window.prompt('Nome da nova pasta');
-                if (name && organizationId)
-                  void run(
-                    'folder-create',
-                    () =>
-                      createKcsFolder(organizationId, {
-                        name,
-                        parentId: folderId || null,
-                      }),
-                    'Pasta criada.'
-                  );
-              }}
-              className="rounded p-1.5 text-[#c9b8ff] hover:bg-[#292936]"
-              aria-label="Criar pasta"
-            >
-              <FolderPlus className="h-4 w-4" />
-            </button>
+            {canManageKcs && (
+              <button
+                type="button"
+                onClick={() => {
+                  const name = window.prompt('Nome da nova pasta');
+                  if (name && organizationId)
+                    void run(
+                      'folder-create',
+                      () =>
+                        createKcsFolder(organizationId, {
+                          name,
+                          parentId: folderId || null,
+                        }),
+                      'Pasta criada.'
+                    );
+                }}
+                className="rounded p-1.5 text-[#c9b8ff] hover:bg-[#292936]"
+                aria-label="Criar pasta"
+              >
+                <FolderPlus className="h-4 w-4" />
+              </button>
+            )}
           </div>
           <button
             type="button"
@@ -438,42 +451,47 @@ export default function Kcs({
                 <Folder className="h-4 w-4 shrink-0" />
                 <span className="truncate">{folder.name}</span>
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const name = window.prompt('Novo nome', folder.name);
-                  if (name && organizationId)
-                    void run(
-                      `folder-rename-${folder.id}`,
-                      () => renameKcsFolder(organizationId, folder.id, name),
-                      'Pasta renomeada.'
-                    );
-                }}
-                className="hidden rounded p-1 text-[#777780] group-hover:block"
-                aria-label="Renomear pasta"
-              >
-                <Pencil className="h-3 w-3" />
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (
-                    organizationId &&
-                    window.confirm(
-                      `Excluir a pasta ${folder.name}? As notas irão para a raiz.`
-                    )
-                  )
-                    void run(
-                      `folder-delete-${folder.id}`,
-                      () => deleteKcsFolder(organizationId, folder.id),
-                      'Pasta excluída.'
-                    );
-                }}
-                className="hidden rounded p-1 text-red-300 group-hover:block"
-                aria-label="Excluir pasta"
-              >
-                <Trash2 className="h-3 w-3" />
-              </button>
+              {canManageKcs && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const name = window.prompt('Novo nome', folder.name);
+                      if (name && organizationId)
+                        void run(
+                          `folder-rename-${folder.id}`,
+                          () =>
+                            renameKcsFolder(organizationId, folder.id, name),
+                          'Pasta renomeada.'
+                        );
+                    }}
+                    className="hidden rounded p-1 text-[#777780] group-hover:block"
+                    aria-label="Renomear pasta"
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (
+                        organizationId &&
+                        window.confirm(
+                          `Excluir a pasta ${folder.name}? As notas irão para a raiz.`
+                        )
+                      )
+                        void run(
+                          `folder-delete-${folder.id}`,
+                          () => deleteKcsFolder(organizationId, folder.id),
+                          'Pasta excluída.'
+                        );
+                    }}
+                    className="hidden rounded p-1 text-red-300 group-hover:block"
+                    aria-label="Excluir pasta"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </>
+              )}
             </div>
           ))}
         </aside>
@@ -483,29 +501,31 @@ export default function Kcs({
             <h2 className="text-xs font-semibold tracking-wide text-[#9b9ba3] uppercase">
               Notas ({workspace?.notes.length || 0})
             </h2>
-            <button
-              type="button"
-              onClick={() =>
-                organizationId &&
-                void run(
-                  'note-create',
-                  async () => {
-                    const result = await createKcsNote(organizationId, {
-                      title: 'Nova nota',
-                      content: '# Nova nota\n',
-                      folderId: folderId || null,
-                    });
-                    if (result.success) setSelectedId(result.data.id);
-                    return result;
-                  },
-                  'Nota criada.'
-                )
-              }
-              className="rounded p-1.5 text-[#c9b8ff] hover:bg-[#292936]"
-              aria-label="Criar nota"
-            >
-              <FilePlus2 className="h-4 w-4" />
-            </button>
+            {canManageKcs && (
+              <button
+                type="button"
+                onClick={() =>
+                  organizationId &&
+                  void run(
+                    'note-create',
+                    async () => {
+                      const result = await createKcsNote(organizationId, {
+                        title: 'Nova nota',
+                        content: '# Nova nota\n',
+                        folderId: folderId || null,
+                      });
+                      if (result.success) setSelectedId(result.data.id);
+                      return result;
+                    },
+                    'Nota criada.'
+                  )
+                }
+                className="rounded p-1.5 text-[#c9b8ff] hover:bg-[#292936]"
+                aria-label="Criar nota"
+              >
+                <FilePlus2 className="h-4 w-4" />
+              </button>
+            )}
           </div>
           <div className="divide-y divide-[#2f2f35]">
             {workspace?.notes.map((note) => (
@@ -542,163 +562,136 @@ export default function Kcs({
           )}
         </aside>
 
-        <main className="flex min-h-[560px] min-w-0 flex-col rounded-xl border border-[#303036] bg-[#1b1b1f] lg:min-h-0 lg:overflow-hidden">
+        <main className="min-h-[560px] min-w-0 overflow-y-auto rounded-xl border border-[#303036] bg-[#1b1b1f] lg:min-h-0">
           {selected ? (
             <>
-              <div className="flex shrink-0 flex-col gap-2 border-b border-[#303036] p-3 sm:flex-row sm:items-center">
-                <input
-                  value={draft.title}
-                  onChange={(event) =>
-                    setDraft((current) => ({
-                      ...current,
-                      title: event.target.value,
-                    }))
+              <div className="h-[min(680px,calc(100vh-13rem))] min-h-[500px]">
+                <KnowledgeNoteEditor
+                  scope={{
+                    type: 'organization',
+                    organizationId: organization.id,
+                    role: workspace?.role || organization.role,
+                  }}
+                  title={draft.title}
+                  content={draft.content}
+                  status={draft.status}
+                  tags={draft.tags}
+                  mode={mode}
+                  readOnly={!canManageKcs}
+                  notes={(workspace?.notes || []).map((note) => ({
+                    id: note.id,
+                    title: note.title,
+                    slug: note.slug,
+                    content: note.content,
+                    filePath: note.filePath,
+                    folderId: note.folderId,
+                    folderPath: note.folderPath,
+                  }))}
+                  currentNote={{
+                    id: selected.id,
+                    title: draft.title,
+                    slug: selected.slug,
+                    filePath: selected.filePath,
+                    folderId: selected.folderId,
+                    folderPath: selected.folderPath,
+                  }}
+                  attachments={workspace?.attachments || []}
+                  actionsSlot={
+                    canManageKcs ? (
+                      <>
+                        <input
+                          ref={attachmentInputRef}
+                          type="file"
+                          className="hidden"
+                          accept="image/png,image/jpeg,image/gif,image/webp,application/pdf,audio/*,video/*"
+                          onChange={(event) => {
+                            const file = event.target.files?.[0];
+                            if (file) void handleAttachment(file);
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => attachmentInputRef.current?.click()}
+                          disabled={busy !== null}
+                          className="flex h-9 items-center gap-1 rounded-md border border-[#303036] px-2 text-xs text-[#b9b9c1] disabled:opacity-50"
+                        >
+                          <Paperclip className="h-3.5 w-3.5" /> Anexo
+                        </button>
+                        <button
+                          type="button"
+                          onClick={save}
+                          disabled={busy !== null || !draft.title.trim()}
+                          className="flex h-9 items-center gap-1 rounded-md bg-[#6f55d9] px-3 text-xs text-white disabled:opacity-50"
+                        >
+                          {busy === 'save' ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Save className="h-3.5 w-3.5" />
+                          )}{' '}
+                          Salvar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (
+                              organizationId &&
+                              window.confirm('Excluir esta nota KCS?')
+                            )
+                              void run(
+                                'note-delete',
+                                () =>
+                                  deleteKcsNote(organizationId, selected.id),
+                                'Nota excluída.'
+                              );
+                          }}
+                          className="h-9 rounded-md p-2 text-red-300 hover:bg-red-500/10"
+                          aria-label="Excluir nota"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </>
+                    ) : undefined
                   }
-                  className="h-10 min-w-0 flex-1 bg-transparent text-base font-semibold text-white outline-none"
+                  onTitleChange={(title) =>
+                    setDraft((current) => ({ ...current, title }))
+                  }
+                  onContentChange={(content) =>
+                    setDraft((current) => ({ ...current, content }))
+                  }
+                  onStatusChange={(status) =>
+                    setDraft((current) => ({ ...current, status }))
+                  }
+                  onTagsChange={(tags) =>
+                    setDraft((current) => ({ ...current, tags }))
+                  }
+                  onModeChange={setMode}
+                  onOpenWikiLink={(idOrSlug) => {
+                    const target = workspace?.notes.find(
+                      (note) => note.id === idOrSlug || note.slug === idOrSlug
+                    );
+                    if (target) setSelectedId(target.id);
+                  }}
+                  onToggleTask={
+                    canManageKcs
+                      ? (lineIndex) =>
+                          setDraft((current) => ({
+                            ...current,
+                            content: toggleMarkdownTask(
+                              current.content,
+                              lineIndex
+                            ),
+                          }))
+                      : undefined
+                  }
                 />
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <select
-                    value={draft.status}
-                    onChange={(event) =>
-                      setDraft((current) => ({
-                        ...current,
-                        status: event.target.value as NoteStatus,
-                      }))
-                    }
-                    className="h-9 rounded-md border border-[#303036] bg-[#111] px-2 text-xs text-white"
-                  >
-                    <option value="DRAFT">Rascunho</option>
-                    <option value="PUBLISHED">Publicada</option>
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => setPreview((current) => !current)}
-                    className="flex h-9 items-center gap-1 rounded-md border border-[#303036] px-2 text-xs text-[#b9b9c1]"
-                  >
-                    {preview ? (
-                      <Pencil className="h-3.5 w-3.5" />
-                    ) : (
-                      <Eye className="h-3.5 w-3.5" />
-                    )}
-                    {preview ? 'Editar' : 'Preview'}
-                  </button>
-                  <input
-                    ref={attachmentInputRef}
-                    type="file"
-                    className="hidden"
-                    accept="image/png,image/jpeg,image/gif,image/webp,application/pdf,audio/*,video/*"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (file) void handleAttachment(file);
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => attachmentInputRef.current?.click()}
-                    disabled={busy !== null}
-                    className="flex h-9 items-center gap-1 rounded-md border border-[#303036] px-2 text-xs text-[#b9b9c1]"
-                  >
-                    <Paperclip className="h-3.5 w-3.5" /> Anexo
-                  </button>
-                  <button
-                    type="button"
-                    onClick={save}
-                    disabled={busy !== null || !draft.title.trim()}
-                    className="flex h-9 items-center gap-1 rounded-md bg-[#6f55d9] px-3 text-xs text-white disabled:opacity-50"
-                  >
-                    {busy === 'save' ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Save className="h-3.5 w-3.5" />
-                    )}{' '}
-                    Salvar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (
-                        organizationId &&
-                        window.confirm('Excluir esta nota KCS?')
-                      )
-                        void run(
-                          'note-delete',
-                          () => deleteKcsNote(organizationId, selected.id),
-                          'Nota excluída.'
-                        );
-                    }}
-                    className="h-9 rounded-md p-2 text-red-300 hover:bg-red-500/10"
-                    aria-label="Excluir nota"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
               </div>
-              <input
-                value={draft.tags}
-                onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    tags: event.target.value,
-                  }))
-                }
-                placeholder="Tags separadas por vírgula"
-                className="h-9 shrink-0 border-b border-[#303036] bg-[#161619] px-3 text-xs text-[#b9b9c1] outline-none"
+              <NoteComments
+                key={selected.id}
+                organizationId={organization.id}
+                noteId={selected.id}
+                userId={userId}
+                canModerate={canManageKcs}
               />
-              <div className="min-h-0 flex-1 overflow-auto">
-                {preview ? (
-                  <div className="p-5">
-                    <MarkdownPreview
-                      content={draft.content}
-                      notes={(workspace?.notes || []).map((note) => ({
-                        id: note.id,
-                        title: note.title,
-                        slug: note.slug,
-                        filePath: note.filePath,
-                        folderId: note.folderId,
-                        folderPath: note.folderPath,
-                      }))}
-                      currentNote={{
-                        id: selected.id,
-                        title: draft.title,
-                        slug: selected.slug,
-                        filePath: selected.filePath,
-                        folderId: selected.folderId,
-                        folderPath: selected.folderPath,
-                      }}
-                      attachments={workspace?.attachments || []}
-                      onOpenWikiLink={(idOrSlug) => {
-                        const target = workspace?.notes.find(
-                          (note) =>
-                            note.id === idOrSlug || note.slug === idOrSlug
-                        );
-                        if (target) setSelectedId(target.id);
-                      }}
-                      onToggleTask={(lineIndex) =>
-                        setDraft((current) => ({
-                          ...current,
-                          content: toggleMarkdownTask(
-                            current.content,
-                            lineIndex
-                          ),
-                        }))
-                      }
-                    />
-                  </div>
-                ) : (
-                  <textarea
-                    value={draft.content}
-                    onChange={(event) =>
-                      setDraft((current) => ({
-                        ...current,
-                        content: event.target.value,
-                      }))
-                    }
-                    spellCheck
-                    className="h-full min-h-[430px] w-full resize-none bg-[#161619] p-5 font-mono text-sm leading-6 text-[#d5d5da] outline-none lg:min-h-0"
-                    placeholder="Escreva em Markdown..."
-                  />
-                )}
-              </div>
             </>
           ) : (
             <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-[#777780]">

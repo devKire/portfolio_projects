@@ -6,6 +6,7 @@ import {
   ArrowDown,
   ArrowUp,
   AlertTriangle,
+  Building2,
   Check,
   CheckSquare,
   ChevronDown,
@@ -87,11 +88,7 @@ import {
 } from '@/lib/notes';
 import { isEditableTarget } from '@/lib/keyboard';
 
-import {
-  MarkdownPreview,
-  type PreviewAttachment,
-  type PreviewNote,
-} from './MarkdownPreview';
+import { type PreviewAttachment, type PreviewNote } from './MarkdownPreview';
 import { toggleMarkdownTask } from './markdownPreviewUtils';
 import { useAutoSave, type SaveStatus } from './useAutoSave';
 import {
@@ -100,6 +97,14 @@ import {
   estimateCursorPosition,
   type WikiLinkSuggestion,
 } from './WikiLinkAutocomplete';
+import {
+  KnowledgeNoteEditor,
+  type KnowledgeEditorMode,
+} from './KnowledgeNoteEditor';
+import {
+  KnowledgeTransferDialog,
+  type TransferItem,
+} from './KnowledgeTransferDialog';
 
 const GraphFlow = dynamic(
   () => import('./GraphFlow').then((mod) => mod.GraphFlow),
@@ -699,6 +704,7 @@ function NoteContextMenu({
   onRename,
   onToggleFavorite,
   onMoveToFolder,
+  onTransfer,
   onCopyPath,
   onMoveToTrash,
 }: {
@@ -709,6 +715,7 @@ function NoteContextMenu({
   onRename: (note: NoteListItem) => void;
   onToggleFavorite: (note: NoteListItem) => void;
   onMoveToFolder: (note: NoteListItem, folder: FolderTarget) => void;
+  onTransfer: (note: NoteListItem) => void;
   onCopyPath: (note: NoteListItem) => void;
   onMoveToTrash: (note: NoteListItem) => void;
 }) {
@@ -966,6 +973,15 @@ function NoteContextMenu({
       <button
         type="button"
         role="menuitem"
+        onClick={() => runAction(() => onTransfer(note))}
+        className="flex h-8 w-full items-center gap-2 rounded px-2 text-left outline-none hover:bg-[#2a2a30] focus:bg-[#2a2a30]"
+      >
+        <Building2 className="h-3.5 w-3.5 text-[#9a8cff]" />
+        Mover para organização
+      </button>
+      <button
+        type="button"
+        role="menuitem"
         onClick={() => runAction(() => onCopyPath(note))}
         className="flex h-8 w-full items-center gap-2 rounded px-2 text-left outline-none hover:bg-[#2a2a30] focus:bg-[#2a2a30]"
       >
@@ -995,6 +1011,7 @@ function FolderContextMenu({
   onCreateFolder,
   onRename,
   onMoveFolder,
+  onTransfer,
   onCopyPath,
   onMoveToTrash,
 }: {
@@ -1006,6 +1023,7 @@ function FolderContextMenu({
   onCreateFolder: (parentId: string | null) => void;
   onRename: (folder: FolderNode) => void;
   onMoveFolder: (folderId: string, parentId: string | null) => void;
+  onTransfer: (folder: FolderNode) => void;
   onCopyPath: (folder: FolderNode) => void;
   onMoveToTrash: (folder: FolderNode) => void;
 }) {
@@ -1268,6 +1286,15 @@ function FolderContextMenu({
               </div>
             )}
           </div>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => runAction(() => onTransfer(folder))}
+            className="flex h-8 w-full items-center gap-2 rounded px-2 text-left outline-none hover:bg-[#2a2a30] focus:bg-[#2a2a30]"
+          >
+            <Building2 className="h-3.5 w-3.5 text-[#9a8cff]" />
+            Mover para organização
+          </button>
           <button
             type="button"
             role="menuitem"
@@ -1562,6 +1589,7 @@ export default function Notes() {
   const [renamingTitle, setRenamingTitle] = useState('');
   const [noteFeedback, setNoteFeedback] = useState<NoteFeedback>(null);
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
+  const [transferItem, setTransferItem] = useState<TransferItem | null>(null);
   const [confirmPending, setConfirmPending] = useState(false);
   const [trashSelection, setTrashSelection] = useState<Set<string>>(
     () => new Set()
@@ -3647,6 +3675,9 @@ export default function Notes() {
         onMoveToFolder={(note, folder) =>
           void handleMoveNote(note.id, folder?.id || null)
         }
+        onTransfer={(note) =>
+          setTransferItem({ type: 'note', id: note.id, name: note.title })
+        }
         onCopyPath={(note) => void copyNotePath(note)}
         onMoveToTrash={(note) => void handleMoveNoteToTrash(note)}
       />
@@ -3664,6 +3695,13 @@ export default function Notes() {
         }}
         onMoveFolder={(folderId, parentId) =>
           void handleMoveFolder(folderId, parentId)
+        }
+        onTransfer={(folder) =>
+          setTransferItem({
+            type: 'folder',
+            id: folder.id,
+            name: folder.name,
+          })
         }
         onCopyPath={(folder) =>
           void copyNotePath({
@@ -3693,6 +3731,23 @@ export default function Notes() {
         state={confirmState}
         pending={confirmPending}
         onCancel={() => !confirmPending && setConfirmState(null)}
+      />
+      <KnowledgeTransferDialog
+        item={transferItem}
+        onClose={() => setTransferItem(null)}
+        onTransferred={(result) => {
+          setTransferItem(null);
+          setSelectedNote(null);
+          setDraft(emptyDraft());
+          setActiveFolder(undefined);
+          setNoteFeedback({
+            tone: 'success',
+            message: result.adjustments.length
+              ? `Transferência concluída com ${result.adjustments.length} ajuste(s) de nome.`
+              : 'Transferência concluída para o KCS.',
+          });
+          void loadRef.current();
+        }}
       />
       <div
         aria-live="polite"
@@ -4681,19 +4736,20 @@ export default function Notes() {
               )}
 
               {selectedNote && mode !== 'graph' && (
-                <div className="flex h-full min-h-0 flex-col overflow-hidden">
-                  <div className="grid shrink-0 gap-0 border-b border-[#2f2f35] p-3 lg:grid-cols-[1fr_180px_150px_150px]">
-                    <input
-                      value={draft.title}
-                      onChange={(event) =>
-                        setDraft((current) => ({
-                          ...current,
-                          title: event.target.value,
-                          slug: current.slug || slugifyNote(event.target.value),
-                        }))
-                      }
-                      className="h-10 bg-transparent px-3 text-xl font-semibold text-[#f2f2f3] outline-none"
-                    />
+                <KnowledgeNoteEditor
+                  scope={{ type: 'personal' }}
+                  title={draft.title}
+                  content={draft.content || ''}
+                  status={draft.status || 'DRAFT'}
+                  tags={(draft.tags || []).join(', ')}
+                  mode={mode as KnowledgeEditorMode}
+                  readOnly={false}
+                  notes={linkableNotes}
+                  currentNote={selectedNote}
+                  attachments={attachments}
+                  showModeSwitcher={false}
+                  textareaRef={textareaRef}
+                  metadataSlot={
                     <select
                       value={draft.projectId || ''}
                       onChange={(event) =>
@@ -4702,7 +4758,8 @@ export default function Notes() {
                           projectId: event.target.value || null,
                         }))
                       }
-                      className="h-10 rounded border border-[#303036] bg-[#19191d] px-2 text-xs outline-none"
+                      className="h-10 rounded border border-[#303036] bg-[#19191d] px-2 text-xs text-white outline-none"
+                      aria-label="Projeto da nota"
                     >
                       <option value="">Sem projeto</option>
                       {projects.map((project) => (
@@ -4711,59 +4768,19 @@ export default function Notes() {
                         </option>
                       ))}
                     </select>
-                    <select
-                      value={draft.status}
-                      onChange={(event) =>
-                        setDraft((current) => ({
-                          ...current,
-                          status: event.target.value as NoteStatus,
-                        }))
-                      }
-                      className="h-10 rounded border border-[#303036] bg-[#19191d] px-2 text-xs outline-none"
-                    >
-                      <option value="DRAFT">Draft</option>
-                      <option value="PUBLISHED">Published</option>
-                      <option value="ARCHIVED">Archived</option>
-                    </select>
+                  }
+                  actionsSlot={
                     <button
                       type="button"
                       onClick={() => void saveNote()}
                       disabled={saving}
-                      className="ml-2 h-10 rounded bg-[#6f55d9] px-3 text-sm text-white disabled:opacity-50"
+                      className="h-9 rounded bg-[#6f55d9] px-3 text-sm text-white disabled:opacity-50"
                     >
                       {saving ? 'Salvando...' : 'Salvar'}
                     </button>
-                  </div>
-
-                  <div className="relative flex min-h-0 flex-1 overflow-hidden">
-                    {(mode === 'edit' || mode === 'split') && (
-                      <textarea
-                        ref={textareaRef}
-                        value={draft.content}
-                        onChange={(event) => {
-                          setDraft((current) => ({
-                            ...current,
-                            content: event.target.value,
-                          }));
-                          setCursorPos(event.target.selectionStart);
-                          setWikilinkBlocked(false);
-                        }}
-                        onSelect={(event) => {
-                          setCursorPos(event.currentTarget.selectionStart);
-                        }}
-                        onClick={(event) => {
-                          setCursorPos(event.currentTarget.selectionStart);
-                        }}
-                        onKeyUp={(event) => {
-                          setCursorPos(event.currentTarget.selectionStart);
-                        }}
-                        onKeyDown={handleEditorKeyDown}
-                        onPaste={handleEditorPaste}
-                        className={`${mode === 'split' ? 'w-1/2 border-r border-[#2f2f35]' : 'w-full'} h-full min-h-0 resize-none overflow-y-auto bg-[#1e1e22] px-8 py-7 font-mono text-sm leading-6 text-[#dcddde] outline-none placeholder:text-[#777780]`}
-                        placeholder="# Titulo&#10;&#10;[[Wiki Link]]&#10;- [ ] Task sincronizada"
-                      />
-                    )}
-                    {isAutocompleteOpen && (
+                  }
+                  autocomplete={
+                    isAutocompleteOpen ? (
                       <WikiLinkAutocomplete
                         suggestions={autocompleteSuggestions}
                         selectedIndex={autocompleteSelectedIndex}
@@ -4775,40 +4792,59 @@ export default function Notes() {
                               ? 'Block references'
                               : 'Notas sugeridas'
                         }
-                        onSelect={(index) => {
-                          handleAutocompleteSelect(index);
-                        }}
-                        onMouseEnter={(index) => {
-                          setAutocompleteSelectedIndex(index);
-                        }}
+                        onSelect={handleAutocompleteSelect}
+                        onMouseEnter={setAutocompleteSelectedIndex}
                       />
-                    )}
-                    {(mode === 'preview' || mode === 'split') && (
-                      <div
-                        className={`${mode === 'split' ? 'w-1/2' : 'w-full'} h-full min-h-0 min-w-0 overflow-x-hidden overflow-y-auto`}
-                      >
-                        <MarkdownPreview
-                          content={draft.content || ''}
-                          notes={linkableNotes}
-                          currentNote={selectedNote}
-                          attachments={attachments}
-                          onOpenWikiLink={openWikiLink}
-                          onToggleTask={(lineIndex) =>
-                            setDraft((current) => {
-                              const nextContent = toggleMarkdownTask(
-                                current.content,
-                                lineIndex
-                              );
-                              return nextContent === current.content
-                                ? current
-                                : { ...current, content: nextContent };
-                            })
-                          }
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
+                    ) : null
+                  }
+                  onTitleChange={(title) =>
+                    setDraft((current) => ({
+                      ...current,
+                      title,
+                      slug: current.slug || slugifyNote(title),
+                    }))
+                  }
+                  onContentChange={(content) => {
+                    setDraft((current) => ({ ...current, content }));
+                    setWikilinkBlocked(false);
+                  }}
+                  onStatusChange={(status) =>
+                    setDraft((current) => ({ ...current, status }))
+                  }
+                  onTagsChange={(value) =>
+                    setDraft((current) => ({
+                      ...current,
+                      tags: value
+                        .split(',')
+                        .map((tag) => tag.trim())
+                        .filter(Boolean),
+                    }))
+                  }
+                  onModeChange={setMode}
+                  onOpenWikiLink={openWikiLink}
+                  onToggleTask={(lineIndex) =>
+                    setDraft((current) => {
+                      const nextContent = toggleMarkdownTask(
+                        current.content,
+                        lineIndex
+                      );
+                      return nextContent === current.content
+                        ? current
+                        : { ...current, content: nextContent };
+                    })
+                  }
+                  onEditorSelect={(event) =>
+                    setCursorPos(event.currentTarget.selectionStart)
+                  }
+                  onEditorClick={(event) =>
+                    setCursorPos(event.currentTarget.selectionStart)
+                  }
+                  onEditorKeyUp={(event) =>
+                    setCursorPos(event.currentTarget.selectionStart)
+                  }
+                  onEditorKeyDown={handleEditorKeyDown}
+                  onEditorPaste={handleEditorPaste}
+                />
               )}
             </div>
 

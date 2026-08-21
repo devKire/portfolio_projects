@@ -335,7 +335,7 @@ export function MarkdownPreview({
   currentNote?: PreviewNote | null;
   attachments: PreviewAttachment[];
   onOpenWikiLink: (idOrSlug: string, anchor?: string) => void;
-  onToggleTask: (lineIndex: number) => void;
+  onToggleTask?: (lineIndex: number) => void;
 }) {
   const [closedCallouts, setClosedCallouts] = useState<Record<string, boolean>>(
     {}
@@ -655,7 +655,8 @@ export function MarkdownPreview({
                   <input
                     type="checkbox"
                     checked={checked}
-                    onChange={() => onToggleTask(item.lineIndex)}
+                    disabled={!onToggleTask}
+                    onChange={() => onToggleTask?.(item.lineIndex)}
                     aria-label={`${checked ? 'Desmarcar' : 'Marcar'} tarefa: ${label}`}
                     className="mt-1 accent-[#7c5cff] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8f7cff]"
                   />

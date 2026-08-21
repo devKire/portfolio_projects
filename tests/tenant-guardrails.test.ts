@@ -12,7 +12,7 @@ test('V2/V7: KCS actions require membership and resource scope', () => {
 
   assert.match(
     kcs,
-    /requireOrganizationMembership\(user\.id, organizationId\)/
+    /requireOrganizationMembership\(\s*user\.id,\s*organizationId\s*\)/
   );
   assert.match(kcs, /where: \{ id: noteId, \.\.\.scoped \}/);
   assert.match(kcs, /where: \{ id: folderId, \.\.\.scoped/);
@@ -38,7 +38,7 @@ test('V2/V7: KCS import and export validate membership before using scope', () =
   assert.match(kcs, /export async function importKcsVault/);
   assert.match(
     kcs,
-    /requireOrganizationMembership\(user\.id, organizationId\)/
+    /requireOrganizationMembership\(\s*user\.id,\s*organizationId\s*\)/
   );
   assert.match(
     exportRoute,
@@ -47,7 +47,7 @@ test('V2/V7: KCS import and export validate membership before using scope', () =
   assert.match(exportRoute, /organizationNoteScope\(organizationId\)/);
   assert.match(
     importRoute,
-    /getOrganizationMembership\(user\.id, organizationId\)/
+    /getOrganizationMembership\(\s*user\.id,\s*organizationId\s*\)/
   );
   assert.match(importRoute, /importKcsVault/);
 });
@@ -83,4 +83,55 @@ test('V4/V8: migration is additive and enforces same-organization joins', () => 
     migration,
     /UPDATE "Note" SET "scopeKey" = 'user:' \|\| "userId"/
   );
+});
+
+test('V16: shared Markdown preview makes task mutation an explicit capability', () => {
+  const preview = source('src/app/admin/_tabs/Notes/MarkdownPreview.tsx');
+  const editor = source('src/app/admin/_tabs/Notes/KnowledgeNoteEditor.tsx');
+
+  assert.match(preview, /onToggleTask\?: \(lineIndex: number\) => void/);
+  assert.match(preview, /disabled=\{!onToggleTask\}/);
+  assert.match(editor, /readOnly \? undefined : onToggleTask/);
+});
+
+test('V16/V18: KCS writes and transfers enforce server-side scope', () => {
+  const kcs = source('src/app/actions/kcs.ts');
+  const transfer = source('src/app/actions/knowledge.ts');
+
+  assert.match(kcs, /requireKcsManager/);
+  assert.match(transfer, /runTransferTransaction/);
+  assert.match(transfer, /TransactionIsolationLevel\.Serializable/);
+  assert.match(transfer, /requireTransferMembership/);
+  assert.match(transfer, /where: \{ id: input\.noteId, \.\.\.sourceScope \}/);
+  assert.match(transfer, /requireDestinationFolder/);
+  assert.match(transfer, /data: \{ noteId: null, noteTaskKey: null \}/);
+});
+
+test('V17/V25: KCS comments use membership and same-organization relation', () => {
+  const comments = source('src/app/actions/note-comments.ts');
+  const migration = source(
+    'prisma/migrations/20260820160000_kcs_note_comments/migration.sql'
+  );
+
+  assert.match(comments, /requireKcsNoteAccess/);
+  assert.match(comments, /canEditKcsComment/);
+  assert.match(comments, /canDeleteKcsComment/);
+  assert.match(
+    migration,
+    /FOREIGN KEY \("noteId", "organizationId"\) REFERENCES "Note"\("id", "organizationId"\)/
+  );
+  assert.doesNotMatch(migration, /DROP\s+TABLE|TRUNCATE|DELETE\s+FROM/i);
+});
+
+test('V22/V24: navigation exposes one Work entry and adapter suppresses links', () => {
+  const navigation = source('src/app/admin/_config/navigation.ts');
+  const router = source('src/app/admin/_components/ContentRouter.tsx');
+  const adapter = source('src/lib/work/adapter.ts');
+
+  assert.match(navigation, /id: 'work', label: 'Trabalho'/);
+  assert.doesNotMatch(navigation, /id: 'tasks'/);
+  assert.doesNotMatch(navigation, /id: 'tickets'/);
+  assert.match(router, /case 'work'/);
+  assert.match(adapter, /canonicalTaskIds/);
+  assert.match(adapter, /!canonicalTaskIds\.has\(task\.id\)/);
 });

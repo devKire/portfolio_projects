@@ -7,19 +7,20 @@ import { db } from '@/lib/prisma';
 import {
   createExcerpt,
   extractNoteTags,
-  extractWikiLinks,
   getVaultFileMetadata,
   inferNoteTitleFromPath,
   isIgnoredVaultPath,
   isUnsafeVaultPath,
   normalizeNoteTag,
-  resolveWikiLinkTarget,
   slugifyNote,
-  wikiLinkTargetStorageKey,
 } from '@/lib/notes';
 import { extractMarkdownTasks } from '@/lib/note-task-sync';
 import { requireUser } from '@/lib/auth/session';
 import { personalNoteScope } from '@/lib/organizations/policy';
+import {
+  refreshKnowledgeLinkTargets,
+  syncKnowledgeRelations,
+} from '@/lib/knowledge/relations';
 
 export type ActionResult<T> =
   | { success: true; data: T }
@@ -166,68 +167,12 @@ async function syncNoteRelations(
   content: string,
   tags: string[]
 ) {
-  const links = extractWikiLinks(content);
-  const [sourceNote, linkableNotes] = await Promise.all([
-    db.note.findFirst({
-      where: { id: noteId, ...personalScopeWhere(userId) },
-      select: { folderPath: true },
-    }),
-    db.note.findMany({
-      where: {
-        ...personalScopeWhere(userId),
-        status: { not: 'ARCHIVED' },
-      },
-      select: {
-        id: true,
-        title: true,
-        slug: true,
-        filePath: true,
-        folderPath: true,
-      },
-    }),
-  ]);
-  const resolvedLinks = links.map((link) => {
-    const resolution = resolveWikiLinkTarget(
-      link.targetTitle,
-      linkableNotes,
-      sourceNote?.folderPath
-    );
-    const targetNote =
-      resolution.status === 'resolved' ? resolution.note : null;
-
-    return {
-      ...link,
-      targetNoteId: targetNote?.id || null,
-      targetSlug:
-        targetNote?.slug || wikiLinkTargetStorageKey(link.targetTitle),
-      targetExists: Boolean(targetNote),
-    };
+  await syncKnowledgeRelations(db, {
+    scope: personalScopeWhere(userId),
+    noteId,
+    content,
+    explicitTags: tags,
   });
-
-  await db.$transaction([
-    db.noteTag.deleteMany({ where: { noteId } }),
-    db.noteLink.deleteMany({ where: { sourceNoteId: noteId } }),
-    db.noteTag.createMany({
-      data: tags.map((tag) => ({
-        noteId,
-        name: tag,
-        slug: normalizeNoteTag(tag),
-      })),
-      skipDuplicates: true,
-    }),
-    db.noteLink.createMany({
-      data: resolvedLinks.map((link) => ({
-        sourceNoteId: noteId,
-        targetNoteId: link.targetNoteId,
-        targetSlug: link.targetSlug,
-        targetTitle: link.targetTitle,
-        alias: link.alias,
-        occurrences: link.occurrences,
-        targetExists: link.targetExists,
-      })),
-      skipDuplicates: true,
-    }),
-  ]);
 }
 
 async function syncNoteTasks(
@@ -289,51 +234,7 @@ async function syncNoteTasks(
 }
 
 async function refreshAllLinkTargets(userId: string) {
-  const [notes, links] = await Promise.all([
-    db.note.findMany({
-      where: {
-        ...personalScopeWhere(userId),
-        status: { not: 'ARCHIVED' },
-      },
-      select: {
-        id: true,
-        title: true,
-        slug: true,
-        filePath: true,
-        folderPath: true,
-      },
-    }),
-    db.noteLink.findMany({
-      where: { sourceNote: personalScopeWhere(userId) },
-      select: {
-        id: true,
-        targetTitle: true,
-        sourceNote: { select: { folderPath: true } },
-      },
-    }),
-  ]);
-
-  await db.$transaction(
-    links.map((link) => {
-      const resolution = resolveWikiLinkTarget(
-        link.targetTitle,
-        notes,
-        link.sourceNote.folderPath
-      );
-      const targetNote =
-        resolution.status === 'resolved' ? resolution.note : null;
-
-      return db.noteLink.update({
-        where: { id: link.id },
-        data: {
-          targetNoteId: targetNote?.id || null,
-          targetSlug:
-            targetNote?.slug || wikiLinkTargetStorageKey(link.targetTitle),
-          targetExists: Boolean(targetNote),
-        },
-      });
-    })
-  );
+  await refreshKnowledgeLinkTargets(db, personalScopeWhere(userId));
 }
 
 function normalizeFolderName(name: string) {

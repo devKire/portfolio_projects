@@ -3,7 +3,13 @@
 
 import dynamic from 'next/dynamic';
 import { Suspense } from 'react';
-import { Globe, MessageSquare, Users, BrainCircuit } from 'lucide-react';
+import {
+  Globe,
+  MessageSquare,
+  Users,
+  BrainCircuit,
+  type LucideIcon,
+} from 'lucide-react';
 import ContentLoader from './ContentLoader';
 import type { OrganizationContext } from '@/lib/organizations/context';
 
@@ -12,7 +18,7 @@ const Dashboard = dynamic(() => import('../_tabs/Dashboard'), {
   loading: () => <ContentLoader />,
 });
 
-const Tasks = dynamic(() => import('../_tabs/Tasks'), {
+const WorkManager = dynamic(() => import('../_tabs/WorkManager'), {
   loading: () => <ContentLoader />,
 });
 
@@ -40,10 +46,6 @@ const Organization = dynamic(() => import('../_tabs/Organization'), {
   loading: () => <ContentLoader />,
 });
 
-const Tickets = dynamic(() => import('../_tabs/Tickets'), {
-  loading: () => <ContentLoader />,
-});
-
 const Kcs = dynamic(() => import('../_tabs/Kcs'), {
   loading: () => <ContentLoader />,
 });
@@ -53,7 +55,7 @@ function ComingSoon({
   icon: Icon,
   title,
 }: {
-  icon: React.ComponentType<any>;
+  icon: LucideIcon;
   title: string;
 }) {
   return (
@@ -87,10 +89,13 @@ export default function ContentRouter({
     switch (activeTab) {
       case 'dashboard':
         return <Dashboard />;
+      case 'work':
       case 'tasks':
+      case 'tickets':
         return (
-          <Tasks
-            activeOrganizationId={organizationContext.activeOrganizationId}
+          <WorkManager
+            userId={userId}
+            organization={activeOrganization || null}
           />
         );
       case 'daily-checklist':
@@ -107,12 +112,10 @@ export default function ContentRouter({
             onOrganizationContextChange={onOrganizationContextChange}
           />
         );
-      case 'tickets':
-        return (
-          <Tickets userId={userId} organization={activeOrganization || null} />
-        );
       case 'kcs':
-        return <Kcs organization={activeOrganization || null} />;
+        return (
+          <Kcs userId={userId} organization={activeOrganization || null} />
+        );
       case 'ia':
         return (
           <ComingSoon icon={BrainCircuit} title="Inteligência Artificial" />

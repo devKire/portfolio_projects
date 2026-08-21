@@ -4,6 +4,10 @@ import test from 'node:test';
 import {
   canManageMember,
   canManageQueue,
+  canManageKcs,
+  canCommentKcs,
+  canEditKcsComment,
+  canDeleteKcsComment,
   canManageTeam,
   canViewAllTickets,
   organizationNoteScope,
@@ -31,6 +35,23 @@ test('V2: MEMBER cannot manage organization operation surfaces', () => {
   assert.equal(canViewAllTickets('MEMBER'), false);
   assert.equal(canManageTeam('OWNER'), true);
   assert.equal(canManageQueue('ADMIN'), true);
+});
+
+test('V16/V17: KCS content and comments are separate capabilities', () => {
+  assert.equal(canManageKcs('MEMBER'), false);
+  assert.equal(canManageKcs('ADMIN'), true);
+  assert.equal(canManageKcs('OWNER'), true);
+  assert.equal(canCommentKcs('MEMBER'), true);
+  assert.equal(canEditKcsComment({ actorId: 'a', authorId: 'a' }), true);
+  assert.equal(canEditKcsComment({ actorId: 'a', authorId: 'b' }), false);
+  assert.equal(
+    canDeleteKcsComment({ role: 'MEMBER', actorId: 'a', authorId: 'b' }),
+    false
+  );
+  assert.equal(
+    canDeleteKcsComment({ role: 'ADMIN', actorId: 'a', authorId: 'b' }),
+    true
+  );
 });
 
 test('V7: personal and organization note scopes never collide', () => {

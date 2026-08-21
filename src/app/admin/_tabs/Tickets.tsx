@@ -31,69 +31,15 @@ import {
   type TicketFilters,
 } from '@/app/actions/tickets';
 import type { OrganizationContext } from '@/lib/organizations/context';
+import type {
+  QueueRow,
+  TicketRow,
+  TicketWorkspace,
+  WorkMember as Member,
+  WorkTeam as Team,
+} from '@/types/work';
 
 type OrganizationSummary = OrganizationContext['organizations'][number];
-
-type Activity = {
-  id: string;
-  type: TicketActivityType;
-  message: string | null;
-  comment: string | null;
-  before: unknown;
-  after: unknown;
-  createdAt: Date;
-  actor: { id: string; name: string | null; username: string } | null;
-};
-
-type TicketRow = {
-  id: string;
-  title: string;
-  description: string;
-  status: TicketStatus;
-  priority: TicketPriority;
-  queueId: string;
-  teamId: string | null;
-  requesterId: string;
-  assigneeId: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-  queue: { id: string; name: string; active: boolean };
-  team: { id: string; name: string; active: boolean } | null;
-  requester: { id: string; name: string | null; username: string };
-  assignee: { id: string; name: string | null; username: string } | null;
-  activities: Activity[];
-};
-
-type QueueRow = {
-  id: string;
-  name: string;
-  description: string | null;
-  active: boolean;
-  teamId: string | null;
-  team: { id: string; name: string } | null;
-  agents: Array<{
-    userId: string;
-    organizationMember: {
-      user: { id: string; name: string | null; username: string };
-    };
-  }>;
-  _count: { tickets: number };
-};
-
-type Member = {
-  id: string;
-  name: string | null;
-  username: string;
-  email: string;
-};
-type Team = { id: string; name: string; active: boolean };
-
-type TicketWorkspace = {
-  tickets: TicketRow[];
-  queues: QueueRow[];
-  stats: Record<string, number>;
-  canManageQueues: boolean;
-};
 
 const inputClass =
   'h-10 w-full rounded-md border border-[#303036] bg-[#111] px-3 text-sm text-white outline-none placeholder:text-[#666670] focus:border-[#6f55d9]';
@@ -515,7 +461,7 @@ export default function Tickets({
   );
 }
 
-function TicketDetail({
+export function TicketDetail({
   ticket,
   queues,
   teams,
@@ -723,7 +669,7 @@ function TicketDetail({
   );
 }
 
-function QueueManagement({
+export function QueueManagement({
   organizationId,
   queues,
   teams,

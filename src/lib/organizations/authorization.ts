@@ -3,7 +3,13 @@ import type { OrganizationRole, Prisma } from '@prisma/client';
 import { requireUser } from '@/lib/auth/session';
 import { db } from '@/lib/prisma';
 
-import { canManageQueue, canManageTeam, canViewAllTickets } from './policy';
+import {
+  canManageKcs,
+  canManageQueue,
+  canManageTeam,
+  canViewAllTickets,
+  organizationNoteScope,
+} from './policy';
 
 export class OrganizationAuthorizationError extends Error {
   constructor(message = 'Recurso não encontrado ou acesso negado.') {
@@ -76,6 +82,34 @@ export async function requireOrganizationRole(
     roles
   );
   return { user, membership };
+}
+
+export async function requireKcsManager(organizationId: string) {
+  const { user, membership } = await requireOrganizationMember(organizationId);
+  if (!canManageKcs(membership.role)) {
+    throw new OrganizationAuthorizationError();
+  }
+  return { user, membership };
+}
+
+export async function requireKcsNoteAccess(
+  userId: string,
+  organizationId: string,
+  noteId: string
+) {
+  const membership = await requireOrganizationMembership(
+    userId,
+    organizationId
+  );
+  const note = await db.note.findFirst({
+    where: {
+      id: noteId,
+      organizationId,
+      scopeKey: organizationNoteScope(organizationId),
+    },
+  });
+  if (!note) throw new OrganizationAuthorizationError();
+  return { membership, note };
 }
 
 export async function requireOrganizationUser(

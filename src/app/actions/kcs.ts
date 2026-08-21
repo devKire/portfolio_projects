@@ -7,27 +7,28 @@ import type { VaultImportFile } from '@/app/actions/notes';
 import { requireUser } from '@/lib/auth/session';
 import {
   OrganizationAuthorizationError,
+  requireKcsManager,
   requireOrganizationMembership,
 } from '@/lib/organizations/authorization';
 import {
-  isOrganizationManager,
+  organizationCapabilities,
   organizationNoteScope,
 } from '@/lib/organizations/policy';
 import {
   createExcerpt,
   extractNoteTags,
-  extractWikiLinks,
   getVaultFileMetadata,
   inferNoteTitleFromPath,
   isIgnoredVaultPath,
   isUnsafeVaultPath,
-  normalizeNoteTag,
-  resolveWikiLinkTarget,
   slugifyNote,
-  wikiLinkTargetStorageKey,
 } from '@/lib/notes';
 import { extractMarkdownTasks } from '@/lib/note-task-sync';
 import { db } from '@/lib/prisma';
+import {
+  refreshKnowledgeLinkTargets,
+  syncKnowledgeRelations,
+} from '@/lib/knowledge/relations';
 
 const MAX_ATTACHMENT_SIZE = 8 * 1024 * 1024;
 const ATTACHMENT_TYPES = new Set([
@@ -189,84 +190,16 @@ async function syncKcsRelations(
   content: string,
   explicitTags: string[] = []
 ) {
-  const scoped = scope(organizationId);
-  const [source, notes] = await Promise.all([
-    db.note.findFirst({
-      where: { id: noteId, ...scoped },
-      select: { folderPath: true },
-    }),
-    db.note.findMany({
-      where: { ...scoped, status: { not: 'ARCHIVED' } },
-      select: {
-        id: true,
-        title: true,
-        slug: true,
-        filePath: true,
-        folderPath: true,
-      },
-    }),
-  ]);
-  if (!source) throw new OrganizationAuthorizationError();
-
-  const tags = extractNoteTags(content, explicitTags);
-  const links = extractWikiLinks(content).map((link) => {
-    const resolution = resolveWikiLinkTarget(
-      link.targetTitle,
-      notes,
-      source.folderPath
-    );
-    const target = resolution.status === 'resolved' ? resolution.note : null;
-    return {
-      ...link,
-      targetNoteId: target?.id || null,
-      targetSlug: target?.slug || wikiLinkTargetStorageKey(link.targetTitle),
-      targetExists: Boolean(target),
-    };
+  await syncKnowledgeRelations(db, {
+    scope: scope(organizationId),
+    noteId,
+    content,
+    explicitTags,
   });
-
-  await db.$transaction([
-    db.noteTag.deleteMany({ where: { noteId } }),
-    db.noteLink.deleteMany({ where: { sourceNoteId: noteId } }),
-    db.noteTag.createMany({
-      data: tags.map((tag) => ({
-        noteId,
-        name: tag,
-        slug: normalizeNoteTag(tag),
-      })),
-      skipDuplicates: true,
-    }),
-    db.noteLink.createMany({
-      data: links.map((link) => ({
-        sourceNoteId: noteId,
-        targetNoteId: link.targetNoteId,
-        targetSlug: link.targetSlug,
-        targetTitle: link.targetTitle,
-        alias: link.alias,
-        occurrences: link.occurrences,
-        targetExists: link.targetExists,
-      })),
-      skipDuplicates: true,
-    }),
-  ]);
 }
 
 async function refreshKcsLinkTargets(organizationId: string) {
-  const notes = await db.note.findMany({
-    where: { ...scope(organizationId), status: { not: 'ARCHIVED' } },
-    select: {
-      id: true,
-      content: true,
-      tags: { select: { name: true } },
-    },
-  });
-  for (const note of notes) {
-    await syncKcsRelations(
-      organizationId,
-      note.id,
-      note.content,
-      note.tags.map((tag) => tag.name)
-    );
-  }
+  await refreshKnowledgeLinkTargets(db, scope(organizationId));
 }
 
 async function syncKcsTasks(
@@ -320,7 +253,10 @@ export async function getKcsWorkspace(
 ) {
   try {
     const user = await requireUser();
-    await requireOrganizationMembership(user.id, organizationId);
+    const membership = await requireOrganizationMembership(
+      user.id,
+      organizationId
+    );
     const scoped = scope(organizationId);
     const search = cleanText(filters.search, 200);
     const noteWhere: Prisma.NoteWhereInput = {
@@ -392,7 +328,14 @@ export async function getKcsWorkspace(
     if (!organization) throw new OrganizationAuthorizationError();
     return {
       success: true as const,
-      data: { organization, folders, notes, attachments },
+      data: {
+        organization,
+        folders,
+        notes,
+        attachments,
+        role: membership.role,
+        capabilities: organizationCapabilities(membership.role),
+      },
     };
   } catch (error) {
     return {
@@ -407,8 +350,7 @@ export async function createKcsFolder(
   input: { name: string; parentId?: string | null }
 ) {
   try {
-    const user = await requireUser();
-    await requireOrganizationMembership(user.id, organizationId);
+    const { user } = await requireKcsManager(organizationId);
     const scoped = scope(organizationId);
     const name = safeFolderName(input.name);
     if (name.length < 1 || name === '.' || name === '..') {
@@ -447,8 +389,7 @@ export async function renameKcsFolder(
   nameInput: string
 ) {
   try {
-    const user = await requireUser();
-    await requireOrganizationMembership(user.id, organizationId);
+    await requireKcsManager(organizationId);
     const scoped = scope(organizationId);
     const folder = await db.noteFolder.findFirst({
       where: { id: folderId, ...scoped, deletedAt: null },
@@ -538,14 +479,7 @@ export async function deleteKcsFolder(
   folderId: string
 ) {
   try {
-    const user = await requireUser();
-    const membership = await requireOrganizationMembership(
-      user.id,
-      organizationId
-    );
-    if (!isOrganizationManager(membership.role)) {
-      throw new OrganizationAuthorizationError();
-    }
+    await requireKcsManager(organizationId);
     const scoped = scope(organizationId);
     const folder = await db.noteFolder.findFirst({
       where: { id: folderId, ...scoped, deletedAt: null },
@@ -589,8 +523,7 @@ export async function createKcsNote(
   input: KcsNoteInput
 ) {
   try {
-    const user = await requireUser();
-    await requireOrganizationMembership(user.id, organizationId);
+    const { user } = await requireKcsManager(organizationId);
     const scoped = scope(organizationId);
     const title = cleanText(input.title, 240);
     if (!title) return { success: false as const, error: 'Informe um título.' };
@@ -641,8 +574,7 @@ export async function updateKcsNote(
   input: Partial<KcsNoteInput>
 ) {
   try {
-    const user = await requireUser();
-    await requireOrganizationMembership(user.id, organizationId);
+    const { user } = await requireKcsManager(organizationId);
     const scoped = scope(organizationId);
     const existing = await db.note.findFirst({
       where: { id: noteId, ...scoped },
@@ -684,11 +616,11 @@ export async function updateKcsNote(
         excerpt: createExcerpt(content, title),
         visibility: 'PRIVATE',
         status:
-          input.status === 'PUBLISHED'
-            ? 'PUBLISHED'
-            : input.status === 'DRAFT'
-              ? 'DRAFT'
-              : existing.status,
+          input.status === 'PUBLISHED' ||
+          input.status === 'DRAFT' ||
+          input.status === 'ARCHIVED'
+            ? input.status
+            : existing.status,
         folderId,
         folderPath,
         folderName: folderName(folderPath),
@@ -713,19 +645,12 @@ export async function updateKcsNote(
 
 export async function deleteKcsNote(organizationId: string, noteId: string) {
   try {
-    const user = await requireUser();
-    const membership = await requireOrganizationMembership(
-      user.id,
-      organizationId
-    );
+    await requireKcsManager(organizationId);
     const note = await db.note.findFirst({
       where: { id: noteId, ...scope(organizationId) },
-      select: { id: true, userId: true },
+      select: { id: true },
     });
     if (!note) throw new OrganizationAuthorizationError();
-    if (note.userId !== user.id && !isOrganizationManager(membership.role)) {
-      throw new OrganizationAuthorizationError();
-    }
     await db.note.delete({ where: { id: note.id } });
     await refreshKcsLinkTargets(organizationId);
     revalidateKcs();
@@ -749,8 +674,7 @@ export async function createKcsAttachment(
   }
 ) {
   try {
-    const user = await requireUser();
-    await requireOrganizationMembership(user.id, organizationId);
+    const { user } = await requireKcsManager(organizationId);
     const payload = input.dataUrl.split(',', 2)[1] || '';
     const decodedSize = Math.ceil((payload.length * 3) / 4);
     if (
@@ -825,8 +749,7 @@ export async function importKcsVault(
   folderPaths: string[] = []
 ) {
   try {
-    const user = await requireUser();
-    await requireOrganizationMembership(user.id, organizationId);
+    const { user } = await requireKcsManager(organizationId);
     if (!Array.isArray(files) || files.length > 2000) {
       return {
         success: false as const,

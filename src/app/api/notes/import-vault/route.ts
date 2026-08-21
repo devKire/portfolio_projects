@@ -11,6 +11,7 @@ import {
 } from '@/lib/notes';
 import { getCurrentUser } from '@/lib/auth/session';
 import { getOrganizationMembership } from '@/lib/organizations/authorization';
+import { canManageKcs } from '@/lib/organizations/policy';
 
 const MAX_ZIP_SIZE = 50 * 1024 * 1024;
 const MAX_INLINE_ATTACHMENT_SIZE = 8 * 1024 * 1024;
@@ -116,11 +117,14 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const file = formData.get('file');
     const organizationId = String(formData.get('organizationId') || '').trim();
-    if (
-      organizationId &&
-      !(await getOrganizationMembership(user.id, organizationId))
-    ) {
-      return errorResponse('Recurso não encontrado ou acesso negado.', 404);
+    if (organizationId) {
+      const membership = await getOrganizationMembership(
+        user.id,
+        organizationId
+      );
+      if (!membership || !canManageKcs(membership.role)) {
+        return errorResponse('Recurso não encontrado ou acesso negado.', 404);
+      }
     }
 
     if (!(file instanceof File)) {

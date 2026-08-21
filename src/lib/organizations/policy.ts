@@ -31,6 +31,42 @@ export function canManageQueue(role: OrganizationRole) {
   return isOrganizationManager(role);
 }
 
+export function canManageKcs(role: OrganizationRole) {
+  return isOrganizationManager(role);
+}
+
+export function canCommentKcs(_role: OrganizationRole) {
+  return true;
+}
+
+export function canEditKcsComment(input: {
+  actorId: string;
+  authorId: string;
+}) {
+  return input.actorId === input.authorId;
+}
+
+export function canDeleteKcsComment(input: {
+  role: OrganizationRole;
+  actorId: string;
+  authorId: string;
+}) {
+  return input.actorId === input.authorId || isOrganizationManager(input.role);
+}
+
+export function organizationCapabilities(role: OrganizationRole) {
+  const canManageKcsContent = canManageKcs(role);
+  return {
+    canManageKcsContent,
+    canManageKcsFolders: canManageKcsContent,
+    canManageKcsAttachments: canManageKcsContent,
+    canImportKcs: canManageKcsContent,
+    canCommentKcs: canCommentKcs(role),
+    canManageQueues: canManageQueue(role),
+    canViewAllTickets: canViewAllTickets(role),
+  } as const;
+}
+
 export function canViewAllTickets(role: OrganizationRole) {
   return isOrganizationManager(role);
 }

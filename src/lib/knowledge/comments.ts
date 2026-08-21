@@ -1,0 +1,1 @@
+export const MAX_NOTE_COMMENT_LENGTH = 4000;

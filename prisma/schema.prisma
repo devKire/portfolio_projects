@@ -69,6 +69,7 @@ model User {
   notes                   Note[]
   noteFolders             NoteFolder[]
   noteAttachments         NoteAttachment[]
+  noteComments            NoteComment[]          @relation("NoteCommentAuthor")
   dailyChecklistItems     DailyChecklistItem[]
   dailyChecklistEntries   DailyChecklistEntry[]
   activityLogs            TaskActivityLog[]
@@ -113,6 +114,7 @@ model Organization {
   notes           Note[]
   noteFolders     NoteFolder[]
   noteAttachments NoteAttachment[]
+  noteComments    NoteComment[]
 
   @@index([createdById])
   @@index([active, name])
@@ -658,7 +660,9 @@ model Note {
   outgoing NoteLink[] @relation("SourceLinks")
   incoming NoteLink[] @relation("TargetLinks")
   tasks    Task[]
+  comments NoteComment[]
 
+  @@unique([id, organizationId])
   @@unique([scopeKey, slug])
   @@unique([scopeKey, filePath])
   @@index([userId])
@@ -732,6 +736,23 @@ model NoteAttachment {
   @@index([scopeKey])
   @@index([userId, folderPath])
   @@index([userId, fileName])
+}
+
+model NoteComment {
+  id             String   @id @default(uuid())
+  noteId         String
+  organizationId String
+  authorId       String
+  content        String   @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  note         Note         @relation(fields: [noteId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  author       User         @relation("NoteCommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, noteId, createdAt])
+  @@index([authorId])
 }
 
 model NoteTag {
