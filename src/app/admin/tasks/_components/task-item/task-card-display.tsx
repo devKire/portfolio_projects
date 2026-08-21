@@ -12,6 +12,8 @@ import {
   Loader2,
   Pencil,
   Trash2,
+  Users,
+  UserRound,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -340,6 +342,24 @@ export const TaskCardDisplay = memo(function TaskCardDisplay({
           </div>
 
           <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
+            {task.organization && (
+              <span className="inline-flex h-7 items-center gap-1 rounded-md border border-[#6f55d9]/20 bg-[#6f55d9]/10 px-2 text-[#c9b8ff]">
+                <Briefcase className="h-3.5 w-3.5" /> {task.organization.name}
+              </span>
+            )}
+            {task.team && (
+              <span className="inline-flex h-7 items-center gap-1 rounded-md border border-[#303036] bg-[#202024] px-2 text-[#b9b9c1]">
+                <Users className="h-3.5 w-3.5" /> {task.team.name}
+              </span>
+            )}
+            {task.organization && (
+              <span className="inline-flex h-7 items-center gap-1 rounded-md border border-[#303036] bg-[#202024] px-2 text-[#b9b9c1]">
+                <UserRound className="h-3.5 w-3.5" />{' '}
+                {task.assignee
+                  ? task.assignee.name || `@${task.assignee.username}`
+                  : 'Não atribuído'}
+              </span>
+            )}
             <select
               data-inline-control
               aria-label="Status"

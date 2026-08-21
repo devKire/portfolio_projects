@@ -2,8 +2,14 @@
 import { db } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { requireUser } from '@/lib/auth/session';
+import { buildTaskAccessWhere } from '@/lib/tasks/access';
+import type { TaskScope } from '@/types/tasks';
 
 export interface TaskFilters {
+  organizationId?: string;
+  teamId?: string;
+  assigneeId?: string;
+  scope?: TaskScope;
   projectId?: string;
   projectIds?: string[];
   sprintId?: string;
@@ -31,18 +37,22 @@ export async function getFilteredTasks(
 ) {
   try {
     const user = await requireUser();
-    const where: Prisma.TaskWhereInput = { userId: user.id };
+    const accessWhere: Prisma.TaskWhereInput = await buildTaskAccessWhere(
+      user.id,
+      filters
+    );
+    const filterWhere: Prisma.TaskWhereInput = {};
 
     // Filtros exatos
-    if (filters.projectId) where.projectId = filters.projectId;
-    if (filters.sprintId) where.sprintId = filters.sprintId;
-    if (filters.status) where.status = filters.status;
-    if (filters.priority) where.priority = filters.priority;
-    if (filters.tag) where.tags = { has: filters.tag.toLowerCase() };
+    if (filters.projectId) filterWhere.projectId = filters.projectId;
+    if (filters.sprintId) filterWhere.sprintId = filters.sprintId;
+    if (filters.status) filterWhere.status = filters.status;
+    if (filters.priority) filterWhere.priority = filters.priority;
+    if (filters.tag) filterWhere.tags = { has: filters.tag.toLowerCase() };
 
     // Filtro de busca (backend)
     if (filters.search) {
-      where.OR = [
+      filterWhere.OR = [
         { title: { contains: filters.search, mode: 'insensitive' } },
         { description: { contains: filters.search, mode: 'insensitive' } },
       ];
@@ -54,19 +64,23 @@ export async function getFilteredTasks(
       today.setHours(0, 0, 0, 0);
 
       if (filters.dueDateRange === 'today') {
-        where.dueDate = {
+        filterWhere.dueDate = {
           gte: today,
           lt: new Date(today.getTime() + 24 * 60 * 60 * 1000),
         };
       } else if (filters.dueDateRange === 'overdue') {
-        where.dueDate = { lt: today };
-        where.status = { not: 'completed' };
+        filterWhere.dueDate = { lt: today };
+        filterWhere.status = { not: 'completed' };
       } else if (filters.dueDateRange === 'week') {
         const endOfWeek = new Date(today);
         endOfWeek.setDate(today.getDate() + 7);
-        where.dueDate = { gte: today, lte: endOfWeek };
+        filterWhere.dueDate = { gte: today, lte: endOfWeek };
       }
     }
+
+    const where: Prisma.TaskWhereInput = {
+      AND: [accessWhere, filterWhere],
+    };
 
     // Paginação
     const skip = (page - 1) * limit;
@@ -77,6 +91,10 @@ export async function getFilteredTasks(
         where,
         include: {
           project: { select: { id: true, title: true } },
+          organization: { select: { id: true, name: true } },
+          team: { select: { id: true, name: true } },
+          assignee: { select: { id: true, name: true, username: true } },
+          createdBy: { select: { id: true, name: true, username: true } },
           note: { select: { id: true, title: true, slug: true } },
           feature: { select: { id: true, name: true } },
           sprint: { select: { id: true, name: true } },
@@ -108,16 +126,17 @@ export async function getFilteredTasks(
 // Tipos para estatísticas (útil para tipar o hook)
 export type TaskStats = Awaited<ReturnType<typeof getTaskStats>>['data'];
 
-export async function getTaskStats() {
+export async function getTaskStats(filters: TaskFilters = {}) {
   try {
     const user = await requireUser();
+    const where = await buildTaskAccessWhere(user.id, filters);
     const [total, pending, inProgress, completed] = await Promise.all([
-      db.task.count({ where: { userId: user.id } }),
-      db.task.count({ where: { userId: user.id, status: 'pending' } }),
+      db.task.count({ where }),
+      db.task.count({ where: { AND: [where, { status: 'pending' }] } }),
       db.task.count({
-        where: { userId: user.id, status: 'in-progress' },
+        where: { AND: [where, { status: 'in-progress' }] },
       }),
-      db.task.count({ where: { userId: user.id, status: 'completed' } }),
+      db.task.count({ where: { AND: [where, { status: 'completed' }] } }),
     ]);
     return { success: true, data: { total, pending, inProgress, completed } };
   } catch (error) {
@@ -133,8 +152,11 @@ export async function updateTaskPosition(
   try {
     const user = await requireUser();
     const ids = Array.from(new Set(updates.map((update) => update.id)));
+    const accessibleWhere = await buildTaskAccessWhere(user.id, {
+      scope: 'personal',
+    });
     const ownedCount = await db.task.count({
-      where: { id: { in: ids }, userId: user.id },
+      where: { AND: [accessibleWhere, { id: { in: ids } }] },
     });
     if (ownedCount !== ids.length) {
       return { success: false, error: 'Task not found' };

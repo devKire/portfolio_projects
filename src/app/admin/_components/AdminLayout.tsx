@@ -6,6 +6,7 @@ import HeaderMobile from './HeaderMobile';
 import Sidebar from './Sidebar';
 import MobileDrawer from './MobileDrawer';
 import type { AdminUserSummary } from './AdminPanel';
+import type { OrganizationContext } from '@/lib/organizations/context';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -19,6 +20,9 @@ interface AdminLayoutProps {
   onToggleMobileMenu: () => void;
   onCloseMobileMenu: () => void;
   isMobile: boolean;
+  organizationContext: OrganizationContext;
+  onOrganizationChange: (organizationId: string) => void;
+  isSwitchingOrganization: boolean;
 }
 
 export default function AdminLayout({
@@ -33,6 +37,9 @@ export default function AdminLayout({
   onToggleMobileMenu,
   onCloseMobileMenu,
   isMobile,
+  organizationContext,
+  onOrganizationChange,
+  isSwitchingOrganization,
 }: AdminLayoutProps) {
   return (
     <div className="flex min-h-dvh min-w-0 bg-[#161619] text-[#dcddde] lg:h-dvh lg:min-h-0 lg:overflow-hidden">
@@ -46,6 +53,9 @@ export default function AdminLayout({
           onToggleCollapse={onToggleSidebar}
           onLogout={onLogout}
           variant="desktop"
+          organizationContext={organizationContext}
+          onOrganizationChange={onOrganizationChange}
+          isSwitchingOrganization={isSwitchingOrganization}
         />
       </div>
 
@@ -57,6 +67,11 @@ export default function AdminLayout({
           onToggleMenu={onToggleMobileMenu}
           activeTab={activeTab}
           onLogout={onLogout}
+          activeOrganizationName={
+            organizationContext.organizations.find(
+              (item) => item.id === organizationContext.activeOrganizationId
+            )?.name || null
+          }
         />
 
         {/* Content */}
@@ -75,6 +90,9 @@ export default function AdminLayout({
         activeTab={activeTab}
         onTabChange={onTabChange}
         onLogout={onLogout}
+        organizationContext={organizationContext}
+        onOrganizationChange={onOrganizationChange}
+        isSwitchingOrganization={isSwitchingOrganization}
       />
     </div>
   );

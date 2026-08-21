@@ -12,6 +12,14 @@ import type {
 import { updateMarkdownTaskStatus } from '@/lib/note-task-sync';
 import { mergeTaskTags } from '@/lib/task-tags';
 import { requireUser } from '@/lib/auth/session';
+import type { TaskFilters } from '@/lib/task-service';
+import {
+  buildTaskAccessWhere,
+  canDeleteTask,
+  getAccessibleTask,
+  requireTaskAssignmentTargets,
+  requireTaskOperationAccess,
+} from '@/lib/tasks/access';
 
 // Types
 export interface CreateTaskInput {
@@ -29,6 +37,9 @@ export interface CreateTaskInput {
   featureId?: string | null;
   sprintId?: string | null;
   parentId?: string | null;
+  organizationId?: string | null;
+  teamId?: string | null;
+  assigneeId?: string | null;
 }
 
 function normalizeTaskTags(tags?: string[]) {
@@ -51,7 +62,17 @@ export interface CreateSprintInput {
   status?: string;
 }
 
-async function validateTaskRelations(userId: string, data: TaskPatch) {
+async function validateTaskRelations(
+  userId: string,
+  data: TaskPatch,
+  organizationId: string | null
+) {
+  await requireTaskAssignmentTargets({
+    actorId: userId,
+    organizationId,
+    teamId: data.teamId,
+    assigneeId: data.assigneeId,
+  });
   const [project, note, feature, sprint, parent] = await Promise.all([
     data.projectId
       ? db.project.findFirst({
@@ -61,7 +82,12 @@ async function validateTaskRelations(userId: string, data: TaskPatch) {
       : null,
     data.noteId
       ? db.note.findFirst({
-          where: { id: data.noteId, userId },
+          where: {
+            id: data.noteId,
+            ...(organizationId
+              ? { organizationId }
+              : { userId, organizationId: null }),
+          },
           select: { id: true },
         })
       : null,
@@ -79,7 +105,12 @@ async function validateTaskRelations(userId: string, data: TaskPatch) {
       : null,
     data.parentId
       ? db.task.findFirst({
-          where: { id: data.parentId, userId },
+          where: {
+            id: data.parentId,
+            ...(organizationId
+              ? { organizationId }
+              : { userId, organizationId: null }),
+          },
           select: { id: true },
         })
       : null,
@@ -122,6 +153,7 @@ async function createTaskActivityLog(data: {
 
 async function syncTaskStatusToNote(task: {
   userId: string;
+  organizationId?: string | null;
   noteId?: string | null;
   noteTaskKey?: string | null;
   status?: string | null;
@@ -129,7 +161,12 @@ async function syncTaskStatusToNote(task: {
   if (!task.noteId || !task.noteTaskKey || !task.status) return;
 
   const note = await db.note.findFirst({
-    where: { id: task.noteId, userId: task.userId },
+    where: {
+      id: task.noteId,
+      ...(task.organizationId
+        ? { organizationId: task.organizationId }
+        : { userId: task.userId, organizationId: null }),
+    },
     select: { id: true, content: true },
   });
   if (!note) return;
@@ -151,16 +188,29 @@ async function syncTaskStatusToNote(task: {
 export async function createTask(data: CreateTaskInput) {
   try {
     const user = await requireUser();
-    await validateTaskRelations(user.id, data);
+    const title = data.title?.trim().slice(0, 240);
+    if (!title) return { success: false, error: 'Informe um título.' };
+    if (data.status && !validTaskStatuses.has(data.status)) {
+      return { success: false, error: 'Status inválido.' };
+    }
+    if (data.priority && !validTaskPriorities.has(data.priority)) {
+      return { success: false, error: 'Prioridade inválida.' };
+    }
+    const organizationId = data.organizationId?.trim() || null;
+    await validateTaskRelations(user.id, data, organizationId);
     const createData: Prisma.TaskUncheckedCreateInput = {
       userId: user.id,
-      title: data.title,
-      description: data.description,
+      organizationId,
+      createdById: user.id,
+      assigneeId: organizationId ? data.assigneeId || null : user.id,
+      teamId: organizationId ? data.teamId || null : null,
+      title,
+      description: data.description?.trim().slice(0, 10000),
       status: data.status || 'pending',
       priority: data.priority || 'medium',
       dueDate: data.dueDate,
-      estimatedHours: data.estimatedHours || 0,
-      actualHours: data.actualHours || 0,
+      estimatedHours: data.estimatedHours ?? 0,
+      actualHours: data.actualHours ?? 0,
       tags: normalizeTaskTags(data.tags),
     };
 
@@ -185,10 +235,14 @@ export async function createTask(data: CreateTaskInput) {
     const task = await db.task.create({
       data: createData,
       include: {
-        project: true,
+        project: { select: { id: true, title: true } },
+        organization: { select: { id: true, name: true } },
+        team: { select: { id: true, name: true } },
+        assignee: { select: { id: true, name: true, username: true } },
+        createdBy: { select: { id: true, name: true, username: true } },
         note: { select: { id: true, title: true, slug: true } },
-        feature: true,
-        sprint: true,
+        feature: { select: { id: true, name: true } },
+        sprint: { select: { id: true, name: true } },
       },
     });
 
@@ -217,12 +271,60 @@ const validTaskStatuses = new Set(['pending', 'in-progress', 'completed']);
 const validTaskPriorities = new Set(['low', 'medium', 'high', 'urgent']);
 
 const taskInclude = {
-  project: true,
+  project: { select: { id: true, title: true } },
+  organization: { select: { id: true, name: true } },
+  team: { select: { id: true, name: true } },
+  assignee: { select: { id: true, name: true, username: true } },
+  createdBy: { select: { id: true, name: true, username: true } },
   note: { select: { id: true, title: true, slug: true } },
-  feature: true,
-  sprint: true,
-  subtasks: true,
+  feature: { select: { id: true, name: true } },
+  sprint: { select: { id: true, name: true } },
+  subtasks: { select: { id: true, title: true, status: true } },
 } satisfies Prisma.TaskInclude;
+
+async function buildFilteredTaskWhere(
+  userId: string,
+  filters: TaskFilters = {}
+) {
+  const accessWhere = await buildTaskAccessWhere(userId, filters);
+  const filterWhere: Prisma.TaskWhereInput = {};
+
+  if (filters.projectId) filterWhere.projectId = filters.projectId;
+  if (filters.sprintId) filterWhere.sprintId = filters.sprintId;
+  if (filters.status) filterWhere.status = filters.status;
+  if (filters.statuses?.length) filterWhere.status = { in: filters.statuses };
+  if (filters.priority) filterWhere.priority = filters.priority;
+  if (filters.priorities?.length) {
+    filterWhere.priority = { in: filters.priorities };
+  }
+  if (filters.tag) filterWhere.tags = { has: filters.tag.toLowerCase() };
+  if (filters.search) {
+    filterWhere.OR = [
+      { title: { contains: filters.search, mode: 'insensitive' } },
+      { description: { contains: filters.search, mode: 'insensitive' } },
+    ];
+  }
+
+  if (filters.dueDateRange) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (filters.dueDateRange === 'today') {
+      filterWhere.dueDate = {
+        gte: today,
+        lt: new Date(today.getTime() + 24 * 60 * 60 * 1000),
+      };
+    } else if (filters.dueDateRange === 'overdue') {
+      filterWhere.dueDate = { lt: today };
+      filterWhere.status = { not: 'completed' };
+    } else {
+      const endOfWeek = new Date(today);
+      endOfWeek.setDate(today.getDate() + 7);
+      filterWhere.dueDate = { gte: today, lte: endOfWeek };
+    }
+  }
+
+  return { AND: [accessWhere, filterWhere] } satisfies Prisma.TaskWhereInput;
+}
 
 export async function createTasksBulk(inputs: BulkTaskInput[]) {
   const results: BulkTaskResult[] = inputs.map((input) => ({
@@ -296,6 +398,8 @@ export async function createTasksBulk(inputs: BulkTaskInput[]) {
       for (const input of inputs) {
         const createData: Prisma.TaskUncheckedCreateInput = {
           userId: user.id,
+          createdById: user.id,
+          assigneeId: user.id,
           title: input.title.trim(),
           description: input.description?.trim() || undefined,
           status: input.status || 'pending',
@@ -383,12 +487,60 @@ export async function updateTask(id: string, data: TaskPatch) {
 
   try {
     const user = await requireUser();
-    await validateTaskRelations(user.id, data);
+    const existingTask = await getAccessibleTask(user.id, id);
+    if (!existingTask) {
+      return { success: false, error: 'Task not found' };
+    }
+    await requireTaskOperationAccess(user.id, existingTask);
+
+    if (data.status !== undefined && !validTaskStatuses.has(data.status)) {
+      return { success: false, error: 'Status inválido.' };
+    }
+    if (
+      data.priority !== undefined &&
+      !validTaskPriorities.has(data.priority)
+    ) {
+      return { success: false, error: 'Prioridade inválida.' };
+    }
+
+    const organizationId =
+      data.organizationId === undefined
+        ? existingTask.organizationId
+        : data.organizationId?.trim() || null;
+    if (
+      data.organizationId !== undefined &&
+      existingTask.organizationId &&
+      organizationId !== existingTask.organizationId
+    ) {
+      return {
+        success: false,
+        error: 'O escopo de uma tarefa organizacional não pode ser alterado.',
+      };
+    }
+    const teamId = organizationId
+      ? data.teamId === undefined
+        ? existingTask.teamId
+        : data.teamId || null
+      : null;
+    const assigneeId = organizationId
+      ? data.assigneeId === undefined
+        ? existingTask.assigneeId
+        : data.assigneeId || null
+      : user.id;
+    await validateTaskRelations(
+      user.id,
+      { ...data, teamId, assigneeId },
+      organizationId
+    );
     const updateData: Prisma.TaskUncheckedUpdateInput = {};
 
-    if (data.title !== undefined) updateData.title = data.title;
+    if (data.title !== undefined) {
+      const title = data.title.trim().slice(0, 240);
+      if (!title) return { success: false, error: 'Informe um título.' };
+      updateData.title = title;
+    }
     if (data.description !== undefined)
-      updateData.description = data.description;
+      updateData.description = data.description?.trim().slice(0, 10000) || null;
     if (data.status !== undefined) {
       updateData.status = data.status;
       updateData.completedAt = data.status === 'completed' ? new Date() : null;
@@ -400,6 +552,16 @@ export async function updateTask(id: string, data: TaskPatch) {
     if (data.actualHours !== undefined)
       updateData.actualHours = data.actualHours;
     if (data.tags !== undefined) updateData.tags = normalizeTaskTags(data.tags);
+    if (data.organizationId !== undefined) {
+      updateData.organizationId = organizationId;
+      updateData.createdById = existingTask.createdById || existingTask.userId;
+    }
+    if (data.organizationId !== undefined || data.teamId !== undefined) {
+      updateData.teamId = teamId;
+    }
+    if (data.organizationId !== undefined || data.assigneeId !== undefined) {
+      updateData.assigneeId = assigneeId;
+    }
 
     // Tratar relações
     if (data.projectId !== undefined) {
@@ -422,24 +584,18 @@ export async function updateTask(id: string, data: TaskPatch) {
         data.sprintId && data.sprintId.trim() !== '' ? data.sprintId : null;
     }
 
-    // Verificar se a task existe antes de atualizar
-    const existingTask = await db.task.findFirst({
-      where: { id, userId: user.id },
-    });
-
-    if (!existingTask) {
-      console.error(`Task with id ${id} not found`);
-      return { success: false, error: 'Task not found' };
-    }
-
     const task = await db.task.update({
       where: { id },
       data: updateData,
       include: {
-        project: true,
+        project: { select: { id: true, title: true } },
+        organization: { select: { id: true, name: true } },
+        team: { select: { id: true, name: true } },
+        assignee: { select: { id: true, name: true, username: true } },
+        createdBy: { select: { id: true, name: true, username: true } },
         note: { select: { id: true, title: true, slug: true } },
-        feature: true,
-        sprint: true,
+        feature: { select: { id: true, name: true } },
+        sprint: { select: { id: true, name: true } },
       },
     });
 
@@ -496,10 +652,32 @@ export async function deleteTasksBulk(
 
   try {
     const user = await requireUser();
-    const tasks = await db.task.findMany({
-      where: { id: { in: requestedIds }, userId: user.id },
-      select: { id: true, title: true, status: true, projectId: true },
+    const accessibleTasks = await db.task.findMany({
+      where: {
+        id: { in: requestedIds },
+        OR: [
+          { organizationId: null, userId: user.id },
+          { organization: { members: { some: { userId: user.id } } } },
+        ],
+      },
+      select: {
+        id: true,
+        userId: true,
+        organizationId: true,
+        title: true,
+        status: true,
+        projectId: true,
+      },
     });
+    const deletableFlags = await Promise.all(
+      accessibleTasks.map(async (task) => ({
+        task,
+        allowed: await canDeleteTask(user.id, task),
+      }))
+    );
+    const tasks = deletableFlags
+      .filter((item) => item.allowed)
+      .map((item) => item.task);
     const existingIds = new Set(tasks.map((task) => task.id));
     const failedItems = requestedIds
       .filter((id) => !existingIds.has(id))
@@ -522,12 +700,12 @@ export async function deleteTasksBulk(
       });
 
       await tx.task.updateMany({
-        where: { userId: user.id, parentId: { in: deletedIds } },
+        where: { parentId: { in: deletedIds } },
         data: { parentId: null },
       });
 
       const deletion = await tx.task.deleteMany({
-        where: { id: { in: deletedIds }, userId: user.id },
+        where: { id: { in: deletedIds } },
       });
       if (deletion.count !== deletedIds.length) {
         throw new Error(
@@ -594,12 +772,21 @@ export async function updateTaskPositions(
   try {
     const user = await requireUser();
     const ids = Array.from(new Set(updates.map((update) => update.id)));
-    const ownedCount = await db.task.count({
-      where: { id: { in: ids }, userId: user.id },
+    const candidateTasks = await db.task.findMany({
+      where: {
+        id: { in: ids },
+        OR: [
+          { organizationId: null, userId: user.id },
+          { organization: { members: { some: { userId: user.id } } } },
+        ],
+      },
     });
-    if (ownedCount !== ids.length) {
+    if (candidateTasks.length !== ids.length) {
       return { success: false, error: 'Task not found' };
     }
+    await Promise.all(
+      candidateTasks.map((task) => requireTaskOperationAccess(user.id, task))
+    );
 
     // Usa uma transaction para garantir que todas as atualizações sejam feitas atomicamente
     await db.$transaction(
@@ -647,11 +834,11 @@ export async function getProjects(options: { includeInactive?: boolean } = {}) {
   }
 }
 
-export async function getTaskTags() {
+export async function getTaskTags(filters: TaskFilters = {}) {
   try {
     const user = await requireUser();
     const tasks = await db.task.findMany({
-      where: { userId: user.id },
+      where: await buildFilteredTaskWhere(user.id, filters),
       select: { tags: true },
     });
 
@@ -872,16 +1059,17 @@ export async function deleteSprint(id: string) {
 }
 
 // Dashboard Stats
-export async function getTaskStats() {
+export async function getTaskStats(filters: TaskFilters = {}) {
   try {
     const user = await requireUser();
+    const where = await buildFilteredTaskWhere(user.id, filters);
     const [total, pending, inProgress, completed] = await Promise.all([
-      db.task.count({ where: { userId: user.id } }),
-      db.task.count({ where: { userId: user.id, status: 'pending' } }),
+      db.task.count({ where }),
+      db.task.count({ where: { AND: [where, { status: 'pending' }] } }),
       db.task.count({
-        where: { userId: user.id, status: 'in-progress' },
+        where: { AND: [where, { status: 'in-progress' }] },
       }),
-      db.task.count({ where: { userId: user.id, status: 'completed' } }),
+      db.task.count({ where: { AND: [where, { status: 'completed' }] } }),
     ]);
 
     return {
@@ -895,53 +1083,15 @@ export async function getTaskStats() {
 }
 
 // NOVA FUNÇÃO: Versão completa com todos os filtros
-export async function getTasksWithFilters(filters?: {
-  projectId?: string;
-  sprintId?: string;
-  status?: string;
-  priority?: string;
-  tag?: string;
-  search?: string;
-  dueDateRange?: 'today' | 'week' | 'overdue';
-  page?: number;
-  limit?: number;
-}) {
+export async function getTasksWithFilters(
+  filters?: TaskFilters & {
+    page?: number;
+    limit?: number;
+  }
+) {
   try {
     const user = await requireUser();
-    const where: Prisma.TaskWhereInput = { userId: user.id };
-
-    if (filters?.projectId) where.projectId = filters.projectId;
-    if (filters?.sprintId) where.sprintId = filters.sprintId;
-    if (filters?.status) where.status = filters.status;
-    if (filters?.priority) where.priority = filters.priority;
-    if (filters?.tag) where.tags = { has: filters.tag.toLowerCase() };
-
-    if (filters?.search) {
-      where.OR = [
-        { title: { contains: filters.search, mode: 'insensitive' } },
-        { description: { contains: filters.search, mode: 'insensitive' } },
-      ];
-    }
-
-    // Filtros de data
-    if (filters?.dueDateRange) {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      if (filters.dueDateRange === 'today') {
-        where.dueDate = {
-          gte: today,
-          lt: new Date(today.getTime() + 24 * 60 * 60 * 1000),
-        };
-      } else if (filters.dueDateRange === 'overdue') {
-        where.dueDate = { lt: today };
-        where.status = { not: 'completed' };
-      } else if (filters.dueDateRange === 'week') {
-        const endOfWeek = new Date(today);
-        endOfWeek.setDate(today.getDate() + 7);
-        where.dueDate = { gte: today, lte: endOfWeek };
-      }
-    }
+    const where = await buildFilteredTaskWhere(user.id, filters || {});
 
     const page = filters?.page || 1;
     const limit = filters?.limit || 20;
@@ -952,6 +1102,10 @@ export async function getTasksWithFilters(filters?: {
         where,
         include: {
           project: { select: { id: true, title: true } },
+          organization: { select: { id: true, name: true } },
+          team: { select: { id: true, name: true } },
+          assignee: { select: { id: true, name: true, username: true } },
+          createdBy: { select: { id: true, name: true, username: true } },
           note: { select: { id: true, title: true, slug: true } },
           feature: { select: { id: true, name: true } },
           sprint: { select: { id: true, name: true } },
@@ -981,36 +1135,23 @@ export async function getTasksWithFilters(filters?: {
 }
 
 // Mantenha a função original para compatibilidade
-export async function getTasks(filters?: {
-  projectId?: string;
-  sprintId?: string;
-  status?: string;
-  tag?: string;
-  search?: string;
-}) {
+export async function getTasks(filters: TaskFilters = {}) {
   try {
     const user = await requireUser();
-    const where: Prisma.TaskWhereInput = { userId: user.id };
-
-    if (filters?.projectId) where.projectId = filters.projectId;
-    if (filters?.sprintId) where.sprintId = filters.sprintId;
-    if (filters?.status) where.status = filters.status;
-    if (filters?.tag) where.tags = { has: filters.tag.toLowerCase() };
-    if (filters?.search) {
-      where.OR = [
-        { title: { contains: filters.search, mode: 'insensitive' } },
-        { description: { contains: filters.search, mode: 'insensitive' } },
-      ];
-    }
+    const where = await buildFilteredTaskWhere(user.id, filters);
 
     const tasks = await db.task.findMany({
       where,
       include: {
-        project: true,
+        project: { select: { id: true, title: true } },
+        organization: { select: { id: true, name: true } },
+        team: { select: { id: true, name: true } },
+        assignee: { select: { id: true, name: true, username: true } },
+        createdBy: { select: { id: true, name: true, username: true } },
         note: { select: { id: true, title: true, slug: true } },
-        feature: true,
-        sprint: true,
-        subtasks: true,
+        feature: { select: { id: true, name: true } },
+        sprint: { select: { id: true, name: true } },
+        subtasks: { select: { id: true, title: true, status: true } },
       },
       orderBy: [{ position: 'asc' }, { createdAt: 'desc' }],
     });
@@ -1019,5 +1160,39 @@ export async function getTasks(filters?: {
   } catch (error) {
     console.error('Error fetching tasks:', error);
     return { success: false, error: 'Failed to fetch tasks' };
+  }
+}
+
+export async function getTaskCollaborationOptions(organizationId: string) {
+  try {
+    const user = await requireUser();
+    await requireTaskAssignmentTargets({
+      actorId: user.id,
+      organizationId,
+    });
+    const [members, teams] = await Promise.all([
+      db.organizationMember.findMany({
+        where: { organizationId },
+        orderBy: { user: { name: 'asc' } },
+        select: {
+          role: true,
+          user: {
+            select: { id: true, name: true, username: true, email: true },
+          },
+        },
+      }),
+      db.team.findMany({
+        where: { organizationId, active: true },
+        orderBy: { name: 'asc' },
+        select: { id: true, name: true },
+      }),
+    ]);
+    return { success: true as const, data: { members, teams } };
+  } catch (error) {
+    console.error('Error loading task collaboration options:', error);
+    return {
+      success: false as const,
+      error: 'Não foi possível carregar opções de colaboração.',
+    };
   }
 }

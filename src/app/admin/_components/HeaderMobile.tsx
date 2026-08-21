@@ -9,6 +9,7 @@ interface HeaderMobileProps {
   onToggleMenu: () => void;
   activeTab: string;
   onLogout: () => void;
+  activeOrganizationName: string | null;
 }
 
 export default function HeaderMobile({
@@ -16,6 +17,7 @@ export default function HeaderMobile({
   onToggleMenu,
   activeTab,
   onLogout,
+  activeOrganizationName,
 }: HeaderMobileProps) {
   const currentTab = TAB_CONFIG.find((tab) => tab.id === activeTab);
 
@@ -29,9 +31,16 @@ export default function HeaderMobile({
         >
           <Menu size={22} />
         </button>
-        <h1 className="text-sm font-medium text-[#f2f2f3]">
-          {currentTab?.label || 'Admin'}
-        </h1>
+        <div className="min-w-0">
+          <h1 className="truncate text-sm font-medium text-[#f2f2f3]">
+            {currentTab?.label || 'Admin'}
+          </h1>
+          {activeOrganizationName && (
+            <p className="truncate text-[10px] text-[#8f8f99]">
+              {activeOrganizationName}
+            </p>
+          )}
+        </div>
       </div>
 
       <button

@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { Suspense } from 'react';
 import { Globe, MessageSquare, Users, BrainCircuit } from 'lucide-react';
 import ContentLoader from './ContentLoader';
+import type { OrganizationContext } from '@/lib/organizations/context';
 
 // Lazy loading dos módulos pesados
 const Dashboard = dynamic(() => import('../_tabs/Dashboard'), {
@@ -35,6 +36,18 @@ const Documentation = dynamic(() => import('../_tabs/Documentation'), {
   loading: () => <ContentLoader />,
 });
 
+const Organization = dynamic(() => import('../_tabs/Organization'), {
+  loading: () => <ContentLoader />,
+});
+
+const Tickets = dynamic(() => import('../_tabs/Tickets'), {
+  loading: () => <ContentLoader />,
+});
+
+const Kcs = dynamic(() => import('../_tabs/Kcs'), {
+  loading: () => <ContentLoader />,
+});
+
 // Componente para tabs em desenvolvimento
 function ComingSoon({
   icon: Icon,
@@ -56,21 +69,50 @@ function ComingSoon({
 
 interface ContentRouterProps {
   activeTab: string;
+  userId: string;
+  organizationContext: OrganizationContext;
+  onOrganizationContextChange: () => Promise<void>;
 }
 
-export default function ContentRouter({ activeTab }: ContentRouterProps) {
+export default function ContentRouter({
+  activeTab,
+  userId,
+  organizationContext,
+  onOrganizationContextChange,
+}: ContentRouterProps) {
+  const activeOrganization = organizationContext.organizations.find(
+    (item) => item.id === organizationContext.activeOrganizationId
+  );
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
         return <Dashboard />;
       case 'tasks':
-        return <Tasks />;
+        return (
+          <Tasks
+            activeOrganizationId={organizationContext.activeOrganizationId}
+          />
+        );
       case 'daily-checklist':
         return <DailyChecklist />;
       case 'projects':
         return <Projects />;
       case 'notes':
         return <Notes />;
+      case 'organization':
+        return (
+          <Organization
+            userId={userId}
+            organizationContext={organizationContext}
+            onOrganizationContextChange={onOrganizationContextChange}
+          />
+        );
+      case 'tickets':
+        return (
+          <Tickets userId={userId} organization={activeOrganization || null} />
+        );
+      case 'kcs':
+        return <Kcs organization={activeOrganization || null} />;
       case 'ia':
         return (
           <ComingSoon icon={BrainCircuit} title="Inteligência Artificial" />
@@ -102,7 +144,7 @@ export default function ContentRouter({ activeTab }: ContentRouterProps) {
       <Suspense fallback={<ContentLoader />}>
         <div
           className={`flex min-h-0 min-w-0 flex-1 flex-col ${
-            activeTab === 'notes'
+            activeTab === 'notes' || activeTab === 'kcs'
               ? 'overflow-hidden'
               : 'overflow-x-hidden overflow-y-auto'
           }`}

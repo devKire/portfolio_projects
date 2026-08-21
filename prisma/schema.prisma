@@ -15,6 +15,39 @@ enum UserRole {
   USER
 }
 
+enum OrganizationRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TicketActivityType {
+  CREATED
+  STATUS_CHANGED
+  ASSIGNEE_CHANGED
+  QUEUE_CHANGED
+  PRIORITY_CHANGED
+  TEAM_CHANGED
+  COMMENTED
+  RESOLVED
+  CLOSED
+}
+
 model User {
   id           String   @id @default(uuid())
   name         String?
@@ -25,18 +58,25 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  sessions              UserSession[]
-  landingPages          LandingPage[]
-  projects              Project[]
-  tasks                 Task[]
-  taskTemplates         TaskTemplate[]
-  timeEntries           TimeEntry[]
-  notes                 Note[]
-  noteFolders           NoteFolder[]
-  noteAttachments       NoteAttachment[]
-  dailyChecklistItems   DailyChecklistItem[]
-  dailyChecklistEntries DailyChecklistEntry[]
-  activityLogs          TaskActivityLog[]
+  sessions                UserSession[]
+  landingPages            LandingPage[]
+  projects                Project[]
+  tasks                   Task[]                @relation("TaskOwner")
+  tasksCreated            Task[]                @relation("TaskCreator")
+  tasksAssigned           Task[]                @relation("TaskAssignee")
+  taskTemplates           TaskTemplate[]
+  timeEntries             TimeEntry[]
+  notes                   Note[]
+  noteFolders             NoteFolder[]
+  noteAttachments         NoteAttachment[]
+  dailyChecklistItems     DailyChecklistItem[]
+  dailyChecklistEntries   DailyChecklistEntry[]
+  activityLogs            TaskActivityLog[]
+  organizationMemberships OrganizationMember[]
+  organizationsCreated    Organization[]        @relation("OrganizationCreator")
+  requestedTickets        Ticket[]              @relation("TicketRequester")
+  assignedTickets         Ticket[]              @relation("TicketAssignee")
+  ticketActivities        TicketActivity[]      @relation("TicketActivityActor")
 }
 
 model UserSession {
@@ -51,6 +91,173 @@ model UserSession {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+model Organization {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  description String?  @db.Text
+  avatarUrl   String?
+  active      Boolean  @default(true)
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy       User                 @relation("OrganizationCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  members         OrganizationMember[]
+  teams           Team[]
+  ticketQueues    TicketQueue[]
+  tickets         Ticket[]
+  tasks           Task[]
+  notes           Note[]
+  noteFolders     NoteFolder[]
+  noteAttachments NoteAttachment[]
+
+  @@index([createdById])
+  @@index([active, name])
+}
+
+model OrganizationMember {
+  id             String           @id @default(uuid())
+  organizationId String
+  userId         String
+  role           OrganizationRole @default(MEMBER)
+  joinedAt       DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  organization     Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teamMemberships  TeamMember[]
+  queueMemberships TicketQueueAgent[]
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+  @@index([organizationId, role])
+}
+
+model Team {
+  id             String   @id @default(uuid())
+  organizationId String
+  name           String
+  description    String?  @db.Text
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members      TeamMember[]
+  ticketQueues TicketQueue[]
+  tasks        Task[]
+  tickets      Ticket[]
+
+  @@unique([organizationId, name])
+  @@unique([id, organizationId])
+  @@index([organizationId, active])
+}
+
+model TeamMember {
+  id             String   @id @default(uuid())
+  organizationId String
+  teamId         String
+  userId         String
+  createdAt      DateTime @default(now())
+
+  team               Team               @relation(fields: [teamId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  organizationMember OrganizationMember @relation(fields: [organizationId, userId], references: [organizationId, userId], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@index([organizationId, userId])
+  @@index([organizationId, teamId])
+}
+
+model TicketQueue {
+  id             String   @id @default(uuid())
+  organizationId String
+  teamId         String?
+  name           String
+  description    String?  @db.Text
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  team         Team?              @relation(fields: [teamId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  agents       TicketQueueAgent[]
+  tickets      Ticket[]
+
+  @@unique([organizationId, name])
+  @@unique([id, organizationId])
+  @@index([organizationId, active])
+  @@index([organizationId, teamId])
+}
+
+model TicketQueueAgent {
+  id             String   @id @default(uuid())
+  organizationId String
+  queueId        String
+  userId         String
+  createdAt      DateTime @default(now())
+
+  queue              TicketQueue        @relation(fields: [queueId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  organizationMember OrganizationMember @relation(fields: [organizationId, userId], references: [organizationId, userId], onDelete: Cascade)
+
+  @@unique([queueId, userId])
+  @@index([organizationId, userId])
+  @@index([organizationId, queueId])
+}
+
+model Ticket {
+  id             String         @id @default(uuid())
+  organizationId String
+  queueId        String
+  requesterId    String
+  assigneeId     String?
+  teamId         String?
+  linkedTaskId   String?        @unique
+  title          String
+  description    String         @db.Text
+  status         TicketStatus   @default(OPEN)
+  priority       TicketPriority @default(MEDIUM)
+  resolvedAt     DateTime?
+  closedAt       DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  queue        TicketQueue      @relation(fields: [queueId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  requester    User             @relation("TicketRequester", fields: [requesterId], references: [id], onDelete: Restrict)
+  assignee     User?            @relation("TicketAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  team         Team?            @relation(fields: [teamId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  linkedTask   Task?            @relation("TicketLinkedTask", fields: [linkedTaskId], references: [id], onDelete: SetNull)
+  activities   TicketActivity[]
+
+  @@index([organizationId, status])
+  @@index([organizationId, queueId, status])
+  @@index([organizationId, teamId, status])
+  @@index([organizationId, assigneeId, status])
+  @@index([organizationId, requesterId])
+  @@index([organizationId, priority])
+  @@index([updatedAt])
+}
+
+model TicketActivity {
+  id        String             @id @default(uuid())
+  ticketId  String
+  actorId   String?
+  type      TicketActivityType
+  message   String
+  before    Json?
+  after     Json?
+  comment   String?            @db.Text
+  createdAt DateTime           @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  actor  User?  @relation("TicketActivityActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([ticketId, createdAt])
+  @@index([actorId])
+  @@index([type])
 }
 
 model LandingPage {
@@ -270,6 +477,10 @@ model TaskDependency {
 model Task {
   id             String    @id @default(uuid())
   userId         String
+  organizationId String?
+  teamId         String?
+  createdById    String?
+  assigneeId     String?
   title          String
   description    String?
   status         String    @default("pending")
@@ -304,13 +515,18 @@ model Task {
   updatedAt DateTime @updatedAt
 
   // Relações
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project  Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  feature  Feature? @relation(fields: [featureId], references: [id], onDelete: SetNull)
-  sprint   Sprint?  @relation(fields: [sprintId], references: [id], onDelete: SetNull)
-  note     Note?    @relation(fields: [noteId], references: [id], onDelete: SetNull)
-  parent   Task?    @relation("TaskToSubtask", fields: [parentId], references: [id])
-  subtasks Task[]   @relation("TaskToSubtask")
+  user         User          @relation("TaskOwner", fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  team         Team?         @relation(fields: [teamId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  createdBy    User?         @relation("TaskCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  assignee     User?         @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  project      Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  feature      Feature?      @relation(fields: [featureId], references: [id], onDelete: SetNull)
+  sprint       Sprint?       @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  note         Note?         @relation(fields: [noteId], references: [id], onDelete: SetNull)
+  parent       Task?         @relation("TaskToSubtask", fields: [parentId], references: [id])
+  subtasks     Task[]        @relation("TaskToSubtask")
+  linkedTicket Ticket?       @relation("TicketLinkedTask")
 
   @@unique([noteId, noteTaskKey])
   @@index([userId])
@@ -319,6 +535,10 @@ model Task {
   @@index([userId, sprintId])
   @@index([userId, noteId])
   @@index([userId, updatedAt])
+  @@index([organizationId, status])
+  @@index([organizationId, teamId, status])
+  @@index([organizationId, assigneeId, status])
+  @@index([createdById])
 }
 
 model DailyChecklistItem {
@@ -401,6 +621,8 @@ enum NoteStatus {
 model Note {
   id                String         @id @default(uuid())
   userId            String
+  organizationId    String?
+  scopeKey          String
   title             String
   slug              String
   content           String         @db.Text
@@ -427,18 +649,21 @@ model Note {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project Project?    @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  folder  NoteFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project      Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  folder       NoteFolder?   @relation(fields: [folderId], references: [id], onDelete: SetNull)
 
   tags     NoteTag[]
   outgoing NoteLink[] @relation("SourceLinks")
   incoming NoteLink[] @relation("TargetLinks")
   tasks    Task[]
 
-  @@unique([userId, slug])
-  @@unique([userId, filePath])
+  @@unique([scopeKey, slug])
+  @@unique([scopeKey, filePath])
   @@index([userId])
+  @@index([organizationId])
+  @@index([scopeKey])
   @@index([userId, visibility])
   @@index([userId, status])
   @@index([userId, trashedAt])
@@ -452,6 +677,8 @@ model Note {
 model NoteFolder {
   id                  String    @id @default(uuid())
   userId              String
+  organizationId      String?
+  scopeKey            String
   name                String
   path                String
   parentId            String?
@@ -463,13 +690,16 @@ model NoteFolder {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
-  user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  parent   NoteFolder?  @relation("NoteFolderTree", fields: [parentId], references: [id], onDelete: SetNull)
-  children NoteFolder[] @relation("NoteFolderTree")
-  notes    Note[]
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parent       NoteFolder?   @relation("NoteFolderTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children     NoteFolder[]  @relation("NoteFolderTree")
+  notes        Note[]
 
-  @@unique([userId, path])
+  @@unique([scopeKey, path])
   @@index([userId])
+  @@index([organizationId])
+  @@index([scopeKey])
   @@index([userId, parentId])
   @@index([userId, position])
   @@index([userId, deletedAt])
@@ -477,24 +707,29 @@ model NoteFolder {
 }
 
 model NoteAttachment {
-  id         String   @id @default(uuid())
-  userId     String
-  fileName   String
-  filePath   String
-  folderPath String?
-  folderName String?
-  extension  String?
-  mimeType   String?
-  size       Int?
-  dataUrl    String?  @db.Text
-  importedAt DateTime @default(now())
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id             String   @id @default(uuid())
+  userId         String
+  organizationId String?
+  scopeKey       String
+  fileName       String
+  filePath       String
+  folderPath     String?
+  folderName     String?
+  extension      String?
+  mimeType       String?
+  size           Int?
+  dataUrl        String?  @db.Text
+  importedAt     DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, filePath])
+  @@unique([scopeKey, filePath])
   @@index([userId])
+  @@index([organizationId])
+  @@index([scopeKey])
   @@index([userId, folderPath])
   @@index([userId, fileName])
 }

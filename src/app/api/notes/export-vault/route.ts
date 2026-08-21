@@ -2,12 +2,17 @@ import JSZip from 'jszip';
 import { NextResponse } from 'next/server';
 
 import { getCurrentUser } from '@/lib/auth/session';
+import { getOrganizationMembership } from '@/lib/organizations/authorization';
 import {
   getVaultFileMetadata,
   isIgnoredVaultPath,
   isUnsafeVaultPath,
   normalizeVaultPath,
 } from '@/lib/notes';
+import {
+  organizationNoteScope,
+  personalNoteScope,
+} from '@/lib/organizations/policy';
 import { db } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
@@ -125,14 +130,36 @@ function isInsideFolder(path: string | null, folderPaths: string[]) {
   );
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const user = await getCurrentUser();
     if (!user) return errorResponse('Sessão expirada. Entre novamente.', 401);
+    const organizationId = new URL(request.url).searchParams.get(
+      'organizationId'
+    );
+    const membership = organizationId
+      ? await getOrganizationMembership(user.id, organizationId)
+      : null;
+    if (organizationId && !membership) {
+      return errorResponse('Recurso não encontrado ou acesso negado.', 404);
+    }
+    const scopeWhere = organizationId
+      ? {
+          organizationId,
+          scopeKey: organizationNoteScope(organizationId),
+        }
+      : {
+          userId: user.id,
+          organizationId: null,
+          scopeKey: personalNoteScope(user.id),
+        };
+    const vaultRootName = organizationId
+      ? `KCS-${sanitizePathSegment(membership!.organization.name)}`
+      : VAULT_ROOT;
 
     const [notes, folders, deletedFolders, attachments] = await Promise.all([
       db.note.findMany({
-        where: { userId: user.id, status: { not: 'ARCHIVED' } },
+        where: { ...scopeWhere, status: { not: 'ARCHIVED' } },
         orderBy: [{ folderPath: 'asc' }, { filePath: 'asc' }, { title: 'asc' }],
         select: {
           id: true,
@@ -144,16 +171,16 @@ export async function GET() {
         },
       }),
       db.noteFolder.findMany({
-        where: { userId: user.id, deletedAt: null },
+        where: { ...scopeWhere, deletedAt: null },
         orderBy: { path: 'asc' },
         select: { path: true },
       }),
       db.noteFolder.findMany({
-        where: { userId: user.id, deletedAt: { not: null } },
+        where: { ...scopeWhere, deletedAt: { not: null } },
         select: { pathBeforeTrash: true },
       }),
       db.noteAttachment.findMany({
-        where: { userId: user.id },
+        where: scopeWhere,
         orderBy: { filePath: 'asc' },
         select: {
           id: true,
@@ -166,7 +193,7 @@ export async function GET() {
     ]);
 
     const zip = new JSZip();
-    const vault = zip.folder(VAULT_ROOT);
+    const vault = zip.folder(vaultRootName);
     if (!vault) return errorResponse('Nao foi possivel preparar o Vault.');
 
     for (const folder of folders) {
@@ -206,7 +233,9 @@ export async function GET() {
       compressionOptions: { level: 6 },
     });
     const date = new Date().toISOString().slice(0, 10);
-    const fileName = `Knowledge-Vault-${date}.zip`;
+    const fileName = organizationId
+      ? `${vaultRootName}-${date}.zip`
+      : `Knowledge-Vault-${date}.zip`;
     const responseBody = new ArrayBuffer(archive.byteLength);
     new Uint8Array(responseBody).set(archive);
 

@@ -2,6 +2,7 @@ import JSZip from 'jszip';
 import { NextResponse } from 'next/server';
 
 import { importVault, type VaultImportFile } from '@/app/actions/notes';
+import { importKcsVault } from '@/app/actions/kcs';
 import {
   getVaultFileMetadata,
   isIgnoredVaultPath,
@@ -9,6 +10,7 @@ import {
   normalizeVaultPath,
 } from '@/lib/notes';
 import { getCurrentUser } from '@/lib/auth/session';
+import { getOrganizationMembership } from '@/lib/organizations/authorization';
 
 const MAX_ZIP_SIZE = 50 * 1024 * 1024;
 const MAX_INLINE_ATTACHMENT_SIZE = 8 * 1024 * 1024;
@@ -106,12 +108,20 @@ function stripCommonRoot(path: string, commonRoot: string | null) {
 
 export async function POST(request: Request) {
   try {
-    if (!(await getCurrentUser())) {
+    const user = await getCurrentUser();
+    if (!user) {
       return errorResponse('Sessão expirada. Entre novamente.', 401);
     }
 
     const formData = await request.formData();
     const file = formData.get('file');
+    const organizationId = String(formData.get('organizationId') || '').trim();
+    if (
+      organizationId &&
+      !(await getOrganizationMembership(user.id, organizationId))
+    ) {
+      return errorResponse('Recurso não encontrado ou acesso negado.', 404);
+    }
 
     if (!(file instanceof File)) {
       return errorResponse('Selecione um arquivo ZIP do Obsidian Vault.');
@@ -225,7 +235,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await importVault(importFiles, Array.from(folders));
+    const result = organizationId
+      ? await importKcsVault(organizationId, importFiles, Array.from(folders))
+      : await importVault(importFiles, Array.from(folders));
     if (!result.success || !result.data) {
       return errorResponse(
         result.error || 'Nao foi possivel importar o vault.'

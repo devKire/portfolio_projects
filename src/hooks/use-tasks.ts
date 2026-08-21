@@ -146,8 +146,8 @@ export function useTasks(filters: TaskFilters) {
 
     try {
       const [taskResult, statsResult] = await Promise.all([
-        getTasks(),
-        getTaskStats(),
+        getTasks(filters),
+        getTaskStats(filters),
       ]);
 
       if (taskResult.success) {
@@ -168,7 +168,7 @@ export function useTasks(filters: TaskFilters) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [filters]);
 
   useEffect(() => {
     void fetchTasks();

@@ -6,13 +6,19 @@ import { Button } from '@/components/ui/button';
 import { createTask } from '@/app/actions/tasks';
 import { parseQuickTaskInput } from '@/lib/task-quick-add-parser';
 import { taskTagKey } from '@/lib/task-tags';
-import type { TaskProjectOption, TaskWithRelations } from '@/types/tasks';
+import type {
+  TaskCollaborationOptions,
+  TaskProjectOption,
+  TaskWithRelations,
+} from '@/types/tasks';
 
 interface QuickTaskInputProps {
   onClose: () => void;
   projects: TaskProjectOption[];
   tags: string[];
   onSuccess: (task: TaskWithRelations) => void;
+  organizationId: string | null;
+  collaboration: TaskCollaborationOptions;
 }
 
 function formatPreviewDate(date?: Date) {
@@ -28,10 +34,15 @@ export function QuickTaskInput({
   onSuccess,
   projects,
   tags,
+  organizationId,
+  collaboration,
 }: QuickTaskInputProps) {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [shared, setShared] = useState(false);
+  const [teamId, setTeamId] = useState('');
+  const [assigneeId, setAssigneeId] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -109,6 +120,9 @@ export function QuickTaskInput({
       estimatedHours: parsed.estimatedHours || 0,
       tags: parsed.tags,
       projectId: parsed.projectId,
+      organizationId: shared ? organizationId : null,
+      teamId: shared ? teamId || null : null,
+      assigneeId: shared ? assigneeId || null : null,
     });
 
     if (result.success) {
@@ -177,6 +191,56 @@ export function QuickTaskInput({
           )}
         </Button>
       </div>
+
+      {organizationId && (
+        <div className="mt-3 grid gap-2 border-t border-[#2f2f35] pt-3 sm:grid-cols-3">
+          <label className="text-xs text-[#9b9ba3]">
+            Espaço
+            <select
+              value={shared ? 'organization' : 'personal'}
+              onChange={(event) =>
+                setShared(event.target.value === 'organization')
+              }
+              className="mt-1 h-9 w-full rounded-md border border-[#303036] bg-[#111] px-2 text-xs text-white outline-none focus:border-[#6f55d9]"
+            >
+              <option value="personal">Pessoal</option>
+              <option value="organization">Organização ativa</option>
+            </select>
+          </label>
+          <label className="text-xs text-[#9b9ba3]">
+            Equipe
+            <select
+              value={teamId}
+              onChange={(event) => setTeamId(event.target.value)}
+              disabled={!shared}
+              className="mt-1 h-9 w-full rounded-md border border-[#303036] bg-[#111] px-2 text-xs text-white outline-none focus:border-[#6f55d9] disabled:opacity-50"
+            >
+              <option value="">Sem equipe</option>
+              {collaboration.teams.map((team) => (
+                <option key={team.id} value={team.id}>
+                  {team.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="text-xs text-[#9b9ba3]">
+            Responsável
+            <select
+              value={assigneeId}
+              onChange={(event) => setAssigneeId(event.target.value)}
+              disabled={!shared}
+              className="mt-1 h-9 w-full rounded-md border border-[#303036] bg-[#111] px-2 text-xs text-white outline-none focus:border-[#6f55d9] disabled:opacity-50"
+            >
+              <option value="">Não atribuído</option>
+              {collaboration.members.map(({ user }) => (
+                <option key={user.id} value={user.id}>
+                  {user.name || `@${user.username}`}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      )}
 
       {(input.trim() || error) && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5 pl-7 text-xs">

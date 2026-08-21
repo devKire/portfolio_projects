@@ -1,5 +1,22 @@
 export type TaskStatus = 'pending' | 'in-progress' | 'completed';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
+export type TaskScope = 'mine' | 'personal' | 'organization' | 'team';
+
+export interface TaskUserRef {
+  id: string;
+  name: string | null;
+  username: string;
+}
+
+export interface TaskTeamRef {
+  id: string;
+  name: string;
+}
+
+export interface TaskOrganizationRef {
+  id: string;
+  name: string;
+}
 
 export interface TaskProjectRef {
   id: string;
@@ -33,6 +50,14 @@ export interface TaskWithRelations {
   actualHours?: number | null;
   position: number;
   tags: string[];
+  organizationId?: string | null;
+  organization?: TaskOrganizationRef | null;
+  teamId?: string | null;
+  team?: TaskTeamRef | null;
+  createdById?: string | null;
+  createdBy?: TaskUserRef | null;
+  assigneeId?: string | null;
+  assignee?: TaskUserRef | null;
   projectId?: string | null;
   project?: TaskProjectRef | null;
   noteId?: string | null;
@@ -52,6 +77,19 @@ export interface TaskProjectOption {
   isActive?: boolean;
 }
 
+export interface TaskCollaborationOptions {
+  teams: Array<{ id: string; name: string }>;
+  members: Array<{
+    role: string;
+    user: {
+      id: string;
+      name: string | null;
+      username: string;
+      email: string;
+    };
+  }>;
+}
+
 export interface TaskPatch {
   title?: string;
   description?: string | null;
@@ -61,6 +99,9 @@ export interface TaskPatch {
   estimatedHours?: number | null;
   actualHours?: number | null;
   tags?: string[];
+  organizationId?: string | null;
+  teamId?: string | null;
+  assigneeId?: string | null;
   projectId?: string | null;
   project?: TaskProjectRef | null;
   noteId?: string | null;

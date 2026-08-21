@@ -1,7 +1,15 @@
 'use client';
 
 import { memo, useEffect, useRef, useState } from 'react';
-import { Briefcase, Calendar, Copy, Loader2, Trash2 } from 'lucide-react';
+import {
+  Briefcase,
+  Calendar,
+  Copy,
+  Loader2,
+  Trash2,
+  Users,
+  UserRound,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { updateTask } from '@/app/actions/tasks';
 import { cn } from '@/lib/utils';
@@ -11,6 +19,7 @@ import { copyTaskAsQuickAdd } from '@/lib/copy-task-quick-add';
 import { toast } from 'sonner';
 import type {
   TaskPatch,
+  TaskCollaborationOptions,
   TaskPriority,
   TaskProjectOption,
   TaskWithRelations,
@@ -24,6 +33,7 @@ interface TaskCardProps {
   projects: TaskProjectOption[];
   availableTags: string[];
   onAvailableTagsChange: (tags: string[]) => void;
+  collaboration: TaskCollaborationOptions;
 }
 
 const priorityColors: Record<TaskPriority, string> = {
@@ -48,6 +58,7 @@ export const TaskCard = memo(function TaskCard({
   projects,
   availableTags,
   onAvailableTagsChange,
+  collaboration,
 }: TaskCardProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [draftTitle, setDraftTitle] = useState(task.title);
@@ -234,6 +245,56 @@ export const TaskCard = memo(function TaskCard({
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-[#777780]">
+        {task.organizationId && (
+          <label
+            data-kanban-control
+            className="inline-flex h-7 items-center gap-1 rounded-md border border-[#303036] bg-[#111] px-2"
+          >
+            <Users className="h-3.5 w-3.5" />
+            <select
+              value={task.teamId || ''}
+              onChange={(event) =>
+                void commitPatch(
+                  { teamId: event.target.value || null },
+                  { teamId: task.teamId || null }
+                )
+              }
+              className="max-w-[105px] bg-transparent text-xs text-[#dcddde] outline-none"
+            >
+              <option value="">Sem equipe</option>
+              {collaboration.teams.map((team) => (
+                <option key={team.id} value={team.id}>
+                  {team.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {task.organizationId && (
+          <label
+            data-kanban-control
+            className="inline-flex h-7 items-center gap-1 rounded-md border border-[#303036] bg-[#111] px-2"
+          >
+            <UserRound className="h-3.5 w-3.5" />
+            <select
+              value={task.assigneeId || ''}
+              onChange={(event) =>
+                void commitPatch(
+                  { assigneeId: event.target.value || null },
+                  { assigneeId: task.assigneeId || null }
+                )
+              }
+              className="max-w-[115px] bg-transparent text-xs text-[#dcddde] outline-none"
+            >
+              <option value="">Não atribuído</option>
+              {collaboration.members.map(({ user }) => (
+                <option key={user.id} value={user.id}>
+                  {user.name || `@${user.username}`}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <select
           data-kanban-control
           value={priority}

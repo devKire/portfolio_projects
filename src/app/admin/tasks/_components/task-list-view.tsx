@@ -6,6 +6,7 @@ import { EmptyState } from './empty-state';
 import { TaskItem } from './task-item';
 import type {
   TaskPatch,
+  TaskCollaborationOptions,
   TaskProjectOption,
   TaskWithRelations,
 } from '@/types/tasks';
@@ -24,6 +25,7 @@ interface TaskListViewProps {
   projects: TaskProjectOption[];
   availableTags: string[];
   onAvailableTagsChange: (tags: string[]) => void;
+  collaboration: TaskCollaborationOptions;
 }
 
 export const TaskListView = memo(function TaskListView({
@@ -40,6 +42,7 @@ export const TaskListView = memo(function TaskListView({
   projects,
   availableTags,
   onAvailableTagsChange,
+  collaboration,
 }: TaskListViewProps) {
   if (tasks.length === 0) {
     return (
@@ -92,6 +95,7 @@ export const TaskListView = memo(function TaskListView({
             projects={projects}
             availableTags={availableTags}
             onAvailableTagsChange={onAvailableTagsChange}
+            collaboration={collaboration}
           />
         ))}
       </div>

@@ -5,7 +5,11 @@ import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { updateTask } from '@/app/actions/tasks';
 import { parseTaskHoursInput } from '@/lib/task-quick-add-parser';
-import type { TaskProjectOption, TaskWithRelations } from '@/types/tasks';
+import type {
+  TaskCollaborationOptions,
+  TaskProjectOption,
+  TaskWithRelations,
+} from '@/types/tasks';
 import { TaskTagsMenu } from '../task-tags-menu';
 
 interface TaskEditInlineProps {
@@ -15,6 +19,7 @@ interface TaskEditInlineProps {
   onAvailableTagsChange: (tags: string[]) => void;
   onCancel: () => void;
   onSuccess: (task: TaskWithRelations) => void;
+  collaboration: TaskCollaborationOptions;
 }
 
 export function TaskEditInline({
@@ -24,6 +29,7 @@ export function TaskEditInline({
   onAvailableTagsChange,
   onCancel,
   onSuccess,
+  collaboration,
 }: TaskEditInlineProps) {
   const [formData, setFormData] = useState({
     title: task.title || '',
@@ -43,6 +49,8 @@ export function TaskEditInline({
         : String(task.actualHours),
     tags: task.tags || [],
     projectId: task.project?.id || task.projectId || '',
+    teamId: task.teamId || '',
+    assigneeId: task.assigneeId || '',
   });
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState('');
@@ -104,6 +112,10 @@ export function TaskEditInline({
         actualHours,
         tags: formData.tags,
         projectId: formData.projectId || null,
+        teamId: task.organizationId ? formData.teamId || null : undefined,
+        assigneeId: task.organizationId
+          ? formData.assigneeId || null
+          : undefined,
       });
 
       if (result.success && result.data) {
@@ -304,6 +316,55 @@ export function TaskEditInline({
             />
           </div>
         </div>
+
+        {task.organizationId && (
+          <>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-[#9b9ba3]">
+                Equipe
+              </label>
+              <select
+                value={formData.teamId}
+                onChange={(event) =>
+                  setFormData((current) => ({
+                    ...current,
+                    teamId: event.target.value,
+                  }))
+                }
+                className="w-full rounded-lg border border-[#303036] bg-[#2a2a2a] px-3 py-2 text-sm text-white focus:border-[#6f55d9] focus:outline-none"
+              >
+                <option value="">Sem equipe</option>
+                {collaboration.teams.map((team) => (
+                  <option key={team.id} value={team.id}>
+                    {team.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-[#9b9ba3]">
+                Responsável
+              </label>
+              <select
+                value={formData.assigneeId}
+                onChange={(event) =>
+                  setFormData((current) => ({
+                    ...current,
+                    assigneeId: event.target.value,
+                  }))
+                }
+                className="w-full rounded-lg border border-[#303036] bg-[#2a2a2a] px-3 py-2 text-sm text-white focus:border-[#6f55d9] focus:outline-none"
+              >
+                <option value="">Não atribuído</option>
+                {collaboration.members.map(({ user }) => (
+                  <option key={user.id} value={user.id}>
+                    {user.name || `@${user.username}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </>
+        )}
       </div>
 
       {formError && (

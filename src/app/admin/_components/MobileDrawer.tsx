@@ -4,6 +4,7 @@
 import { useClickOutside } from '../_hooks/useClickOutside';
 import Sidebar from './Sidebar';
 import type { AdminUserSummary } from './AdminPanel';
+import type { OrganizationContext } from '@/lib/organizations/context';
 
 interface MobileDrawerProps {
   user: AdminUserSummary;
@@ -12,6 +13,9 @@ interface MobileDrawerProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   onLogout: () => void;
+  organizationContext: OrganizationContext;
+  onOrganizationChange: (organizationId: string) => void;
+  isSwitchingOrganization: boolean;
 }
 
 export default function MobileDrawer({
@@ -21,6 +25,9 @@ export default function MobileDrawer({
   activeTab,
   onTabChange,
   onLogout,
+  organizationContext,
+  onOrganizationChange,
+  isSwitchingOrganization,
 }: MobileDrawerProps) {
   const drawerRef = useClickOutside<HTMLDivElement>(onClose, isOpen);
 
@@ -48,6 +55,9 @@ export default function MobileDrawer({
           onLogout={onLogout}
           variant="mobile"
           onItemClick={onClose}
+          organizationContext={organizationContext}
+          onOrganizationChange={onOrganizationChange}
+          isSwitchingOrganization={isSwitchingOrganization}
         />
       </div>
     </div>

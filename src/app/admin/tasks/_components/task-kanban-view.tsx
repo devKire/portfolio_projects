@@ -7,6 +7,7 @@ import { updateTaskPositions, updateTaskStatus } from '@/app/actions/tasks';
 import { TaskCard } from './task-card-kanban';
 import type {
   TaskPatch,
+  TaskCollaborationOptions,
   TaskProjectOption,
   TaskWithRelations,
 } from '@/types/tasks';
@@ -20,6 +21,7 @@ interface TaskKanbanViewProps {
   projects: TaskProjectOption[];
   availableTags: string[];
   onAvailableTagsChange: (tags: string[]) => void;
+  collaboration: TaskCollaborationOptions;
 }
 
 const columns = [
@@ -47,6 +49,7 @@ export const TaskKanbanView = memo(function TaskKanbanView({
   projects,
   availableTags,
   onAvailableTagsChange,
+  collaboration,
 }: TaskKanbanViewProps) {
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
 
@@ -147,6 +150,7 @@ export const TaskKanbanView = memo(function TaskKanbanView({
                     projects={projects}
                     availableTags={availableTags}
                     onAvailableTagsChange={onAvailableTagsChange}
+                    collaboration={collaboration}
                   />
                 </div>
               ))}

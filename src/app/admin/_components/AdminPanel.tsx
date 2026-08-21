@@ -1,9 +1,14 @@
 // app/admin/_components/AdminPanel.tsx
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { logoutUser } from '@/app/actions/auth';
+import {
+  getOrganizationContext,
+  setActiveOrganization,
+} from '@/app/actions/organizations';
+import type { OrganizationContext } from '@/lib/organizations/context';
 import { useMediaQuery } from '../_hooks/useMediaQuery';
 import AdminLayout from './AdminLayout';
 import ContentRouter from './ContentRouter';
@@ -16,11 +21,22 @@ export type AdminUserSummary = {
   publicSlug: string;
 };
 
-export default function AdminPanel({ user }: { user: AdminUserSummary }) {
+export default function AdminPanel({
+  user,
+  organizationContext: initialOrganizationContext,
+}: {
+  user: AdminUserSummary;
+  organizationContext: OrganizationContext;
+}) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [organizationContext, setOrganizationContext] = useState(
+    initialOrganizationContext
+  );
+  const [isSwitchingOrganization, startOrganizationTransition] =
+    useTransition();
 
   const isMobile = useMediaQuery('(max-width: 1023px)');
 
@@ -36,6 +52,23 @@ export default function AdminPanel({ user }: { user: AdminUserSummary }) {
     router.refresh();
   }, [router]);
 
+  const refreshOrganizationContext = useCallback(async () => {
+    const result = await getOrganizationContext();
+    if (result.success) setOrganizationContext(result.data);
+  }, []);
+
+  const handleOrganizationChange = useCallback(
+    (organizationId: string) => {
+      startOrganizationTransition(async () => {
+        const result = await setActiveOrganization(organizationId || null);
+        if (!result.success) return;
+        await refreshOrganizationContext();
+        router.refresh();
+      });
+    },
+    [refreshOrganizationContext, router]
+  );
+
   return (
     <AdminLayout
       user={user}
@@ -48,8 +81,16 @@ export default function AdminPanel({ user }: { user: AdminUserSummary }) {
       onToggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
       onCloseMobileMenu={() => setIsMobileMenuOpen(false)}
       isMobile={isMobile}
+      organizationContext={organizationContext}
+      onOrganizationChange={handleOrganizationChange}
+      isSwitchingOrganization={isSwitchingOrganization}
     >
-      <ContentRouter activeTab={activeTab} />
+      <ContentRouter
+        activeTab={activeTab}
+        userId={user.id}
+        organizationContext={organizationContext}
+        onOrganizationContextChange={refreshOrganizationContext}
+      />
     </AdminLayout>
   );
 }

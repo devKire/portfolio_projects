@@ -8,12 +8,14 @@ import {
   Copy,
   ExternalLink,
   LogOut,
+  Building2,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { TAB_CONFIG } from '../_config/navigation';
 import TabButton from './TabButton';
 import type { AdminUserSummary } from './AdminPanel';
+import type { OrganizationContext } from '@/lib/organizations/context';
 
 interface SidebarProps {
   user: AdminUserSummary;
@@ -24,6 +26,9 @@ interface SidebarProps {
   onLogout: () => void;
   variant: 'desktop' | 'mobile';
   onItemClick?: () => void;
+  organizationContext: OrganizationContext;
+  onOrganizationChange: (organizationId: string) => void;
+  isSwitchingOrganization: boolean;
 }
 
 export default function Sidebar({
@@ -35,10 +40,16 @@ export default function Sidebar({
   onLogout,
   variant = 'desktop',
   onItemClick,
+  organizationContext,
+  onOrganizationChange,
+  isSwitchingOrganization,
 }: SidebarProps) {
   const isMobile = variant === 'mobile';
   const [copied, setCopied] = useState(false);
   const publicPath = `/${user.publicSlug}`;
+  const activeOrganization = organizationContext.organizations.find(
+    (item) => item.id === organizationContext.activeOrganizationId
+  );
 
   const handleTabClick = (tabId: string) => {
     onTabChange(tabId);
@@ -78,6 +89,47 @@ export default function Sidebar({
             ) : (
               <ChevronLeft size={18} />
             )}
+          </button>
+        )}
+      </div>
+
+      <div className="border-b border-[#2f2f35] p-2">
+        {isCollapsed && !isMobile ? (
+          <button
+            type="button"
+            onClick={() => handleTabClick('organization')}
+            className="flex h-10 w-full items-center justify-center rounded-md border border-[#303036] bg-[#202024] text-[#c9b8ff]"
+            title={activeOrganization?.name || 'Criar organização'}
+            aria-label={activeOrganization?.name || 'Criar organização'}
+          >
+            <Building2 size={18} />
+          </button>
+        ) : organizationContext.organizations.length ? (
+          <label className="block rounded-md border border-[#303036] bg-[#202024] p-2">
+            <span className="mb-1 flex items-center gap-1.5 text-[10px] font-medium tracking-wide text-[#777780] uppercase">
+              <Building2 size={12} /> Organização ativa
+            </span>
+            <select
+              value={organizationContext.activeOrganizationId || ''}
+              onChange={(event) => onOrganizationChange(event.target.value)}
+              disabled={isSwitchingOrganization}
+              className="h-8 w-full truncate rounded border border-[#34343c] bg-[#151518] px-2 text-xs text-white outline-none focus:border-[#6f55d9]"
+              aria-label="Organização ativa"
+            >
+              {organizationContext.organizations.map((organization) => (
+                <option key={organization.id} value={organization.id}>
+                  {organization.name} · {organization.role}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <button
+            type="button"
+            onClick={() => handleTabClick('organization')}
+            className="flex min-h-10 w-full items-center gap-2 rounded-md border border-dashed border-[#494954] px-3 text-xs text-[#c9b8ff] hover:bg-[#24242a]"
+          >
+            <Building2 size={15} /> Criar organização
           </button>
         )}
       </div>

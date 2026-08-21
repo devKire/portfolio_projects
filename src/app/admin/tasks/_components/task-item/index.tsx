@@ -7,6 +7,7 @@ import { TaskEditInline } from './task-edit-inline';
 import { updateTaskStatus, updateTask } from '@/app/actions/tasks';
 import type {
   TaskPatch,
+  TaskCollaborationOptions,
   TaskProjectOption,
   TaskWithRelations,
 } from '@/types/tasks';
@@ -24,6 +25,7 @@ interface TaskItemProps {
   projects: TaskProjectOption[];
   availableTags: string[];
   onAvailableTagsChange: (tags: string[]) => void;
+  collaboration: TaskCollaborationOptions;
 }
 
 export const TaskItem = memo(function TaskItem({
@@ -39,6 +41,7 @@ export const TaskItem = memo(function TaskItem({
   projects,
   availableTags,
   onAvailableTagsChange,
+  collaboration,
 }: TaskItemProps) {
   const handleDelete = useCallback(async () => {
     if (confirm('Tem certeza que deseja excluir esta tarefa?')) {
@@ -119,6 +122,7 @@ export const TaskItem = memo(function TaskItem({
           onAvailableTagsChange={onAvailableTagsChange}
           onCancel={handleEditCancel}
           onSuccess={handleEditSuccess}
+          collaboration={collaboration}
         />
       ) : (
         <TaskCardDisplay

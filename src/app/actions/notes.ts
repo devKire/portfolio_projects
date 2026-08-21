@@ -19,6 +19,7 @@ import {
 } from '@/lib/notes';
 import { extractMarkdownTasks } from '@/lib/note-task-sync';
 import { requireUser } from '@/lib/auth/session';
+import { personalNoteScope } from '@/lib/organizations/policy';
 
 export type ActionResult<T> =
   | { success: true; data: T }
@@ -89,6 +90,14 @@ const SUPPORTED_ATTACHMENT_MIME_TYPES = new Set([
 
 const MAX_ATTACHMENT_DATA_URL_SIZE = 8 * 1024 * 1024;
 
+function personalScopeWhere(userId: string) {
+  return {
+    userId,
+    organizationId: null,
+    scopeKey: personalNoteScope(userId),
+  } as const;
+}
+
 const noteInclude = {
   project: { select: { id: true, title: true } },
   tags: { orderBy: { name: 'asc' } },
@@ -134,13 +143,14 @@ async function createUniqueSlug(
   preferredSlug?: string,
   id?: string
 ) {
+  const scopeKey = personalNoteScope(userId);
   const base = slugifyNote(preferredSlug || title) || 'nota';
   let slug = base;
   let index = 2;
 
   while (true) {
     const existing = await db.note.findUnique({
-      where: { userId_slug: { userId, slug } },
+      where: { scopeKey_slug: { scopeKey, slug } },
       select: { id: true },
     });
 
@@ -159,11 +169,14 @@ async function syncNoteRelations(
   const links = extractWikiLinks(content);
   const [sourceNote, linkableNotes] = await Promise.all([
     db.note.findFirst({
-      where: { id: noteId, userId },
+      where: { id: noteId, ...personalScopeWhere(userId) },
       select: { folderPath: true },
     }),
     db.note.findMany({
-      where: { userId, status: { not: 'ARCHIVED' } },
+      where: {
+        ...personalScopeWhere(userId),
+        status: { not: 'ARCHIVED' },
+      },
       select: {
         id: true,
         title: true,
@@ -238,6 +251,8 @@ async function syncNoteTasks(
           },
           create: {
             userId,
+            createdById: userId,
+            assigneeId: userId,
             title: task.title,
             status: task.completed ? 'completed' : 'pending',
             completedAt: task.completed ? new Date() : null,
@@ -262,6 +277,7 @@ async function syncNoteTasks(
   await db.task.updateMany({
     where: {
       userId,
+      organizationId: null,
       noteId,
       noteTaskKey: keys.length ? { notIn: keys } : { not: null },
     },
@@ -275,7 +291,10 @@ async function syncNoteTasks(
 async function refreshAllLinkTargets(userId: string) {
   const [notes, links] = await Promise.all([
     db.note.findMany({
-      where: { userId, status: { not: 'ARCHIVED' } },
+      where: {
+        ...personalScopeWhere(userId),
+        status: { not: 'ARCHIVED' },
+      },
       select: {
         id: true,
         title: true,
@@ -285,7 +304,7 @@ async function refreshAllLinkTargets(userId: string) {
       },
     }),
     db.noteLink.findMany({
-      where: { sourceNote: { userId } },
+      where: { sourceNote: personalScopeWhere(userId) },
       select: {
         id: true,
         targetTitle: true,
@@ -375,6 +394,7 @@ async function createUniqueAttachmentPath(
   fileNameInput: string,
   folderPath?: string | null
 ) {
+  const scopeKey = personalNoteScope(userId);
   const metadata = getVaultFileMetadata(
     updateFilePath(folderPath || null, normalizeVaultFileBase(fileNameInput)) ||
       normalizeVaultFileBase(fileNameInput)
@@ -386,7 +406,7 @@ async function createUniqueAttachmentPath(
 
   while (true) {
     const existing = await db.noteAttachment.findUnique({
-      where: { userId_filePath: { userId, filePath } },
+      where: { scopeKey_filePath: { scopeKey, filePath } },
       select: { id: true },
     });
     if (!existing) {
@@ -422,7 +442,7 @@ async function getOwnedProjectId(userId: string, projectId?: string | null) {
 
 async function nextFolderPosition(userId: string, parentId: string | null) {
   const aggregate = await db.noteFolder.aggregate({
-    where: { userId, parentId, deletedAt: null },
+    where: { ...personalScopeWhere(userId), parentId, deletedAt: null },
     _max: { position: true },
   });
   return (aggregate._max.position ?? -1) + 1;
@@ -430,7 +450,11 @@ async function nextFolderPosition(userId: string, parentId: string | null) {
 
 async function nextNotePosition(userId: string, folderId: string | null) {
   const aggregate = await db.note.aggregate({
-    where: { userId, folderId, status: isActiveNoteStatusWhere() },
+    where: {
+      ...personalScopeWhere(userId),
+      folderId,
+      status: isActiveNoteStatusWhere(),
+    },
     _max: { position: true },
   });
   return (aggregate._max.position ?? -1) + 1;
@@ -440,6 +464,7 @@ async function ensureNoteFolderPath(
   userId: string,
   path: string | null | undefined
 ) {
+  const scopeKey = personalNoteScope(userId);
   const normalized = path?.trim();
   if (!normalized) return null;
 
@@ -453,12 +478,13 @@ async function ensureNoteFolderPath(
   for (const segment of segments) {
     currentPath = currentPath ? `${currentPath}/${segment}` : segment;
     folder = await db.noteFolder.findUnique({
-      where: { userId_path: { userId, path: currentPath } },
+      where: { scopeKey_path: { scopeKey, path: currentPath } },
     });
     if (!folder) {
       folder = await db.noteFolder.create({
         data: {
           userId,
+          scopeKey,
           name: segment,
           path: currentPath,
           parentId,
@@ -513,7 +539,7 @@ async function syncFoldersFromImportedNotesForUser(userId: string) {
   try {
     const paths = await db.note.findMany({
       where: {
-        userId,
+        ...personalScopeWhere(userId),
         folderPath: { not: null },
         status: isActiveNoteStatusWhere(),
       },
@@ -527,7 +553,7 @@ async function syncFoldersFromImportedNotesForUser(userId: string) {
     }
 
     const folders = await db.noteFolder.findMany({
-      where: { userId, deletedAt: null },
+      where: { ...personalScopeWhere(userId), deletedAt: null },
       select: { id: true, path: true },
     });
     const folderByPath = new Map(
@@ -535,7 +561,7 @@ async function syncFoldersFromImportedNotesForUser(userId: string) {
     );
     const notes = await db.note.findMany({
       where: {
-        userId,
+        ...personalScopeWhere(userId),
         folderPath: { not: null },
         status: isActiveNoteStatusWhere(),
       },
@@ -576,7 +602,7 @@ async function updateFolderPathCascade(
   nextParentId?: string | null
 ) {
   const folder = await db.noteFolder.findFirst({
-    where: { id: folderId, userId },
+    where: { id: folderId, ...personalScopeWhere(userId) },
   });
   if (!folder)
     return { success: false as const, error: 'Pasta nao encontrada.' };
@@ -584,7 +610,7 @@ async function updateFolderPathCascade(
   const oldPath = folder.path;
   const descendants = await db.noteFolder.findMany({
     where: {
-      userId,
+      ...personalScopeWhere(userId),
       OR: [{ id: folder.id }, { path: { startsWith: `${oldPath}/` } }],
     },
     orderBy: { path: 'asc' },
@@ -600,7 +626,7 @@ async function updateFolderPathCascade(
 
   const duplicatePaths = await db.noteFolder.findMany({
     where: {
-      userId,
+      ...personalScopeWhere(userId),
       path: { in: Array.from(pathById.values()) },
       id: { notIn: descendants.map((item) => item.id) },
     },
@@ -614,7 +640,7 @@ async function updateFolderPathCascade(
 
   const notes = await db.note.findMany({
     where: {
-      userId,
+      ...personalScopeWhere(userId),
       OR: [
         { folderPath: oldPath },
         { folderPath: { startsWith: `${oldPath}/` } },
@@ -624,7 +650,7 @@ async function updateFolderPathCascade(
   });
   const attachments = await db.noteAttachment.findMany({
     where: {
-      userId,
+      ...personalScopeWhere(userId),
       OR: [
         { folderPath: oldPath },
         { folderPath: { startsWith: `${oldPath}/` } },
@@ -691,13 +717,17 @@ export async function createNoteFolder(input: {
 }) {
   try {
     const user = await requireUser();
+    const scopeKey = personalNoteScope(user.id);
     const name = normalizeFolderName(input.name);
     if (!isValidFolderName(name))
       return { success: false, error: 'Informe um nome de pasta valido.' };
 
     const parent = input.parentId
       ? await db.noteFolder.findFirst({
-          where: { id: input.parentId, userId: user.id },
+          where: {
+            id: input.parentId,
+            ...personalScopeWhere(user.id),
+          },
         })
       : null;
     if (input.parentId && !parent)
@@ -705,7 +735,7 @@ export async function createNoteFolder(input: {
 
     const path = joinFolderPath(parent?.path, name);
     const duplicate = await db.noteFolder.findUnique({
-      where: { userId_path: { userId: user.id, path } },
+      where: { scopeKey_path: { scopeKey, path } },
     });
     if (duplicate)
       return {
@@ -716,6 +746,7 @@ export async function createNoteFolder(input: {
     const folder = await db.noteFolder.create({
       data: {
         userId: user.id,
+        scopeKey,
         name,
         path,
         parentId: parent?.id || null,
@@ -739,7 +770,7 @@ export async function renameNoteFolder(id: string, nameInput: string) {
       return { success: false, error: 'Informe um nome de pasta valido.' };
 
     const folder = await db.noteFolder.findFirst({
-      where: { id, userId: user.id },
+      where: { id, ...personalScopeWhere(user.id) },
       include: { parent: true },
     });
     if (!folder) return { success: false, error: 'Pasta nao encontrada.' };
@@ -764,7 +795,7 @@ export async function moveNoteFolder(id: string, parentId: string | null) {
   try {
     const user = await requireUser();
     const folder = await db.noteFolder.findFirst({
-      where: { id, userId: user.id },
+      where: { id, ...personalScopeWhere(user.id) },
     });
     if (!folder) return { success: false, error: 'Pasta nao encontrada.' };
     if (parentId === id)
@@ -777,7 +808,7 @@ export async function moveNoteFolder(id: string, parentId: string | null) {
 
     const parent = parentId
       ? await db.noteFolder.findFirst({
-          where: { id: parentId, userId: user.id },
+          where: { id: parentId, ...personalScopeWhere(user.id) },
         })
       : null;
     if (parentId && !parent)
@@ -809,7 +840,7 @@ export async function deleteNoteFolder(id: string, mode?: DeleteFolderMode) {
   try {
     const user = await requireUser();
     const folder = await db.noteFolder.findFirst({
-      where: { id, userId: user.id },
+      where: { id, ...personalScopeWhere(user.id) },
       include: {
         parent: true,
         children: true,
@@ -820,13 +851,13 @@ export async function deleteNoteFolder(id: string, mode?: DeleteFolderMode) {
 
     const descendantCount = await db.noteFolder.count({
       where: {
-        userId: user.id,
+        ...personalScopeWhere(user.id),
         path: { startsWith: `${folder.path}/` },
       },
     });
     const nestedNoteCount = await db.note.count({
       where: {
-        userId: user.id,
+        ...personalScopeWhere(user.id),
         OR: [
           { folderPath: folder.path },
           { folderPath: { startsWith: `${folder.path}/` } },
@@ -852,19 +883,22 @@ export async function deleteNoteFolder(id: string, mode?: DeleteFolderMode) {
     if (mode === 'unfiled') {
       const affectedFolders = await db.noteFolder.findMany({
         where: {
-          userId: user.id,
+          ...personalScopeWhere(user.id),
           OR: [{ id: folder.id }, { path: { startsWith: `${folder.path}/` } }],
         },
         select: { id: true },
       });
       const affectedIds = affectedFolders.map((item) => item.id);
       const notes = await db.note.findMany({
-        where: { userId: user.id, folderId: { in: affectedIds } },
+        where: {
+          ...personalScopeWhere(user.id),
+          folderId: { in: affectedIds },
+        },
         select: { id: true, fileName: true },
       });
       const attachments = await db.noteAttachment.findMany({
         where: {
-          userId: user.id,
+          ...personalScopeWhere(user.id),
           OR: [
             { folderPath: folder.path },
             { folderPath: { startsWith: `${folder.path}/` } },
@@ -902,15 +936,24 @@ export async function deleteNoteFolder(id: string, mode?: DeleteFolderMode) {
     } else if (mode === 'parent') {
       const parentPath = folder.parent?.path || null;
       const childFolders = await db.noteFolder.findMany({
-        where: { userId: user.id, parentId: folder.id },
+        where: {
+          ...personalScopeWhere(user.id),
+          parentId: folder.id,
+        },
         select: { id: true, name: true },
       });
       const notes = await db.note.findMany({
-        where: { userId: user.id, folderPath: folder.path },
+        where: {
+          ...personalScopeWhere(user.id),
+          folderPath: folder.path,
+        },
         select: { id: true, fileName: true },
       });
       const attachments = await db.noteAttachment.findMany({
-        where: { userId: user.id, folderPath: folder.path },
+        where: {
+          ...personalScopeWhere(user.id),
+          folderPath: folder.path,
+        },
         select: { id: true, fileName: true },
       });
 
@@ -972,13 +1015,13 @@ export async function moveNoteToFolder(
   try {
     const user = await requireUser();
     const note = await db.note.findFirst({
-      where: { id: noteId, userId: user.id },
+      where: { id: noteId, ...personalScopeWhere(user.id) },
     });
     if (!note) return { success: false, error: 'Nota nao encontrada.' };
 
     const folder = folderId
       ? await db.noteFolder.findFirst({
-          where: { id: folderId, userId: user.id },
+          where: { id: folderId, ...personalScopeWhere(user.id) },
         })
       : null;
     if (folderId && !folder)
@@ -1011,7 +1054,7 @@ export async function reorderNoteFolders(folderIds: string[]) {
     const user = await requireUser();
     const ids = Array.from(new Set(folderIds));
     const ownedCount = await db.noteFolder.count({
-      where: { id: { in: ids }, userId: user.id },
+      where: { id: { in: ids }, ...personalScopeWhere(user.id) },
     });
     if (ownedCount !== ids.length) {
       return { success: false, error: 'Pasta nao encontrada.' };
@@ -1035,7 +1078,7 @@ export async function reorderNotes(noteIds: string[]) {
     const user = await requireUser();
     const ids = Array.from(new Set(noteIds));
     const ownedCount = await db.note.count({
-      where: { id: { in: ids }, userId: user.id },
+      where: { id: { in: ids }, ...personalScopeWhere(user.id) },
     });
     if (ownedCount !== ids.length) {
       return { success: false, error: 'Nota nao encontrada.' };
@@ -1078,7 +1121,7 @@ export async function getNoteTags(): Promise<
     const user = await requireUser();
     const grouped = await db.noteTag.groupBy({
       by: ['slug', 'name'],
-      where: { note: { userId: user.id } },
+      where: { note: personalScopeWhere(user.id) },
       _count: { slug: true },
       orderBy: { _count: { slug: 'desc' } },
     });
@@ -1103,7 +1146,8 @@ export async function getNotes(filters: NoteFilters = {}) {
     await syncFoldersFromImportedNotesForUser(user.id);
 
     const search = filters.search?.trim();
-    const where: Prisma.NoteWhereInput = { userId: user.id };
+    const personalWhere = personalScopeWhere(user.id);
+    const where: Prisma.NoteWhereInput = { ...personalWhere };
 
     if (filters.visibility && filters.visibility !== 'ALL') {
       where.visibility = filters.visibility;
@@ -1170,35 +1214,35 @@ export async function getNotes(filters: NoteFilters = {}) {
     ] = await Promise.all([
       db.note.groupBy({
         by: ['status'],
-        where: { userId: user.id },
+        where: personalWhere,
         _count: { status: true },
       }),
       db.note.groupBy({
         by: ['visibility'],
-        where: { userId: user.id },
+        where: personalWhere,
         _count: { visibility: true },
       }),
       db.note.count({
         where: {
-          userId: user.id,
+          ...personalWhere,
           isFavorite: true,
           status: { not: 'ARCHIVED' },
         },
       }),
       db.note.findMany({
-        where: { userId: user.id, status: { not: 'ARCHIVED' } },
+        where: { ...personalWhere, status: { not: 'ARCHIVED' } },
         take: 5,
         orderBy: { updatedAt: 'desc' },
         select: { id: true, title: true, slug: true, updatedAt: true },
       }),
       db.note.findMany({
-        where: { userId: user.id, status: { not: 'ARCHIVED' } },
+        where: { ...personalWhere, status: { not: 'ARCHIVED' } },
         take: 5,
         orderBy: [{ viewCount: 'desc' }, { updatedAt: 'desc' }],
         select: { id: true, title: true, slug: true, viewCount: true },
       }),
       db.noteFolder.findMany({
-        where: { userId: user.id, deletedAt: null },
+        where: { ...personalWhere, deletedAt: null },
         orderBy: [{ parentId: 'asc' }, { position: 'asc' }, { name: 'asc' }],
         select: {
           id: true,
@@ -1209,7 +1253,7 @@ export async function getNotes(filters: NoteFilters = {}) {
         },
       }),
       db.noteAttachment.findMany({
-        where: { userId: user.id },
+        where: personalWhere,
         orderBy: { filePath: 'asc' },
         select: {
           id: true,
@@ -1222,13 +1266,13 @@ export async function getNotes(filters: NoteFilters = {}) {
       }),
       db.note.count({
         where: {
-          userId: user.id,
+          ...personalWhere,
           folderPath: null,
           status: { not: 'ARCHIVED' },
         },
       }),
       db.note.findMany({
-        where: { userId: user.id, status: { not: 'ARCHIVED' } },
+        where: { ...personalWhere, status: { not: 'ARCHIVED' } },
         orderBy: { title: 'asc' },
         select: {
           id: true,
@@ -1244,14 +1288,14 @@ export async function getNotes(filters: NoteFilters = {}) {
       db.note.groupBy({
         by: ['folderId'],
         where: {
-          userId: user.id,
+          ...personalWhere,
           folderId: { not: null },
           status: { not: 'ARCHIVED' },
         },
         _count: { _all: true },
       }),
       db.noteFolder.findMany({
-        where: { userId: user.id, deletedAt: { not: null } },
+        where: { ...personalWhere, deletedAt: { not: null } },
         orderBy: [{ trashedAt: 'desc' }, { name: 'asc' }],
         select: {
           id: true,
@@ -1266,7 +1310,7 @@ export async function getNotes(filters: NoteFilters = {}) {
         },
       }),
       db.noteFolder.count({
-        where: { userId: user.id, deletedAt: { not: null } },
+        where: { ...personalWhere, deletedAt: { not: null } },
       }),
     ]);
     const countByFolderId = new Map(
@@ -1281,7 +1325,7 @@ export async function getNotes(filters: NoteFilters = {}) {
         notes,
         stats: {
           total: await db.note.count({
-            where: { userId: user.id, status: { not: 'ARCHIVED' } },
+            where: { ...personalWhere, status: { not: 'ARCHIVED' } },
           }),
           favorites: favoriteCount,
           byStatus: Object.fromEntries(
@@ -1337,7 +1381,7 @@ export async function getNote(
     const user = await requireUser();
     const existing = await db.note.findFirst({
       where: {
-        userId: user.id,
+        ...personalScopeWhere(user.id),
         OR: [{ id: idOrSlug }, { slug: idOrSlug }],
       },
       select: { id: true },
@@ -1366,7 +1410,7 @@ export async function getNote(
     const related = tagSlugs.length
       ? await db.note.findMany({
           where: {
-            userId: user.id,
+            ...personalScopeWhere(user.id),
             id: { not: note.id },
             tags: { some: { slug: { in: tagSlugs } } },
           },
@@ -1392,6 +1436,7 @@ export async function getNote(
 export async function createNote(input: NoteFormInput) {
   try {
     const user = await requireUser();
+    const scopeKey = personalNoteScope(user.id);
     const title = input.title.trim();
     if (!title) return { success: false, error: 'Informe um titulo.' };
 
@@ -1400,7 +1445,7 @@ export async function createNote(input: NoteFormInput) {
     const tags = extractNoteTags(content, input.tags);
     const folder = input.folderId
       ? await db.noteFolder.findFirst({
-          where: { id: input.folderId, userId: user.id },
+          where: { id: input.folderId, ...personalScopeWhere(user.id) },
         })
       : input.folderPath
         ? await ensureNoteFolderPath(user.id, input.folderPath)
@@ -1418,6 +1463,7 @@ export async function createNote(input: NoteFormInput) {
     const note = await db.note.create({
       data: {
         userId: user.id,
+        scopeKey,
         title,
         slug,
         content,
@@ -1453,7 +1499,7 @@ export async function updateNote(id: string, input: Partial<NoteFormInput>) {
   try {
     const user = await requireUser();
     const existing = await db.note.findFirst({
-      where: { id, userId: user.id },
+      where: { id, ...personalScopeWhere(user.id) },
     });
     if (!existing) return { success: false, error: 'Nota nao encontrada.' };
 
@@ -1510,7 +1556,7 @@ export async function renameNote(id: string, titleInput: string) {
     if (!title) return { success: false, error: 'Informe um titulo.' };
 
     const existing = await db.note.findFirst({
-      where: { id, userId: user.id },
+      where: { id, ...personalScopeWhere(user.id) },
     });
     if (!existing) return { success: false, error: 'Nota nao encontrada.' };
 
@@ -1531,7 +1577,12 @@ export async function renameNote(id: string, titleInput: string) {
 
       if (filePath) {
         const duplicate = await db.note.findUnique({
-          where: { userId_filePath: { userId: user.id, filePath } },
+          where: {
+            scopeKey_filePath: {
+              scopeKey: personalNoteScope(user.id),
+              filePath,
+            },
+          },
           select: { id: true },
         });
         if (duplicate && duplicate.id !== id) {
@@ -1567,7 +1618,7 @@ export async function moveNoteToTrash(id: string) {
   try {
     const user = await requireUser();
     const existing = await db.note.findFirst({
-      where: { id, userId: user.id },
+      where: { id, ...personalScopeWhere(user.id) },
       select: { id: true, status: true },
     });
     if (!existing) return { success: false, error: 'Nota nao encontrada.' };
@@ -1598,7 +1649,7 @@ export async function moveNoteFolderToTrash(id: string) {
   try {
     const user = await requireUser();
     const folder = await db.noteFolder.findFirst({
-      where: { id, userId: user.id },
+      where: { id, ...personalScopeWhere(user.id) },
     });
     if (!folder) return { success: false, error: 'Pasta nao encontrada.' };
     if (folder.deletedAt) {
@@ -1608,7 +1659,7 @@ export async function moveNoteFolderToTrash(id: string) {
     const trashedAt = new Date();
     const descendants = await db.noteFolder.findMany({
       where: {
-        userId: user.id,
+        ...personalScopeWhere(user.id),
         OR: [{ id: folder.id }, { path: { startsWith: `${folder.path}/` } }],
       },
       orderBy: { path: 'asc' },
@@ -1616,7 +1667,7 @@ export async function moveNoteFolderToTrash(id: string) {
     const folderIds = descendants.map((item) => item.id);
     const notes = await db.note.findMany({
       where: {
-        userId: user.id,
+        ...personalScopeWhere(user.id),
         OR: [
           { folderPath: folder.path },
           { folderPath: { startsWith: `${folder.path}/` } },
@@ -1669,14 +1720,18 @@ export async function moveNoteFolderToTrash(id: string) {
 async function restoreFolderTree(userId: string, folderIds: string[]) {
   if (!folderIds.length) return [];
   const baseFolders = await db.noteFolder.findMany({
-    where: { userId, id: { in: folderIds }, deletedAt: { not: null } },
+    where: {
+      ...personalScopeWhere(userId),
+      id: { in: folderIds },
+      deletedAt: { not: null },
+    },
     orderBy: { pathBeforeTrash: 'asc' },
   });
   if (!baseFolders.length) return [];
 
   const selected = await db.noteFolder.findMany({
     where: {
-      userId,
+      ...personalScopeWhere(userId),
       deletedAt: { not: null },
       OR: baseFolders.flatMap((folder) => {
         const path = originalFolderPath(folder);
@@ -1702,7 +1757,10 @@ async function restoreFolderTree(userId: string, folderIds: string[]) {
     const originalRootPath = originalFolderPath(root);
     const originalParent = root.parentIdBeforeTrash
       ? await db.noteFolder.findFirst({
-          where: { id: root.parentIdBeforeTrash, userId },
+          where: {
+            id: root.parentIdBeforeTrash,
+            ...personalScopeWhere(userId),
+          },
           select: { id: true, path: true, deletedAt: true },
         })
       : null;
@@ -1717,7 +1775,7 @@ async function restoreFolderTree(userId: string, folderIds: string[]) {
     while (true) {
       const conflict = await db.noteFolder.findFirst({
         where: {
-          userId,
+          ...personalScopeWhere(userId),
           path: nextRootPath,
           deletedAt: null,
           id: { not: root.id },
@@ -1784,7 +1842,7 @@ export async function restoreTrashItems(input: TrashSelectionInput = {}) {
       ? (
           await db.noteFolder.findMany({
             where: {
-              userId: user.id,
+              ...personalScopeWhere(user.id),
               id: { in: folderIds },
               deletedAt: { not: null },
             },
@@ -1796,7 +1854,7 @@ export async function restoreTrashItems(input: TrashSelectionInput = {}) {
       ? (
           await db.note.findMany({
             where: {
-              userId: user.id,
+              ...personalScopeWhere(user.id),
               status: 'ARCHIVED',
               OR: folderPaths.flatMap((path) => [
                 { folderPath: path },
@@ -1813,7 +1871,7 @@ export async function restoreTrashItems(input: TrashSelectionInput = {}) {
     const notes = allNoteIds.length
       ? await db.note.findMany({
           where: {
-            userId: user.id,
+            ...personalScopeWhere(user.id),
             id: { in: allNoteIds },
             status: 'ARCHIVED',
           },
@@ -1836,7 +1894,7 @@ export async function restoreTrashItems(input: TrashSelectionInput = {}) {
           (
             await db.noteFolder.findMany({
               where: {
-                userId: user.id,
+                ...personalScopeWhere(user.id),
                 id: { in: candidateFolderIds },
                 deletedAt: null,
               },
@@ -1885,11 +1943,14 @@ export async function restoreAllTrash() {
     const user = await requireUser();
     const [notes, folders] = await Promise.all([
       db.note.findMany({
-        where: { userId: user.id, status: 'ARCHIVED' },
+        where: { ...personalScopeWhere(user.id), status: 'ARCHIVED' },
         select: { id: true },
       }),
       db.noteFolder.findMany({
-        where: { userId: user.id, deletedAt: { not: null } },
+        where: {
+          ...personalScopeWhere(user.id),
+          deletedAt: { not: null },
+        },
         select: { id: true },
       }),
     ]);
@@ -1913,7 +1974,7 @@ export async function deleteTrashItemsPermanently(
     const selectedFolders = selectedFolderIds.length
       ? await db.noteFolder.findMany({
           where: {
-            userId: user.id,
+            ...personalScopeWhere(user.id),
             id: { in: selectedFolderIds },
             deletedAt: { not: null },
           },
@@ -1935,7 +1996,7 @@ export async function deleteTrashItemsPermanently(
     const folders = selectedFolders.length
       ? await db.noteFolder.findMany({
           where: {
-            userId: user.id,
+            ...personalScopeWhere(user.id),
             deletedAt: { not: null },
             ...folderWhere,
           },
@@ -1950,7 +2011,7 @@ export async function deleteTrashItemsPermanently(
       ? (
           await db.note.findMany({
             where: {
-              userId: user.id,
+              ...personalScopeWhere(user.id),
               status: 'ARCHIVED',
               OR: folderPaths.flatMap((path) => [
                 { folderPath: path },
@@ -1965,10 +2026,16 @@ export async function deleteTrashItemsPermanently(
 
     await db.$transaction([
       db.note.deleteMany({
-        where: { userId: user.id, id: { in: allNoteIds } },
+        where: {
+          ...personalScopeWhere(user.id),
+          id: { in: allNoteIds },
+        },
       }),
       db.noteFolder.deleteMany({
-        where: { userId: user.id, id: { in: folderIds } },
+        where: {
+          ...personalScopeWhere(user.id),
+          id: { in: folderIds },
+        },
       }),
     ]);
 
@@ -1995,11 +2062,14 @@ export async function emptyTrash() {
     const user = await requireUser();
     const [notes, folders] = await Promise.all([
       db.note.findMany({
-        where: { userId: user.id, status: 'ARCHIVED' },
+        where: { ...personalScopeWhere(user.id), status: 'ARCHIVED' },
         select: { id: true },
       }),
       db.noteFolder.findMany({
-        where: { userId: user.id, deletedAt: { not: null } },
+        where: {
+          ...personalScopeWhere(user.id),
+          deletedAt: { not: null },
+        },
         select: { id: true },
       }),
     ]);
@@ -2017,7 +2087,7 @@ export async function deleteNote(id: string) {
   try {
     const user = await requireUser();
     const note = await db.note.findFirst({
-      where: { id, userId: user.id },
+      where: { id, ...personalScopeWhere(user.id) },
       select: { id: true },
     });
     if (!note) return { success: false, error: 'Nota nao encontrada.' };
@@ -2034,6 +2104,7 @@ export async function deleteNote(id: string) {
 export async function createNoteAttachment(input: NoteAttachmentInput) {
   try {
     const user = await requireUser();
+    const scopeKey = personalNoteScope(user.id);
     const fileName = normalizeVaultFileBase(input.fileName);
     if (!fileName || isUnsafeVaultPath(fileName)) {
       return { success: false, error: 'Nome de arquivo invalido.' };
@@ -2060,6 +2131,7 @@ export async function createNoteAttachment(input: NoteAttachmentInput) {
     const attachment = await db.noteAttachment.create({
       data: {
         userId: user.id,
+        scopeKey,
         ...metadata,
         mimeType,
         size: input.size || null,
@@ -2079,7 +2151,7 @@ export async function toggleFavorite(id: string) {
   try {
     const user = await requireUser();
     const note = await db.note.findFirst({
-      where: { id, userId: user.id },
+      where: { id, ...personalScopeWhere(user.id) },
       select: { isFavorite: true },
     });
     if (!note) return { success: false, error: 'Nota nao encontrada.' };
@@ -2104,6 +2176,7 @@ export async function importVault(
 ) {
   try {
     const user = await requireUser();
+    const scopeKey = personalNoteScope(user.id);
     const usableFiles = files.filter(
       (file) => !isUnsafeVaultPath(file.path) && !isIgnoredVaultPath(file.path)
     );
@@ -2142,7 +2215,7 @@ export async function importVault(
     const existingAttachments = attachmentFiles.length
       ? await db.noteAttachment.findMany({
           where: {
-            userId: user.id,
+            ...personalScopeWhere(user.id),
             filePath: {
               in: attachmentFiles.map(
                 (file) => getVaultFileMetadata(file.path).filePath
@@ -2173,13 +2246,14 @@ export async function importVault(
 
         return db.noteAttachment.upsert({
           where: {
-            userId_filePath: {
-              userId: user.id,
+            scopeKey_filePath: {
+              scopeKey,
               filePath: metadata.filePath,
             },
           },
           create: {
             userId: user.id,
+            scopeKey,
             ...metadata,
             mimeType: file.mimeType || null,
             size: file.size || null,
@@ -2214,8 +2288,8 @@ export async function importVault(
       const tags = extractNoteTags(content);
       const existing = await db.note.findUnique({
         where: {
-          userId_filePath: {
-            userId: user.id,
+          scopeKey_filePath: {
+            scopeKey,
             filePath: metadata.filePath,
           },
         },
@@ -2230,13 +2304,14 @@ export async function importVault(
 
       const note = await db.note.upsert({
         where: {
-          userId_filePath: {
-            userId: user.id,
+          scopeKey_filePath: {
+            scopeKey,
             filePath: metadata.filePath,
           },
         },
         create: {
           userId: user.id,
+          scopeKey,
           title,
           slug,
           content,

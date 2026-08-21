@@ -1,6 +1,6 @@
 // src/app/(admin)/tasks/_components/task-page-client.tsx
 'use client';
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useTasks } from '@/hooks/use-tasks';
 import { useTaskFilters } from '@/hooks/use-task-filters';
 import { useTaskSelection } from '@/hooks/use-task-selection';
@@ -9,6 +9,7 @@ import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import {
   deleteTasksBulk,
   getProjects,
+  getTaskCollaborationOptions,
   getTaskTags,
   updateTaskStatus,
 } from '@/app/actions/tasks';
@@ -24,15 +25,27 @@ import { TaskHeader } from './task-header';
 import { mergeTaskTags } from '@/lib/task-tags';
 import type {
   TaskPatch,
+  TaskCollaborationOptions,
   TaskProjectOption,
   TaskWithRelations,
 } from '@/types/tasks';
 
 type ViewMode = 'list' | 'kanban';
 
-export function TaskPageClient() {
-  const { filters, resolvedFilters, updateFilter, resetFilters } =
-    useTaskFilters({});
+export function TaskPageClient({
+  activeOrganizationId,
+}: {
+  activeOrganizationId: string | null;
+}) {
+  const initialFilters = useMemo(
+    () =>
+      activeOrganizationId
+        ? { organizationId: activeOrganizationId, scope: 'mine' as const }
+        : { scope: 'personal' as const },
+    [activeOrganizationId]
+  );
+  const { filters, resolvedFilters, setFilters, updateFilter, resetFilters } =
+    useTaskFilters(initialFilters);
   const {
     tasks,
     stats,
@@ -59,6 +72,28 @@ export function TaskPageClient() {
   const [projects, setProjects] = useState<TaskProjectOption[]>([]);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(() => new Set());
+  const [collaboration, setCollaboration] = useState<TaskCollaborationOptions>({
+    teams: [],
+    members: [],
+  });
+
+  useEffect(() => {
+    setFilters(initialFilters);
+  }, [initialFilters, setFilters]);
+
+  useEffect(() => {
+    let current = true;
+    if (!activeOrganizationId) {
+      setCollaboration({ teams: [], members: [] });
+      return;
+    }
+    getTaskCollaborationOptions(activeOrganizationId).then((result) => {
+      if (current && result.success) setCollaboration(result.data);
+    });
+    return () => {
+      current = false;
+    };
+  }, [activeOrganizationId]);
 
   const loadTags = useCallback(async () => {
     const result = await getTaskTags();
@@ -205,6 +240,65 @@ export function TaskPageClient() {
         }}
       />
 
+      {activeOrganizationId && (
+        <div className="flex flex-wrap items-end gap-2 rounded-lg border border-[#303036] bg-[#19191d] p-3">
+          <label className="min-w-44 flex-1 text-xs text-[#9b9ba3]">
+            Escopo
+            <select
+              value={filters.scope || 'mine'}
+              onChange={(event) => {
+                updateFilter('scope', event.target.value);
+                if (event.target.value !== 'team') {
+                  updateFilter('teamId', undefined);
+                }
+              }}
+              className="mt-1 h-10 w-full rounded-md border border-[#303036] bg-[#111] px-3 text-sm text-white outline-none focus:border-[#6f55d9]"
+            >
+              <option value="mine">Minhas tarefas</option>
+              <option value="personal">Somente pessoais</option>
+              <option value="organization">Toda a organização</option>
+              <option value="team">Da equipe</option>
+            </select>
+          </label>
+          <label className="min-w-44 flex-1 text-xs text-[#9b9ba3]">
+            Equipe
+            <select
+              value={filters.teamId || ''}
+              onChange={(event) => {
+                updateFilter('teamId', event.target.value || undefined);
+                if (event.target.value) updateFilter('scope', 'team');
+              }}
+              className="mt-1 h-10 w-full rounded-md border border-[#303036] bg-[#111] px-3 text-sm text-white outline-none focus:border-[#6f55d9]"
+            >
+              <option value="">Todas</option>
+              {collaboration.teams.map((team) => (
+                <option key={team.id} value={team.id}>
+                  {team.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="min-w-44 flex-1 text-xs text-[#9b9ba3]">
+            Responsável
+            <select
+              value={filters.assigneeId || ''}
+              onChange={(event) => {
+                updateFilter('assigneeId', event.target.value || undefined);
+                if (event.target.value) updateFilter('scope', 'organization');
+              }}
+              className="mt-1 h-10 w-full rounded-md border border-[#303036] bg-[#111] px-3 text-sm text-white outline-none focus:border-[#6f55d9]"
+            >
+              <option value="">Todos</option>
+              {collaboration.members.map(({ user }) => (
+                <option key={user.id} value={user.id}>
+                  {user.name || `@${user.username}`}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      )}
+
       <TaskFiltersBar
         filters={filters}
         onFilterChange={updateFilter}
@@ -243,6 +337,8 @@ export function TaskPageClient() {
           onClose={closeQuickInput}
           projects={projects}
           tags={availableTags}
+          organizationId={activeOrganizationId}
+          collaboration={collaboration}
           onSuccess={(task) => {
             handleCreatedTasks([task]);
             closeQuickInput();
@@ -304,6 +400,7 @@ export function TaskPageClient() {
             projects={projects}
             availableTags={availableTags}
             onAvailableTagsChange={mergeAvailableTags}
+            collaboration={collaboration}
           />
         ) : (
           <TaskKanbanView
@@ -315,6 +412,7 @@ export function TaskPageClient() {
             projects={projects}
             availableTags={availableTags}
             onAvailableTagsChange={mergeAvailableTags}
+            collaboration={collaboration}
           />
         ))}
 
