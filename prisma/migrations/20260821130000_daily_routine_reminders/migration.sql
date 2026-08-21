@@ -1,0 +1,2 @@
+ALTER TABLE "DailyRoutine"
+ADD COLUMN "reminders" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];

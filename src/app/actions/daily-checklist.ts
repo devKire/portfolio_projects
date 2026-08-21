@@ -12,6 +12,7 @@ export interface DailyRoutineInput {
   color?: string;
   weekdays?: number[];
   isDefault?: boolean;
+  duplicateFromRoutineId?: string;
 }
 
 export interface DailyChecklistItemInput {
@@ -194,8 +195,9 @@ async function materializeRoutineEntries(
 }
 
 async function getHistory(userId: string, days: number, selectedDate: Date) {
-  const start = addDays(selectedDate, -(days - 1));
-  const end = addDays(selectedDate, 1);
+  const mondayOffset = (selectedDate.getUTCDay() + 6) % 7;
+  const start = addDays(selectedDate, -mondayOffset);
+  const end = addDays(start, days);
   const entries = await db.dailyChecklistEntry.findMany({
     where: { userId, date: { gte: start, lt: end } },
     select: { date: true, completed: true },
@@ -312,12 +314,15 @@ export async function getDailyChecklist(dateInput: string) {
         selectedRoutineId,
         selectedRoutineSource: resolved.source,
         isDateOverride: Boolean(override),
-        canChangeRoutine: !entries.some((entry) => entry.completed),
+        canChangeRoutine: !entries.some(
+          (entry) => entry.completed || Boolean(entry.note?.trim())
+        ),
         routines: routines.map((routine) => ({
           id: routine.id,
           name: routine.name,
           description: routine.description,
           color: routine.color,
+          reminders: routine.reminders,
           active: routine.active,
           isDefault: routine.isDefault,
           weekdays: routine.schedules.map((schedule) => schedule.weekday),
@@ -375,13 +380,40 @@ export async function createDailyRoutine(input: DailyRoutineInput) {
     const cleaned = cleanRoutineInput(input);
     const routine = await db.$transaction(async (tx) => {
       const count = await tx.dailyRoutine.count({ where: { userId: user.id } });
+      const source = input.duplicateFromRoutineId
+        ? await tx.dailyRoutine.findFirst({
+            where: { id: input.duplicateFromRoutineId, userId: user.id },
+            include: { items: { orderBy: { position: 'asc' } } },
+          })
+        : null;
+      if (input.duplicateFromRoutineId && !source) {
+        throw new Error('Rotina base não encontrada.');
+      }
       const created = await tx.dailyRoutine.create({
         data: {
           userId: user.id,
           name: cleaned.name,
-          description: cleaned.description,
-          color: cleaned.color,
+          description: source?.description || cleaned.description,
+          color: source?.color || cleaned.color,
+          reminders: source?.reminders || [],
           isDefault: count === 0 || Boolean(input.isDefault),
+          items: source
+            ? {
+                create: source.items.map((item) => ({
+                  userId: user.id,
+                  slug: item.slug,
+                  title: item.title,
+                  description: item.description,
+                  period: item.period,
+                  timeRange: item.timeRange,
+                  startTime: item.startTime,
+                  endTime: item.endTime,
+                  position: item.position,
+                  active: item.active,
+                  isSacred: item.isSacred,
+                })),
+              }
+            : undefined,
         },
       });
       if (created.isDefault) {
@@ -485,6 +517,7 @@ export async function duplicateDailyRoutine(routineId: string) {
           name,
           description: source.description,
           color: source.color,
+          reminders: source.reminders,
           items: {
             create: source.items.map((item) => ({
               userId: user.id,
@@ -683,28 +716,33 @@ export async function toggleDailyChecklistItem(
   try {
     const user = await requireUser();
     const date = toDayStart(dateInput);
-    const entry = await db.dailyChecklistEntry.findFirst({
-      where: { userId: user.id, itemId, date },
-    });
-    if (!entry) throw new Error('Item não pertence ao checklist deste dia.');
-    const updated = await db.dailyChecklistEntry.update({
-      where: { id: entry.id },
-      data: { completed, completedAt: completed ? new Date() : null },
-    });
-    await createChecklistLog({
-      userId: user.id,
-      itemId,
-      type: completed
-        ? 'daily_checklist.completed'
-        : 'daily_checklist.uncompleted',
-      message: completed
-        ? `Checklist concluído: ${entry.itemTitleSnapshot}`
-        : `Checklist desmarcado: ${entry.itemTitleSnapshot}`,
-      metadata: {
-        date: toDateInputValue(date),
-        routineId: entry.routineId,
-        completed,
-      } satisfies Prisma.InputJsonValue,
+    const updated = await db.$transaction(async (tx) => {
+      const entry = await tx.dailyChecklistEntry.findFirst({
+        where: { userId: user.id, itemId, date },
+      });
+      if (!entry) throw new Error('Item não pertence ao checklist deste dia.');
+      const nextEntry = await tx.dailyChecklistEntry.update({
+        where: { id: entry.id },
+        data: { completed, completedAt: completed ? new Date() : null },
+      });
+      await tx.taskActivityLog.create({
+        data: {
+          userId: user.id,
+          dailyChecklistItemId: itemId,
+          type: completed
+            ? 'daily_checklist.completed'
+            : 'daily_checklist.uncompleted',
+          message: completed
+            ? `Checklist concluído: ${entry.itemTitleSnapshot}`
+            : `Checklist desmarcado: ${entry.itemTitleSnapshot}`,
+          metadata: {
+            date: toDateInputValue(date),
+            routineId: entry.routineId,
+            completed,
+          } satisfies Prisma.InputJsonValue,
+        },
+      });
+      return nextEntry;
     });
     revalidateChecklist();
     return { success: true as const, data: updated };
@@ -712,6 +750,33 @@ export async function toggleDailyChecklistItem(
     return {
       success: false as const,
       error: actionError(error, 'Não foi possível atualizar o checklist.'),
+    };
+  }
+}
+
+export async function updateDailyRoutineReminders(
+  routineId: string,
+  reminders: string[]
+) {
+  try {
+    const user = await requireUser();
+    const cleaned = reminders
+      .map((reminder) => reminder.trim().slice(0, 160))
+      .filter(Boolean)
+      .slice(0, 20);
+    const routine = await db.$transaction(async (tx) => {
+      await requireOwnedRoutine(tx, user.id, routineId, { active: false });
+      return tx.dailyRoutine.update({
+        where: { id: routineId },
+        data: { reminders: cleaned },
+      });
+    });
+    revalidateChecklist();
+    return { success: true as const, data: routine };
+  } catch (error) {
+    return {
+      success: false as const,
+      error: actionError(error, 'Não foi possível salvar os lembretes.'),
     };
   }
 }

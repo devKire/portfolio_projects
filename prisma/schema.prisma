@@ -795,6 +795,7 @@ model DailyRoutine {
   name        String
   description String?
   color       String?
+  reminders   String[] @default([])
   active      Boolean  @default(true)
   isDefault   Boolean  @default(false)
   createdAt   DateTime @default(now())
